@@ -1,28 +1,26 @@
-{
-  "name": "serein-v2",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@supabase/ssr": "^0.0.11",
-    "@supabase/supabase-js": "^2.38.0",
-    "next": "^14.0.0",
-    "react": "^18",
-    "react-dom": "^18",
-    "zod": "^3.22.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "autoprefixer": "^10.4.14",
-    "postcss": "^8.4.24",
-    "tailwindcss": "^3.3.2",
-    "typescript": "^5"
-  }
-}
+import { z } from 'zod'
+
+export const CreateLeadSchema = z.object({
+  email: z
+    .string()
+    .email('Adresse e-mail invalide')
+    .max(255, 'E-mail trop long')
+    .transform(val => val.toLowerCase().trim()),
+  choice: z.enum(['bank', 'pdf']),
+  estimated_subscriptions: z.number().int().min(0).max(50),
+  monthly_loss: z.number().min(0).max(99999),
+  annual_loss: z.number().min(0).max(999999),
+})
+
+export const UploadSchema = z.object({
+  lead_id: z.string().uuid('ID lead invalide').optional(),
+  email: z
+    .string()
+    .email('Adresse e-mail invalide')
+    .max(255)
+    .transform(val => val.toLowerCase().trim())
+    .optional(),
+})
+
+export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
+export type UploadInput = z.infer<typeof UploadSchema>
