@@ -5,7 +5,8 @@ export const CreateLeadSchema = z.object({
     .string()
     .email('Adresse e-mail invalide')
     .max(255, 'E-mail trop long')
-    .transform(val => val.toLowerCase().trim()),
+    // On s'assure que val est une string avant de transformer
+    .transform(val => val.trim().toLowerCase()),
   choice: z.enum(['bank', 'pdf']),
   estimated_subscriptions: z.number().int().min(0).max(50),
   monthly_loss: z.number().min(0).max(99999),
@@ -18,8 +19,8 @@ export const UploadSchema = z.object({
     .string()
     .email('Adresse e-mail invalide')
     .max(255)
-    .transform(val => val.toLowerCase().trim())
-    .optional(),
+    .optional() // PLACÉ AVANT LE TRANSFORM
+    .transform(val => val?.trim().toLowerCase()), // Utilisation du ?. (optional chaining)
 })
 
 export type CreateLeadInput = z.infer<typeof CreateLeadSchema>
