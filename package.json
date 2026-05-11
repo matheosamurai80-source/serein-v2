@@ -5,8 +5,7 @@ export const CreateLeadSchema = z.object({
     .string()
     .email('Adresse e-mail invalide')
     .max(255, 'E-mail trop long')
-    .toLowerCase()
-    .trim(),
+    .transform(val => val.toLowerCase().trim()),
   choice: z.enum(['bank', 'pdf']),
   estimated_subscriptions: z.number().int().min(0).max(50),
   monthly_loss: z.number().min(0).max(99999),
@@ -19,8 +18,7 @@ export const UploadSchema = z.object({
     .string()
     .email('Adresse e-mail invalide')
     .max(255)
-    .toLowerCase()
-    .trim()
+    .transform(val => val.toLowerCase().trim())
     .optional(),
 })
 
