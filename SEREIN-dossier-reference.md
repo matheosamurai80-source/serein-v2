@@ -15,7 +15,7 @@ App française de gestion financière personnelle, spécialisée dans la
   défendable = **l'action** (résiliation assistée).
 - Moat confirmé : le générateur de lettres de résiliation avec détection du
   régime légal (Loi Hamon, Loi Chatel, L.224-39 télécom, L.224-15 énergie).
-  → **pas encore dans ce dépôt** (voir « Prochaines briques »).
+  → **livré le 2026-07-01** : page `/resiliation` (voir ci-dessous).
 - Piste de validation la plus prometteuse : licence B2B2C en marque blanche
   auprès de banques/assurances.
 - Statut légal : incorporation en micro-entreprise requise avant d'ouvrir à
@@ -49,6 +49,20 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   (+25), coût > 15 €/mois (+20), base usage faible (+12,5). Seuil « inutile » : 60.
 - Insight : pertes mensuelles/annuelles + indice Serein (0–100).
 - Testé par `npm run test:sandbox` (`sandbox/business-logic.test.ts`).
+
+### Générateur de lettres de résiliation (le moat) — `/resiliation`
+- `src/lib/letters/legal.ts` — détection du régime légal applicable :
+  télécom → L.224-39 conso (préavis ≤ 10 j) · énergie → L.224-15 conso
+  (à tout moment, sans frais) · assurance > 1 an → loi Hamon L.113-15-2
+  (à tout moment, effet 1 mois) · assurance ≤ 1 an → loi Chatel L.113-15-1 ·
+  tacite reconduction sans information → loi Chatel L.215-1 (gratuit, à tout
+  moment) · sinon droit commun (préavis contractuel).
+- `src/lib/letters/generator.ts` — lettre formelle complète (LRAR, article
+  cité, date d'effet selon le régime, demande d'arrêt des prélèvements).
+- Page `/resiliation` : formulaire → régime détecté + lettre → copier /
+  télécharger .txt. Aucune écriture en base ; c'est le client qui envoie
+  (limite ORIAS respectée).
+- Testé par `sandbox/letters.test.ts` (15 cas PASS/FAIL).
 
 ### Base de données
 `supabase/schema.sql` — 5 tables **de ce dépôt** : leads, uploads,
@@ -86,9 +100,8 @@ pas déjà fait.
 
 1. **Vérifier la connexion Supabase réelle** : `.env.local` + schéma appliqué,
    puis tester le parcours complet lead → upload → analyse sur un vrai relevé.
-2. **Générateur de lettres de résiliation** (le moat) : détection du régime
-   légal applicable (Hamon / Chatel / L.224-39 / L.224-15) — logique métier
-   d'abord en sandbox, UI ensuite.
+2. Relier `/resiliation` au parcours : proposer la lettre directement depuis
+   les abonnements détectés par l'analyse (pré-remplissage du formulaire).
 3. Page Engagements (déjà validée fonctionnelle dans Serein v1, à migrer).
 
 ## 5. Historique des briques
@@ -97,3 +110,4 @@ pas déjà fait.
 |------|--------|--------------|
 | 2026-05-12 | Dépôt initial (fichiers déposés un par un, structure cassée) | — |
 | 2026-07-01 | Remise en état : reconstruction de l'arborescence, réparations, tests sandbox, build vert | 15/15 PASS, build + lint verts, rendu prod vérifié |
+| 2026-07-01 | Générateur de lettres de résiliation (`/resiliation`) : détection du régime légal + lettre LRAR | 15/15 PASS (sandbox lettres), build vert, rendu prod vérifié |
