@@ -6,7 +6,7 @@ export function rateLimit(opts: { requests: number; windowMs: number }) {
     const key = `${ip}:${req.nextUrl.pathname}`
     const now = Date.now(); const e = store.get(key)
     if (!e || now > e.resetAt) { store.set(key, { count: 1, resetAt: now + opts.windowMs }); return null }
-    e++count; if (e.count > opts.requests) return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 })
+    e.count++; if (e.count > opts.requests) return NextResponse.json({ success: false, error: 'Too many requests' }, { status: 429 })
     return null
   }
 }

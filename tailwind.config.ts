@@ -11,6 +11,7 @@ const config: Config = {
         sage:     { DEFAULT: '#82A884', light: '#AECBB0', faint: 'rgba(130,168,132,0.11)' },
         amber:    { DEFAULT: '#BE7D38', light: '#EAB95E' },
         crimson:  { DEFAULT: '#B84B38', faint: 'rgba(184,75,56,0.09)' },
+        warm:     '#F8F7F3',
       },
       fontFamily: {
         serif: ['Instrument Serif', 'Georgia', 'serif'],
