@@ -70,6 +70,18 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - ⚠️ Action requise une fois : activer « Anonymous sign-ins » dans
   Supabase → Authentication → Providers (sinon la page l'explique en clair).
 
+### Page Engagements — `/engagements` (le cœur du schéma v5)
+- `src/lib/commitments/logic.ts` — logique testée : coût mensualisé (hebdo/
+  mensuel/trimestriel/annuel/ponctuel), échéance effective (date explicite ou
+  anniversaire − préavis), urgence (critique ≤ 7 j / bientôt ≤ 30 j / ok /
+  dépassée), tri urgence puis coût, total mensuel des actifs, correspondance
+  type de service → catégorie légale.
+- Page : total récurrent /mois, formulaire d'ajout, liste triée par urgence
+  avec badges, **« Générer la lettre → »** pré-remplit `/resiliation`
+  (service + catégorie), « Résilié ✓ » (status cancelled), suppression.
+  Même session anonyme que les lettres (RLS `user_id = auth.uid()`).
+- Testé : 18 cas sandbox PASS + 11 cas navigateur PASS (API Supabase simulée).
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -107,12 +119,12 @@ pas déjà fait.
 
 ## 4. Prochaines briques (dans l'ordre)
 
-1. Activer « Anonymous sign-ins » dans Supabase, puis tester la sauvegarde
-   d'une lettre en conditions réelles (le code est prêt et vérifié).
-2. Page Engagements sur la table `commitments` (v6 validée dans Serein v1 —
-   proto 4 onglets Suivi / Rappels / Offres / Lettre à consolider ici).
-3. Relier `/resiliation` aux abonnements détectés (pré-remplissage) et à
-   `commitment_id`.
+1. Activer « Anonymous sign-ins » dans Supabase, puis tester lettres +
+   engagements en conditions réelles (le code est prêt et vérifié).
+2. Onglet Rappels : table `reminders` branchée sur les échéances des
+   engagements (canal in_app d'abord).
+3. Relier `/resiliation` à `commitment_id` (la lettre sauvegardée pointe vers
+   son engagement) et aux abonnements détectés par l'analyse PDF.
 
 ## 5. Historique des briques
 
@@ -122,3 +134,4 @@ pas déjà fait.
 | 2026-07-01 | Remise en état : reconstruction de l'arborescence, réparations, tests sandbox, build vert | 15/15 PASS, build + lint verts, rendu prod vérifié |
 | 2026-07-01 | Générateur de lettres de résiliation (`/resiliation`) : détection du régime légal + lettre LRAR | 15/15 PASS (sandbox lettres), build vert, rendu prod vérifié |
 | 2026-07-02 | Sauvegarde des lettres sur Supabase (`cancellation_letters`, auth anonyme, liste « Mes lettres ») | 34/34 PASS sandbox, 7/7 PASS navigateur (API Supabase simulée), contrat SQL vérifié en base, build vert |
+| 2026-07-02 | Page Engagements (`/engagements`) : urgence de résiliation, total mensuel, pont vers la lettre | 52/52 PASS sandbox, 11/11 PASS navigateur, build vert |

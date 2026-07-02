@@ -5,27 +5,13 @@ import { useToast, Toast } from '@/components/ui/toast'
 import { generateCancellationLetter, type GeneratedLetter } from '@/lib/letters/generator'
 import { buildLetterRow } from '@/lib/letters/db'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { ensureUserId } from '@/lib/supabase/session'
 import type { TransactionCategory } from '@/types'
 
 interface SavedLetter { id: string; letter_type: string; generated_at: string }
 
 const LETTER_TYPE_LABELS: Record<string, string> = {
   standard: 'Standard', chatel: 'Loi Chatel', hamon: 'Loi Hamon', negotiation: 'Négociation',
-}
-
-/** Session Supabase (anonyme si besoin) → user_id, ou erreur en français. */
-async function ensureUserId(supabase: ReturnType<typeof createSupabaseBrowserClient>): Promise<string> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session) return session.user.id
-  const { data, error } = await supabase.auth.signInAnonymously()
-  if (error || !data.user) {
-    throw new Error(
-      error?.message.toLowerCase().includes('anonymous')
-        ? 'Connexions anonymes désactivées — activez-les dans Supabase → Authentication → Providers.'
-        : `Connexion impossible : ${error?.message ?? 'erreur inconnue'}`
-    )
-  }
-  return data.user.id
 }
 
 const CATEGORIES: { value: TransactionCategory; label: string }[] = [
@@ -59,6 +45,15 @@ export default function ResiliationPage() {
   const [letter, setLetter] = useState<GeneratedLetter | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<SavedLetter[]>([])
+
+  useEffect(() => {
+    // Pré-remplissage depuis la page Engagements (?service=…&category=…)
+    const q = new URLSearchParams(window.location.search)
+    const s = q.get('service')
+    const c = q.get('category')
+    if (s) setServiceName(s)
+    if (c && CATEGORIES.some(x => x.value === c)) setCategory(c as TransactionCategory)
+  }, [])
 
   useEffect(() => {
     // Liste « Mes lettres » si une session existe déjà (pas de connexion forcée)
