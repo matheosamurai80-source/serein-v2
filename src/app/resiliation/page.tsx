@@ -1,9 +1,32 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useToast, Toast } from '@/components/ui/toast'
 import { generateCancellationLetter, type GeneratedLetter } from '@/lib/letters/generator'
+import { buildLetterRow } from '@/lib/letters/db'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import type { TransactionCategory } from '@/types'
+
+interface SavedLetter { id: string; letter_type: string; generated_at: string }
+
+const LETTER_TYPE_LABELS: Record<string, string> = {
+  standard: 'Standard', chatel: 'Loi Chatel', hamon: 'Loi Hamon', negotiation: 'Négociation',
+}
+
+/** Session Supabase (anonyme si besoin) → user_id, ou erreur en français. */
+async function ensureUserId(supabase: ReturnType<typeof createSupabaseBrowserClient>): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) return session.user.id
+  const { data, error } = await supabase.auth.signInAnonymously()
+  if (error || !data.user) {
+    throw new Error(
+      error?.message.toLowerCase().includes('anonymous')
+        ? 'Connexions anonymes désactivées — activez-les dans Supabase → Authentication → Providers.'
+        : `Connexion impossible : ${error?.message ?? 'erreur inconnue'}`
+    )
+  }
+  return data.user.id
+}
 
 const CATEGORIES: { value: TransactionCategory; label: string }[] = [
   { value: 'streaming', label: 'Streaming / divertissement' },
@@ -34,6 +57,47 @@ export default function ResiliationPage() {
   const [providerAddress, setProviderAddress] = useState('')
   const [contractRef, setContractRef] = useState('')
   const [letter, setLetter] = useState<GeneratedLetter | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState<SavedLetter[]>([])
+
+  useEffect(() => {
+    // Liste « Mes lettres » si une session existe déjà (pas de connexion forcée)
+    void (async () => {
+      try {
+        const supabase = createSupabaseBrowserClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) return
+        const { data } = await supabase
+          .from('cancellation_letters')
+          .select('id, letter_type, generated_at')
+          .order('generated_at', { ascending: false })
+          .limit(5)
+        if (data) setSaved(data)
+      } catch { /* env Supabase absente : la page reste utilisable sans sauvegarde */ }
+    })()
+  }, [])
+
+  const saveLetter = async () => {
+    if (!letter || saving) return
+    setSaving(true)
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const userId = await ensureUserId(supabase)
+      const row = buildLetterRow({ userId, regime: letter.regime, content: letter.body })
+      const { data, error } = await supabase
+        .from('cancellation_letters')
+        .insert(row)
+        .select('id, letter_type, generated_at')
+        .single()
+      if (error) throw new Error(error.message)
+      if (data) setSaved(prev => [data, ...prev].slice(0, 5))
+      toast.show('Lettre sauvegardée dans votre espace ✓')
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : 'Sauvegarde impossible.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const ready = serviceName && senderName && senderAddress && providerName && providerAddress
 
@@ -169,10 +233,31 @@ export default function ResiliationPage() {
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button onClick={copy} size="md">Copier la lettre</Button>
             <Button onClick={download} variant="secondary" size="md">Télécharger (.txt)</Button>
+            <Button onClick={saveLetter} variant="secondary" size="md" loading={saving}>
+              Sauvegarder dans mon espace
+            </Button>
           </div>
           <p className="font-mono text-[11px] text-white/38 tracking-wider text-center mt-4">
             À envoyer en recommandé avec accusé de réception — gardez le récépissé.
           </p>
+        </div>
+      )}
+
+      {saved.length > 0 && (
+        <div className="w-full bg-white/3 border border-white/7 rounded-2xl p-5 mt-6">
+          <p className="font-mono text-[11px] tracking-[.13em] uppercase text-white/38 mb-3">
+            Mes lettres sauvegardées
+          </p>
+          <ul className="flex flex-col gap-2">
+            {saved.map(l => (
+              <li key={l.id} className="flex items-center justify-between text-[13.5px] text-white/65">
+                <span className="text-warm">{LETTER_TYPE_LABELS[l.letter_type] ?? l.letter_type}</span>
+                <span className="font-mono text-[11px] text-white/38">
+                  {new Date(l.generated_at).toLocaleDateString('fr-FR')}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

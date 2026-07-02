@@ -5,6 +5,7 @@
  */
 import { detectLegalRegime } from '@/lib/letters/legal'
 import { generateCancellationLetter } from '@/lib/letters/generator'
+import { mapRegimeToLetterType, buildLetterRow } from '@/lib/letters/db'
 
 let failures = 0
 function check(name: string, cond: boolean, detail = '') {
@@ -90,6 +91,29 @@ const regimes = [
 check('Générateur : 4 régimes distincts couverts par la même API',
   JSON.stringify(regimes) === JSON.stringify(['energie', 'hamon', 'chatel_conso', 'droit_commun']),
   JSON.stringify(regimes))
+
+
+// ─── SAUVEGARDE : correspondance régime → letter_type (schéma v5) ───────────
+check('Mapping : hamon → hamon, chatel_* → chatel, reste → standard',
+  mapRegimeToLetterType('hamon') === 'hamon'
+  && mapRegimeToLetterType('chatel_assurance') === 'chatel'
+  && mapRegimeToLetterType('chatel_conso') === 'chatel'
+  && mapRegimeToLetterType('telecom') === 'standard'
+  && mapRegimeToLetterType('energie') === 'standard'
+  && mapRegimeToLetterType('droit_commun') === 'standard')
+
+const row = buildLetterRow({ userId: 'u-123', regime: letter.regime, content: letter.body })
+check('Ligne construite : user_id + letter_type valide + contenu complet',
+  row.user_id === 'u-123' && ['standard','chatel','hamon','negotiation'].includes(row.letter_type)
+  && row.content.includes('L.224-39') && !('commitment_id' in row))
+check('Sans utilisateur → erreur claire (pas d\'échec SQL opaque)', (() => {
+  try { buildLetterRow({ userId: '', regime: letter.regime, content: letter.body }); return false }
+  catch (e) { return (e as Error).message.includes('connexion requise') }
+})())
+check('Contenu trop court → refusé avant l\'insert', (() => {
+  try { buildLetterRow({ userId: 'u-123', regime: letter.regime, content: 'trop court' }); return false }
+  catch { return true }
+})())
 
 console.log(failures === 0 ? '\n✅ TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)

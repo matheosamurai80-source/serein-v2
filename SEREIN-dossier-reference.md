@@ -60,16 +60,25 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - `src/lib/letters/generator.ts` — lettre formelle complète (LRAR, article
   cité, date d'effet selon le régime, demande d'arrêt des prélèvements).
 - Page `/resiliation` : formulaire → régime détecté + lettre → copier /
-  télécharger .txt. Aucune écriture en base ; c'est le client qui envoie
-  (limite ORIAS respectée).
-- Testé par `sandbox/letters.test.ts` (15 cas PASS/FAIL).
+  télécharger .txt / **sauvegarder dans son espace** (connexion anonyme
+  Supabase → insert `cancellation_letters`, liste « Mes lettres »).
+  C'est toujours le client qui envoie (limite ORIAS respectée).
+- `src/lib/letters/db.ts` : correspondance régimes → `letter_type` v5
+  (hamon→hamon, chatel_*→chatel, reste→standard) + validation avant insert.
+- Testé par `sandbox/letters.test.ts` (19 cas PASS/FAIL) + parcours navigateur
+  simulé au format exact de l'API Supabase (7 cas, dont anonyme désactivé).
+- ⚠️ Action requise une fois : activer « Anonymous sign-ins » dans
+  Supabase → Authentication → Providers (sinon la page l'explique en clair).
 
 ### Base de données
-`supabase/schema.sql` — 5 tables **de ce dépôt** : leads, uploads,
-transactions, subscriptions, insights. Toutes en RLS, accès service_role
-uniquement. Bucket storage `pdfs` privé.
-(Le schéma v5 à 12 tables — commitments, cancellation_letters, reminders… —
-appartient au projet Serein v1/global, pas encore migré ici.)
+`supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
+transactions, subscriptions, insights (service_role uniquement).
+**Vérifié en base le 2026-07-02 : le schéma v5 à 12 tables est déjà déployé
+dans le projet Supabase** (profiles, categories, uploads, transactions,
+subscriptions, budgets, savings_goals, insights, activity_logs, commitments,
+reminders, cancellation_letters — RLS partout, trigger `on_auth_user_created`
+qui crée le profil à l'inscription, y compris anonyme). Le module Lettre
+écrit désormais dans `cancellation_letters`.
 
 ### Design system (ce dépôt)
 - Fond nuit `#0A0B09`, sauge `#82A884`, mousse `#375538`, ambre `#BE7D38`,
@@ -98,11 +107,12 @@ pas déjà fait.
 
 ## 4. Prochaines briques (dans l'ordre)
 
-1. **Vérifier la connexion Supabase réelle** : `.env.local` + schéma appliqué,
-   puis tester le parcours complet lead → upload → analyse sur un vrai relevé.
-2. Relier `/resiliation` au parcours : proposer la lettre directement depuis
-   les abonnements détectés par l'analyse (pré-remplissage du formulaire).
-3. Page Engagements (déjà validée fonctionnelle dans Serein v1, à migrer).
+1. Activer « Anonymous sign-ins » dans Supabase, puis tester la sauvegarde
+   d'une lettre en conditions réelles (le code est prêt et vérifié).
+2. Page Engagements sur la table `commitments` (v6 validée dans Serein v1 —
+   proto 4 onglets Suivi / Rappels / Offres / Lettre à consolider ici).
+3. Relier `/resiliation` aux abonnements détectés (pré-remplissage) et à
+   `commitment_id`.
 
 ## 5. Historique des briques
 
@@ -111,3 +121,4 @@ pas déjà fait.
 | 2026-05-12 | Dépôt initial (fichiers déposés un par un, structure cassée) | — |
 | 2026-07-01 | Remise en état : reconstruction de l'arborescence, réparations, tests sandbox, build vert | 15/15 PASS, build + lint verts, rendu prod vérifié |
 | 2026-07-01 | Générateur de lettres de résiliation (`/resiliation`) : détection du régime légal + lettre LRAR | 15/15 PASS (sandbox lettres), build vert, rendu prod vérifié |
+| 2026-07-02 | Sauvegarde des lettres sur Supabase (`cancellation_letters`, auth anonyme, liste « Mes lettres ») | 34/34 PASS sandbox, 7/7 PASS navigateur (API Supabase simulée), contrat SQL vérifié en base, build vert |
