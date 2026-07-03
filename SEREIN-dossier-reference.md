@@ -100,6 +100,19 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Barre de navigation Engagements / Rappels / Lettre (`src/components/ui/nav.tsx`).
 - Testé : 16 cas sandbox PASS + 13 cas navigateur PASS (API Supabase simulée).
 
+### Connexion — `/connexion` (vrais comptes)
+- `src/lib/auth/logic.ts` — validation e-mail + mot de passe (≥ 8) et
+  traduction des erreurs Supabase Auth en français (testé, 11 cas).
+- Page : bascule Se connecter / Créer un compte (e-mail + mot de passe),
+  `signInWithPassword` / `signUp`, redirection vers `/engagements`,
+  message « vérifiez votre boîte mail » si confirmation requise,
+  lien « continuer sans connexion » (l'anonyme reste possible).
+- `src/components/ui/nav.tsx` : affiche l'e-mail connecté + « Déconnexion »,
+  sinon un lien « Connexion » (via `onAuthStateChange`).
+- Un compte réel supprime le besoin d'activer les connexions anonymes.
+- Testé : 11 cas sandbox + 7 cas navigateur (validation, refus, connexion,
+  inscription avec confirmation).
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -172,3 +185,4 @@ pas déjà fait.
 | 2026-07-03 | Next.js 15.5.20 (CVE) — **déploiement en ligne réussi : https://serein-v2.vercel.app** | build Vercel READY, pages vérifiées 200 |
 | 2026-07-03 | Onboarding nettoyé : bank/PDF « Bientôt disponible », CTA vers l'app, formulations légales, zéro appel /api cassé | 10/10 PASS navigateur |
 | 2026-07-03 | Bascule thème clair (crème/vert forêt/ambre) sur toute l'app | build vert, 3 pages vérifiées en capture, contraste OK |
+| 2026-07-03 | Connexion (`/connexion`) : vrais comptes e-mail/mot de passe, nav connectée | 81/81 sandbox PASS, 7/7 navigateur PASS, build vert |
