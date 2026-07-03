@@ -1,0 +1,13 @@
+{
+  "name": "PanierMalin",
+  "short_name": "PanierMalin",
+  "description": "Scannez un code-barres, comparez la qualité nutritionnelle et le prix.",
+  "lang": "fr",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F6F8F4",
+  "theme_color": "#2F7A4D",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

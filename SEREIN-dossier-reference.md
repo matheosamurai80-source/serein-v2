@@ -5,6 +5,33 @@
 
 ## 1. Le produit
 
+### Positionnement (récap Abonopack × Serein, intégré le 2026-07-04)
+- **Serein est un gardien silencieux** : assistant français de vigilance
+  financière qui détecte, analyse et réduit les dépenses invisibles
+  (abonnements, services récurrents, contrats du quotidien). Ni app
+  bancaire, ni comparateur, ni agrégateur.
+- **Promesse : « Vous ne payez plus pour ce que vous ne voyez plus. »**
+- Ton : calme, premium, rassurant — esthétique Apple/Notion, minimaliste
+  « French touch », zéro élément cyber/néon. ✅ La charte claire
+  crème/vert forêt actuelle respecte cette direction.
+- Éthique : zéro commission fournisseur, zéro vente de données, zéro
+  comparateur sponsorisé, transparence radicale, 100 % France.
+- ⚠️ Reformulation légale obligatoire du récap : Serein ne « résilie pas
+  automatiquement » et ne fait pas de « renégociation automatisée » —
+  il PRÉPARE (lettres, alertes, recommandations) et le client agit
+  (limite ORIAS). Toute copie doit suivre cette formulation.
+- **Abonopack** (concept à venir, sur le socle actuel) : synthèse claire
+  des abonnements — prix, fréquence, dates clés, risques — avec **score
+  de vigilance**, recommandations et estimation d'économies. Le dashboard
+  et la table commitments actuels en sont la fondation directe.
+- **Unik** : dimension sur-mesure (recommandations personnalisées par
+  profil) — après Abonopack.
+- NB : l'ancienne itération décrite dans le récap (HTML/CSS/JS, projet
+  Supabase `oujdbevbgqntkousvsms`, tables leads/pdf_scans, fond navy) est
+  **obsolète** — le présent dépôt (Next.js + `xfcrryjhxqjdkzsymlro`) est
+  la seule base de travail.
+
+
 App française de gestion financière personnelle, spécialisée dans la
 **détection et l'annulation d'abonnements**.
 
@@ -173,8 +200,11 @@ pas déjà fait.
 
 ## 4. Prochaines briques (dans l'ordre)
 
-1. Activer « Anonymous sign-ins » dans Supabase, puis tester lettres +
-   engagements + rappels en conditions réelles (le code est prêt et vérifié).
+1. **Abonopack v1** : score de vigilance par engagement (ancienneté, coût,
+   échéance proche, doublon de catégorie) + synthèse sur le dashboard —
+   logique testable en sandbox d'abord.
+2. Activer « Anonymous sign-ins » dans Supabase (mode sans compte), puis
+   tester lettres + engagements + rappels en conditions réelles.
 2. Relier `/resiliation` aux abonnements détectés par l'analyse PDF
    (pré-remplissage depuis un abonnement repéré). [lien commitment_id fait]
 3. Rappels e-mail/SMS (canaux `email`/`sms` déjà prévus au schéma) — nécessite
@@ -196,3 +226,9 @@ pas déjà fait.
 | 2026-07-03 | Bascule thème clair (crème/vert forêt/ambre) sur toute l'app | build vert, 3 pages vérifiées en capture, contraste OK |
 | 2026-07-03 | Connexion (`/connexion`) : vrais comptes e-mail/mot de passe, nav connectée | 81/81 sandbox PASS, 7/7 navigateur PASS, build vert |
 | 2026-07-03 | Tableau de bord (`/dashboard`) : résumé + atterrissage après connexion | 90/90 sandbox PASS, 9/9 navigateur PASS, build vert |
+
+## Hébergement invité — PanierMalin
+`public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
+identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
+provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
+À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.

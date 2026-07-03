@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2F7A4D">
+<title>PanierMalin — scanner &amp; comparer</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<style>
+  :root { --green:#2F7A4D; --green-dark:#245E3B; --bg:#F6F8F4; --card:#FFFFFF; --line:#E3E9E0; --text:#20301F; --dim:#6C7A6A }
+  * { box-sizing:border-box; margin:0 }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; padding-bottom:40px }
+  header { background:var(--green); color:#fff; padding:18px 16px 16px; text-align:center }
+  header h1 { font-size:22px; font-weight:800; letter-spacing:-.3px }
+  header p { font-size:13px; opacity:.85; margin-top:2px }
+  main { max-width:520px; margin:0 auto; padding:16px }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:14px }
+  video { width:100%; border-radius:12px; background:#000; aspect-ratio:4/3; object-fit:cover; display:none }
+  .row { display:flex; gap:8px; margin-top:10px }
+  input[type=text] { flex:1; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; font-size:16px }
+  input[type=text]:focus { outline:none; border-color:var(--green) }
+  button { border:none; border-radius:12px; padding:12px 16px; font-size:15px; font-weight:700; cursor:pointer; background:var(--green); color:#fff; transition:.15s }
+  button:active { transform:scale(.97) }
+  button.ghost { background:#EDF3EA; color:var(--green-dark) }
+  button:disabled { opacity:.5 }
+  #status { font-size:13px; color:var(--dim); margin-top:10px; min-height:17px; text-align:center }
+  #status.err { color:#B3402E }
+  .prod { display:flex; align-items:center; gap:12px; padding:12px 0; border-top:1px solid var(--line) }
+  .prod:first-child { border-top:none }
+  .score { width:44px; height:44px; border-radius:12px; display:grid; place-items:center; color:#fff; font-weight:800; font-size:20px; text-transform:uppercase; flex-shrink:0 }
+  .s-a{background:#038141}.s-b{background:#85BB2F}.s-c{background:#FECB02;color:#5A4A00}.s-d{background:#EE8100}.s-e{background:#E63E11}.s-x{background:#9AA79A}
+  .pinfo { flex:1; min-width:0 }
+  .pname { font-weight:700; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+  .pmeta { font-size:12.5px; color:var(--dim); margin-top:2px }
+  .best-badge { display:inline-block; background:#E7F4EC; color:var(--green-dark); font-size:11px; font-weight:800; padding:2px 8px; border-radius:99px; margin-left:6px }
+  .tag { display:inline-block; font-size:10.5px; font-weight:800; padding:2px 7px; border-radius:99px; margin-left:5px; vertical-align:1px }
+  .tag-rec { background:#EAF1FB; color:#2B5EA7 }
+  .tag-promo { background:#FFF3D6; color:#8A6100 }
+  .tag-hausse { background:#FDE8E4; color:#B3402E }
+  .dup { background:#FFF8E8; border:1.5px solid #F2D98C; border-radius:12px; padding:12px; margin-top:10px; font-size:13.5px; line-height:1.5; display:none }
+  .dup button { margin-top:8px; padding:9px 14px; font-size:13px }
+  .prod input.price { width:74px; border:1.5px solid var(--line); border-radius:10px; padding:8px; font-size:14px; text-align:right }
+  .del { background:none; color:#B3402E; font-size:18px; padding:6px }
+  h2 { font-size:15px; font-weight:800; margin-bottom:8px }
+  .hint { font-size:12.5px; color:var(--dim); line-height:1.5 }
+  .empty { text-align:center; color:var(--dim); font-size:14px; padding:18px 0 }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧺 PanierMalin</h1>
+  <p>Scannez, comparez, choisissez le meilleur.</p>
+</header>
+<main>
+  <div class="card">
+    <video id="cam" playsinline muted></video>
+    <div class="row">
+      <button id="scanBtn" style="flex:1">📷 Scanner un code-barres</button>
+    </div>
+    <div class="row">
+      <input type="text" id="ean" inputmode="numeric" placeholder="…ou tapez le code (ex. 3017620422003)">
+      <button id="addBtn" class="ghost">OK</button>
+    </div>
+    <div id="status"></div>
+    <div class="dup" id="dup"></div>
+  </div>
+
+  <div class="card">
+    <h2>Mon inventaire <span class="hint" id="count"></span></h2>
+    <div id="basket"><p class="empty">Scannez vos produits : l&rsquo;app s&rsquo;en souvient.</p></div>
+    <p class="hint" style="margin-top:10px">Trié du meilleur au moins bon (Nutri-Score, puis calories). Ajoutez le prix en rayon :
+    l'app calcule le €/100g, retient vos achats (badge Récurrent dès le 2e) et compare à VOS prix
+    habituels pour repérer les vraies promos 🎉 et les hausses. Vos données restent sur ce téléphone.</p>
+  </div>
+</main>
+
+<script type="module">
+import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate } from './logic.mjs'
+
+const $ = id => document.getElementById(id)
+const status = (msg, err = false) => { $('status').textContent = msg; $('status').className = err ? 'err' : '' }
+
+// ─── PANIER (persisté en local) ─────────────────────────────────────────────
+let items = JSON.parse(localStorage.getItem('inventaire') ?? localStorage.getItem('panier') ?? '[]')
+const today = () => new Date().toISOString().slice(0, 10)
+// migration v1 : chaque produit gagne un historique d'achats
+items = items.map(i => i.purchases ? i : { ...i, purchases: recordPurchase([], { date: today(), price: i.price }) })
+const save = () => localStorage.setItem('inventaire', JSON.stringify(items))
+
+function render() {
+  const box = $('basket')
+  $('count').textContent = items.length ? `(${items.length})` : ''
+  if (!items.length) { box.innerHTML = '<p class="empty">Scannez vos produits : l\'app s\'en souvient.</p>'; return }
+  box.innerHTML = ''
+  for (const p of compareBasket(items)) {
+    const per100 = pricePer100(p.price, p.quantity)
+    const signal = priceSignal((p.purchases ?? []).slice(0, -1), p.price)
+    const tags = (isRecurring(p.purchases) ? `<span class="tag tag-rec">Récurrent ×${p.purchases.length}</span>` : '')
+      + (signal === 'promo' ? '<span class="tag tag-promo">PROMO 🎉</span>' : '')
+      + (signal === 'hausse' ? '<span class="tag tag-hausse">Hausse ↗</span>' : '')
+    const div = document.createElement('div')
+    div.className = 'prod'
+    div.innerHTML = `
+      <div class="score s-${p.nutriscore ?? 'x'}">${p.nutriscore ?? '?'}</div>
+      <div class="pinfo">
+        <div class="pname">${p.name}${p.best ? '<span class="best-badge">MEILLEUR ✓</span>' : ''}${tags}</div>
+        <div class="pmeta">${[p.brand, p.quantity, p.kcal != null ? `${p.kcal} kcal/100g` : null, p.nova ? `NOVA ${p.nova}` : null, per100 != null ? `${per100.toFixed(2)} €/100` : null].filter(Boolean).join(' · ')}</div>
+      </div>
+      <input class="price" type="text" inputmode="decimal" placeholder="€" value="${p.price ?? ''}" aria-label="prix">
+      <button class="del" aria-label="retirer">✕</button>`
+    div.querySelector('.price').onchange = e => {
+      const v = parseFloat(String(e.target.value).replace(',', '.'))
+      const it = items.find(i => i.ean === p.ean)
+      if (it) {
+        it.price = v > 0 ? v : null
+        if (v > 0) it.purchases = recordPurchase(it.purchases, { date: today(), price: v })
+        save(); render()
+        const s = priceSignal(it.purchases.slice(0, -1), v)
+        if (s === 'promo') status('🎉 Bonne affaire : moins cher que d\'habitude !')
+        if (s === 'hausse') status('↗ Attention : plus cher que votre prix habituel.', true)
+      }
+    }
+    div.querySelector('.del').onclick = () => { items = items.filter(i => i.ean !== p.ean); save(); render() }
+    box.appendChild(div)
+  }
+}
+
+// ─── AJOUT D'UN PRODUIT ─────────────────────────────────────────────────────
+async function addByEan(raw) {
+  const ean = String(raw).replace(/\s/g, '')
+  if (!validateEAN(ean)) return status('Code-barres invalide (8 ou 13 chiffres + clé).', true)
+  const dup = findDuplicate(items, ean)
+  if (dup) {
+    const d = $('dup')
+    d.style.display = 'block'
+    d.innerHTML = `⚠️ <strong>Vous en avez déjà à la maison !</strong><br>${dup.name} — acheté ${dup.purchases.length} fois, la dernière le ${dup.purchases.at(-1).date.split('-').reverse().join('/')}. `
+    const btn = document.createElement('button')
+    btn.textContent = 'J\'en rachète quand même'
+    btn.onclick = () => { dup.purchases = recordPurchase(dup.purchases, { date: today(), price: null }); save(); render(); d.style.display = 'none'; status(`Racheté : ${dup.name} (×${dup.purchases.length})`) }
+    d.appendChild(btn)
+    return status('')
+  }
+  $('dup').style.display = 'none'
+  status('Recherche du produit…')
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${ean}.json?fields=product_name,brands,quantity,nutriscore_grade,nova_group,nutriments`)
+    const p = normalizeProduct(ean, await r.json())
+    if (!p) return status('Produit inconnu d\'Open Food Facts.', true)
+    items.push({ ...p, purchases: recordPurchase([], { date: today() }) }); save(); render()
+    status(`Ajouté : ${p.name}`)
+  } catch { status('Pas de réseau — réessayez.', true) }
+}
+$('addBtn').onclick = () => { addByEan($('ean').value); $('ean').value = '' }
+$('ean').addEventListener('keydown', e => { if (e.key === 'Enter') $('addBtn').click() })
+
+// ─── SCANNER (BarcodeDetector — Android Chrome ; iOS : saisie manuelle) ─────
+let scanning = false, stream = null
+const stopScan = () => { scanning = false; stream?.getTracks().forEach(t => t.stop()); $('cam').style.display = 'none'; $('scanBtn').textContent = '📷 Scanner un code-barres' }
+
+$('scanBtn').onclick = async () => {
+  if (scanning) return stopScan()
+  if (!('BarcodeDetector' in window)) return status('Scanner non disponible sur ce navigateur (iPhone : tapez le code ci-dessous).', true)
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+  } catch { return status('Accès caméra refusé — autorisez-le ou tapez le code.', true) }
+  const video = $('cam'); video.srcObject = stream; video.style.display = 'block'; await video.play()
+  const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8'] })
+  scanning = true; $('scanBtn').textContent = '⏹ Arrêter le scan'; status('Visez le code-barres…')
+  while (scanning) {
+    try {
+      const codes = await detector.detect(video)
+      if (codes.length) { const v = codes[0].rawValue; stopScan(); await addByEan(v); if (navigator.vibrate) navigator.vibrate(80); break }
+    } catch { /* frame suivante */ }
+    await new Promise(r => setTimeout(r, 180))
+  }
+}
+
+// ─── PWA ────────────────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
+
+render()
+</script>
+</body>
+</html>
