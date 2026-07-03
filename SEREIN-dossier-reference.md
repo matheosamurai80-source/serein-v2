@@ -110,13 +110,14 @@ reminders, cancellation_letters — RLS partout, trigger `on_auth_user_created`
 qui crée le profil à l'inscription, y compris anonyme). Le module Lettre
 écrit désormais dans `cancellation_letters`.
 
-### Design system (ce dépôt)
-- Fond nuit `#0A0B09`, sauge `#82A884`, mousse `#375538`, ambre `#BE7D38`,
-  blanc chaud `#F8F7F3` — définis dans `tailwind.config.ts`
-  (chargé par Tailwind v4 via `@config` dans `src/app/globals.css`).
+### Design system (thème clair — bascule 2026-07-03)
+- **Fond crème `#FCFAF5`**, surfaces blanches `#FFFFFF`, encre `#26302A`
+  (texte), vert forêt `moss #375538` / `sage #557A59`, ambre `#B5713A`,
+  crimson `#B84B38`. Tokens `cream` / `surface` / `ink` dans `tailwind.config.ts`.
+- Conversion faite par remap systématique des classes sombres → claires
+  (bg-night→bg-cream/surface, text-white/*→text-ink/*, sage-light→moss…).
 - Polices : Instrument Serif (display), Geist (texte), Geist Mono.
-- NB : la charte « Crème/Vert forêt/Cormorant Garamond » du dossier global
-  correspond à une autre itération — ce dépôt utilise la déclinaison sombre.
+- Aligne l'app sur la charte claire du dossier de référence global.
 
 ## 3. Déploiement (Vercel)
 
@@ -170,3 +171,4 @@ pas déjà fait.
 | 2026-07-03 | Fix déploiement Vercel (`vercel.json` invalide) + `.env.production` public + lien engagement↔lettre (`commitment_id`) | 70/70 PASS sandbox, 3/3 PASS navigateur (boucle fermée), build vert |
 | 2026-07-03 | Next.js 15.5.20 (CVE) — **déploiement en ligne réussi : https://serein-v2.vercel.app** | build Vercel READY, pages vérifiées 200 |
 | 2026-07-03 | Onboarding nettoyé : bank/PDF « Bientôt disponible », CTA vers l'app, formulations légales, zéro appel /api cassé | 10/10 PASS navigateur |
+| 2026-07-03 | Bascule thème clair (crème/vert forêt/ambre) sur toute l'app | build vert, 3 pages vérifiées en capture, contraste OK |

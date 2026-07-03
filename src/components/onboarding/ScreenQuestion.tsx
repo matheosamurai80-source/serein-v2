@@ -15,17 +15,17 @@ export function ScreenQuestion() {
 
   return (
     <div className="flex flex-col items-center w-full animate-fade-up">
-      <p className="font-mono text-[11px] tracking-[.17em] uppercase text-sage mb-5 flex items-center gap-2.5">
+      <p className="font-mono text-[11px] tracking-[.17em] uppercase text-moss mb-5 flex items-center gap-2.5">
         <span className="w-6 h-px bg-moss" />Étape 1 / 2<span className="w-6 h-px bg-moss" />
       </p>
 
-      <div className="w-full bg-white/3 border border-white/7 rounded-2xl p-9 mb-7">
-        <p className="font-mono text-[11px] tracking-[.13em] uppercase text-moss-mid mb-3.5 text-left">
+      <div className="w-full bg-surface border border-ink/10 rounded-2xl p-9 mb-7">
+        <p className="font-mono text-[11px] tracking-[.13em] uppercase text-moss mb-3.5 text-left">
           Une seule question
         </p>
-        <h2 className="font-serif text-[clamp(20px,4.5vw,30px)] tracking-[-0.02em] leading-[1.3] text-warm mb-7 text-left">
+        <h2 className="font-serif text-[clamp(20px,4.5vw,30px)] tracking-[-0.02em] leading-[1.3] text-ink mb-7 text-left">
           Combien d&apos;abonnements<br />
-          pensez-vous avoir <em className="text-sage-light">actuellement ?</em>
+          pensez-vous avoir <em className="text-moss">actuellement ?</em>
         </h2>
 
         <div className="grid grid-cols-3 gap-2.5">
@@ -40,21 +40,21 @@ export function ScreenQuestion() {
                   'border transition-all duration-200 relative overflow-hidden',
                   selected
                     ? 'border-sage bg-sage/13 shadow-[0_0_0_3px_rgba(130,168,132,0.14)]'
-                    : 'border-white/7 bg-white/4 hover:border-sage hover:bg-sage/8'
+                    : 'border-ink/10 bg-surface hover:border-sage hover:bg-sage/8'
                 )}
               >
                 {selected && (
-                  <span className="absolute top-2 right-2.5 text-[11px] text-sage font-semibold">✓</span>
+                  <span className="absolute top-2 right-2.5 text-[11px] text-moss font-semibold">✓</span>
                 )}
                 <span className={cn(
                   'font-serif text-[clamp(24px,5vw,30px)] tracking-[-0.02em] leading-none transition-colors',
-                  selected ? 'text-sage-light' : 'text-warm'
+                  selected ? 'text-moss' : 'text-ink'
                 )}>
                   {display}
                 </span>
                 <span className={cn(
                   'font-mono text-[10px] tracking-wider uppercase transition-colors',
-                  selected ? 'text-sage' : 'text-white/38'
+                  selected ? 'text-moss' : 'text-ink/50'
                 )}>
                   abonnements
                 </span>
@@ -72,7 +72,7 @@ export function ScreenQuestion() {
         >
           Voir mon estimation →
         </Button>
-        <p className="font-mono text-[11px] text-white/38 tracking-wider">
+        <p className="font-mono text-[11px] text-ink/50 tracking-wider">
           Aucune donnée collectée à cette étape
         </p>
       </div>

@@ -7,10 +7,10 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary:   'bg-sage text-night-DEFAULT hover:bg-sage-light hover:-translate-y-0.5 hover:shadow-[0_12px_36px_rgba(130,168,132,.28)]',
-        secondary: 'bg-transparent text-sage-light border border-sage/30 hover:border-sage hover:bg-sage/8',
-        ghost:     'bg-transparent text-white/65 hover:text-white',
-        danger:    'bg-crimson text-white hover:bg-crimson/90',
+        primary:   'bg-sage text-cream hover:bg-sage-light hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(85,122,89,.28)]',
+        secondary: 'bg-transparent text-moss border border-sage/40 hover:border-sage hover:bg-sage/8',
+        ghost:     'bg-transparent text-ink/60 hover:text-ink',
+        danger:    'bg-crimson text-cream hover:bg-crimson/90',
       },
       size: {
         sm: 'text-sm px-5 py-2.5',
