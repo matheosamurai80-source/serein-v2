@@ -5,6 +5,13 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { serviceTypeToCategory, type ServiceType, type CommitmentFrequency, type Urgency } from '@/lib/commitments/logic'
 import { buildDashboardSummary, type DashCommitment, type DashReminder } from '@/lib/dashboard/logic'
 import { reminderTiming, daysUntil } from '@/lib/reminders/logic'
+import { buildAbonopack, type VigilanceLevel } from '@/lib/abonopack/logic'
+
+const LEVEL_UI: Record<VigilanceLevel, { label: string; text: string; badge: string }> = {
+  elevee:  { label: 'Vigilance élevée',  text: 'text-crimson', badge: 'bg-crimson/15 text-crimson border-crimson/30' },
+  moderee: { label: 'Vigilance modérée', text: 'text-amber',   badge: 'bg-amber/15 text-amber border-amber/30' },
+  faible:  { label: 'Tout est calme',    text: 'text-moss',    badge: 'bg-sage/12 text-moss border-sage/25' },
+}
 
 interface CommitmentRow extends DashCommitment {
   service_type: ServiceType
@@ -52,6 +59,7 @@ export default function DashboardPage() {
   }, [])
 
   const s = buildDashboardSummary(commitments, reminders)
+  const pack = buildAbonopack(commitments)
   const nameOf = (id: string) => commitments.find(c => c.id === id)?.name ?? 'Engagement'
   const isEmpty = loaded && commitments.length === 0
 
@@ -94,6 +102,55 @@ export default function DashboardPage() {
             <a href="/engagements" className="inline-block text-[13px] font-semibold bg-sage text-cream rounded-full px-5 py-2.5 hover:bg-sage-light transition-colors">
               Ajouter un engagement →
             </a>
+          </div>
+        )}
+
+        {/* Abonopack — score de vigilance */}
+        {pack.items.length > 0 && (
+          <div className="w-full bg-surface border border-ink/10 rounded-2xl p-5 mb-6" data-testid="abonopack">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50">Abonopack · Score de vigilance</p>
+              <span className={`text-[11px] font-semibold border rounded-full px-3 py-1 ${LEVEL_UI[pack.globalLevel].badge}`}>
+                {LEVEL_UI[pack.globalLevel].label}
+              </span>
+            </div>
+
+            <div className="flex items-baseline gap-2 mb-4">
+              <span className={`font-serif text-[44px] leading-none tracking-[-0.02em] ${LEVEL_UI[pack.globalLevel].text}`} data-testid="pack-score">
+                {pack.globalScore}
+              </span>
+              <span className="font-mono text-[11px] text-ink/45 uppercase tracking-wider">/ 100 · pondéré par le coût</span>
+            </div>
+
+            {pack.duplicatesMonthly > 0 && (
+              <div className="bg-amber/8 border border-amber/20 rounded-xl p-4 mb-4" data-testid="pack-savings">
+                <p className="text-[13.5px] text-ink leading-[1.55]">
+                  💡 <strong>{eur(pack.duplicatesMonthly)} €/mois récupérables</strong> ({eur(pack.duplicatesAnnual)} €/an)
+                  en supprimant les doublons : {pack.duplicateNames.join(', ')}.
+                </p>
+                <p className="font-mono text-[10.5px] text-ink/45 tracking-wider mt-1.5">
+                  Estimation basée sur vos doublons de catégorie — c&apos;est vous qui décidez.
+                </p>
+              </div>
+            )}
+
+            <ul className="flex flex-col gap-2.5">
+              {pack.items.slice(0, 4).map(i => (
+                <li key={i.id} className="flex items-start justify-between gap-3" data-testid="pack-item">
+                  <div className="min-w-0">
+                    <p className="text-[13.5px] font-semibold text-ink truncate">{i.name}</p>
+                    {i.reasons[0] && <p className="text-xs text-ink/50 leading-[1.5]">{i.reasons.join(' · ')}</p>}
+                  </div>
+                  <span className={`flex-shrink-0 font-serif text-lg ${LEVEL_UI[i.level].text}`}>{i.score}</span>
+                </li>
+              ))}
+            </ul>
+            {pack.toReviewCount > 0 && (
+              <p className="font-mono text-[11px] text-ink/45 tracking-wider mt-3">
+                {pack.toReviewCount} abonnement{pack.toReviewCount > 1 ? 's' : ''} en vigilance élevée —{' '}
+                <a href="/engagements" className="text-moss underline">passer en revue →</a>
+              </p>
+            )}
           </div>
         )}
 

@@ -149,6 +149,19 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   après connexion. État vide géré (invite à ajouter un engagement).
 - Testé : 9 cas sandbox + 9 cas navigateur.
 
+### Abonopack v1 — score de vigilance (livré 2026-07-04, sur le dashboard)
+- `src/lib/abonopack/logic.ts` — score 0-100 **explicable** par engagement :
+  fenêtre ≤ 7 j (+35) / ≤ 30 j (+25) / dépassée (+15) / inconnue (+20,
+  « angle mort ») · coût > 30 €/mois (+25) ou > 15 (+15) · doublon de
+  catégorie (+25) · renouvellement annuel (+10). Niveaux : ≥ 60 élevée,
+  ≥ 35 modérée, sinon faible. Score global pondéré par le coût.
+- Synthèse d'économies **honnête** : seuls les doublons sont chiffrés
+  (tout sauf le moins cher de chaque catégorie) — mention « c'est vous
+  qui décidez » (ORIAS).
+- Section sur `/dashboard` : score global + badge, encart économies,
+  top 4 avec raisons, lien « passer en revue ».
+- Testé : 12 cas sandbox PASS + 7 cas navigateur PASS.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -200,9 +213,8 @@ pas déjà fait.
 
 ## 4. Prochaines briques (dans l'ordre)
 
-1. **Abonopack v1** : score de vigilance par engagement (ancienneté, coût,
-   échéance proche, doublon de catégorie) + synthèse sur le dashboard —
-   logique testable en sandbox d'abord.
+1. **Unik v1** : recommandations personnalisées par profil, au-dessus
+   d'Abonopack (à cadrer avant de construire).
 2. Activer « Anonymous sign-ins » dans Supabase (mode sans compte), puis
    tester lettres + engagements + rappels en conditions réelles.
 2. Relier `/resiliation` aux abonnements détectés par l'analyse PDF
@@ -232,3 +244,4 @@ pas déjà fait.
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+| 2026-07-04 | Abonopack v1 : score de vigilance explicable + économies doublons sur le dashboard | 102/102 PASS sandbox, 7/7 PASS navigateur, build vert |
