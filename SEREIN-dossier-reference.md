@@ -32,7 +32,11 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 2. **ScreenQuestion** — « Combien d'abonnements pensez-vous avoir ? » (0–3 / 4–6 / 7+)
 3. **ScreenSimulation** — estimation des pertes (table `SIM_TABLE` dans `src/config`)
 4. **ScreenReassurance** — confiance DSP2 (lecture seule, Powens/ACPR, données en France)
-5. **ScreenConversion** — capture e-mail + choix banque ou import PDF
+5. **ScreenConversion** (nettoyé 2026-07-03) — e-mail optionnel, CTA
+   « Suivre mes abonnements & créer mes lettres → » vers `/engagements`
+   (la partie qui marche), connexion bancaire + import PDF affichés
+   « Bientôt disponible » (aucun appel réseau), formulations légales
+   (Serein arme, n'agit pas). URL en ligne : https://serein-v2.vercel.app
 
 ### Pipeline d'analyse
 - `POST /api/leads` — crée un lead (validation Zod, rate-limit)
@@ -164,3 +168,5 @@ pas déjà fait.
 | 2026-07-02 | Page Engagements (`/engagements`) : urgence de résiliation, total mensuel, pont vers la lettre | 52/52 PASS sandbox, 11/11 PASS navigateur, build vert |
 | 2026-07-03 | Onglet Rappels (`/rappels`) : rappels auto avant la fenêtre de résiliation, nav inter-pages | 68/68 PASS sandbox, 13/13 PASS navigateur, build vert |
 | 2026-07-03 | Fix déploiement Vercel (`vercel.json` invalide) + `.env.production` public + lien engagement↔lettre (`commitment_id`) | 70/70 PASS sandbox, 3/3 PASS navigateur (boucle fermée), build vert |
+| 2026-07-03 | Next.js 15.5.20 (CVE) — **déploiement en ligne réussi : https://serein-v2.vercel.app** | build Vercel READY, pages vérifiées 200 |
+| 2026-07-03 | Onboarding nettoyé : bank/PDF « Bientôt disponible », CTA vers l'app, formulations légales, zéro appel /api cassé | 10/10 PASS navigateur |
