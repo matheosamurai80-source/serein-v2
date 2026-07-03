@@ -62,6 +62,7 @@ const frDate = (iso: string) => new Date(iso).toLocaleDateString('fr-FR')
 export default function EngagementsPage() {
   const toast = useToast()
   const [items, setItems] = useState<Commitment[]>([])
+  const [letteredIds, setLetteredIds] = useState<Set<string>>(new Set())
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState('')
@@ -77,10 +78,12 @@ export default function EngagementsPage() {
         const supabase = createSupabaseBrowserClient()
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
-          const { data } = await supabase
-            .from('commitments')
-            .select('id, name, provider, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status')
+          const [{ data }, { data: letters }] = await Promise.all([
+            supabase.from('commitments').select('id, name, provider, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status'),
+            supabase.from('cancellation_letters').select('commitment_id'),
+          ])
           if (data) setItems(data)
+          if (letters) setLetteredIds(new Set(letters.map(l => l.commitment_id).filter(Boolean) as string[]))
         }
       } catch { /* env Supabase absente : la page reste consultable */ }
       setLoaded(true)
@@ -241,9 +244,9 @@ export default function EngagementsPage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
-                <a href={`/resiliation?service=${encodeURIComponent(c.name)}&category=${serviceTypeToCategory(c.service_type)}`}
+                <a href={`/resiliation?service=${encodeURIComponent(c.name)}&category=${serviceTypeToCategory(c.service_type)}&commitment=${c.id}`}
                   className="text-[13px] font-semibold bg-sage text-night-2 rounded-full px-4 py-2 hover:bg-sage-light transition-colors">
-                  Générer la lettre →
+                  {letteredIds.has(c.id) ? 'Revoir la lettre →' : 'Générer la lettre →'}
                 </a>
                 <button onClick={() => markCancelled(c)}
                   className="text-[13px] text-sage-light border border-sage/30 rounded-full px-4 py-2 hover:bg-sage/8 transition-colors">

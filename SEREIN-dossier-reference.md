@@ -80,7 +80,9 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   avec badges, **« Générer la lettre → »** pré-remplit `/resiliation`
   (service + catégorie), « Résilié ✓ » (status cancelled), suppression.
   Même session anonyme que les lettres (RLS `user_id = auth.uid()`).
-- Testé : 18 cas sandbox PASS + 11 cas navigateur PASS (API Supabase simulée).
+- **« Générer la lettre → » transmet `commitment_id`** ; une fois la lettre
+  sauvegardée, l'engagement affiche « Revoir la lettre » (boucle fermée).
+- Testé : 18 cas sandbox PASS + 14 cas navigateur PASS (dont le lien lettre).
 
 ### Onglet Rappels — `/rappels` (prévenir avant la fenêtre)
 - `src/lib/reminders/logic.ts` — logique testée : construction d'un rappel
@@ -112,7 +114,20 @@ qui crée le profil à l'inscription, y compris anonyme). Le module Lettre
 - NB : la charte « Crème/Vert forêt/Cormorant Garamond » du dossier global
   correspond à une autre itération — ce dépôt utilise la déclinaison sombre.
 
-## 3. État des lieux — 2026-07-01
+## 3. Déploiement (Vercel)
+
+- **Cause racine des échecs Vercel (corrigée le 2026-07-03) :** `vercel.json`
+  contenait `"public": true`, propriété rejetée par le schéma Vercel → **tous**
+  les déploiements échouaient avant même la compilation (aucun log). `vercel.json`
+  réduit à `{ "framework": "nextjs" }`.
+- **Config navigateur :** `.env.production` commité avec les 2 variables
+  **publiques** `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  (la clé anon est publique par conception, protégée par RLS). La clé secrète
+  `service_role` n'est jamais commitée (à mettre dans Vercel → Env Variables
+  si on veut le pipeline PDF `/api/*`).
+- Le déploiement de `main` se fait via l'intégration GitHub de Vercel.
+
+## 3bis. État des lieux — 2026-07-01
 
 **Brique livrée : remise en état complète du dépôt.**
 Le dépôt avait été peuplé par des dépôts de fichiers un par un : les versions
@@ -133,8 +148,8 @@ pas déjà fait.
 
 1. Activer « Anonymous sign-ins » dans Supabase, puis tester lettres +
    engagements + rappels en conditions réelles (le code est prêt et vérifié).
-2. Relier `/resiliation` à `commitment_id` (la lettre sauvegardée pointe vers
-   son engagement) et aux abonnements détectés par l'analyse PDF.
+2. Relier `/resiliation` aux abonnements détectés par l'analyse PDF
+   (pré-remplissage depuis un abonnement repéré). [lien commitment_id fait]
 3. Rappels e-mail/SMS (canaux `email`/`sms` déjà prévus au schéma) — nécessite
    un service d'envoi ; à cadrer avant de construire.
 
@@ -148,3 +163,4 @@ pas déjà fait.
 | 2026-07-02 | Sauvegarde des lettres sur Supabase (`cancellation_letters`, auth anonyme, liste « Mes lettres ») | 34/34 PASS sandbox, 7/7 PASS navigateur (API Supabase simulée), contrat SQL vérifié en base, build vert |
 | 2026-07-02 | Page Engagements (`/engagements`) : urgence de résiliation, total mensuel, pont vers la lettre | 52/52 PASS sandbox, 11/11 PASS navigateur, build vert |
 | 2026-07-03 | Onglet Rappels (`/rappels`) : rappels auto avant la fenêtre de résiliation, nav inter-pages | 68/68 PASS sandbox, 13/13 PASS navigateur, build vert |
+| 2026-07-03 | Fix déploiement Vercel (`vercel.json` invalide) + `.env.production` public + lien engagement↔lettre (`commitment_id`) | 70/70 PASS sandbox, 3/3 PASS navigateur (boucle fermée), build vert |

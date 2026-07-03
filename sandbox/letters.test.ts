@@ -115,5 +115,11 @@ check('Contenu trop court → refusé avant l\'insert', (() => {
   catch { return true }
 })())
 
+// ─── LIEN ENGAGEMENT ↔ LETTRE (commitment_id) ───────────────────────────────
+const linked = buildLetterRow({ userId: 'u-123', regime: letter.regime, content: letter.body, commitmentId: 'eng-42' })
+check('Lettre reliée à son engagement (commitment_id présent)', linked.commitment_id === 'eng-42')
+const unlinked = buildLetterRow({ userId: 'u-123', regime: letter.regime, content: letter.body })
+check('Lettre sans engagement : pas de commitment_id parasite', !('commitment_id' in unlinked))
+
 console.log(failures === 0 ? '\n✅ TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)

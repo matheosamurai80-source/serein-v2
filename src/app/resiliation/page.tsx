@@ -46,6 +46,7 @@ export default function ResiliationPage() {
   const [letter, setLetter] = useState<GeneratedLetter | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<SavedLetter[]>([])
+  const [commitmentId, setCommitmentId] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     // Pré-remplissage depuis la page Engagements (?service=…&category=…)
@@ -54,6 +55,8 @@ export default function ResiliationPage() {
     const c = q.get('category')
     if (s) setServiceName(s)
     if (c && CATEGORIES.some(x => x.value === c)) setCategory(c as TransactionCategory)
+    const cid = q.get('commitment')
+    if (cid) setCommitmentId(cid)
   }, [])
 
   useEffect(() => {
@@ -79,7 +82,7 @@ export default function ResiliationPage() {
     try {
       const supabase = createSupabaseBrowserClient()
       const userId = await ensureUserId(supabase)
-      const row = buildLetterRow({ userId, regime: letter.regime, content: letter.body })
+      const row = buildLetterRow({ userId, regime: letter.regime, content: letter.body, commitmentId })
       const { data, error } = await supabase
         .from('cancellation_letters')
         .insert(row)
