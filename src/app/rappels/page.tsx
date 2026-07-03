@@ -125,22 +125,22 @@ export default function RappelsPage() {
     <>
       <SereinNav />
       <main className="min-h-screen max-w-[640px] mx-auto px-5 py-8 flex flex-col items-center animate-fade-up">
-        <p className="font-mono text-[11px] tracking-[.17em] uppercase text-sage mb-5 flex items-center gap-2.5">
+        <p className="font-mono text-[11px] tracking-[.17em] uppercase text-moss mb-5 flex items-center gap-2.5">
           <span className="w-6 h-px bg-moss" />Rappels<span className="w-6 h-px bg-moss" />
         </p>
-        <h1 className="font-serif text-[clamp(26px,5.5vw,44px)] tracking-[-0.025em] leading-[1.15] text-warm mb-3 text-center">
-          Serein vous prévient <em className="text-sage-light">à temps.</em>
+        <h1 className="font-serif text-[clamp(26px,5.5vw,44px)] tracking-[-0.025em] leading-[1.15] text-ink mb-3 text-center">
+          Serein vous prévient <em className="text-moss">à temps.</em>
         </h1>
-        <p className="text-sm text-white/65 leading-[1.6] mb-8 text-center max-w-[440px]">
+        <p className="text-sm text-ink/70 leading-[1.6] mb-8 text-center max-w-[440px]">
           Un rappel avant chaque fenêtre de résiliation. Vous gardez la main :
           Serein alerte, c&apos;est vous qui agissez.
-          {dueCount > 0 && <><br /><span className="text-amber-light font-semibold">{dueCount} rappel{dueCount > 1 ? 's' : ''} à traiter maintenant.</span></>}
+          {dueCount > 0 && <><br /><span className="text-amber font-semibold">{dueCount} rappel{dueCount > 1 ? 's' : ''} à traiter maintenant.</span></>}
         </p>
 
         {/* Suggestions depuis les engagements */}
         {suggestions.length > 0 && (
           <div className="w-full mb-6">
-            <p className="font-mono text-[11px] tracking-[.13em] uppercase text-white/38 mb-3">
+            <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-3">
               À programmer ({suggestions.length})
             </p>
             <div className="flex flex-col gap-3">
@@ -149,8 +149,8 @@ export default function RappelsPage() {
                 return (
                   <div key={c.id} className="bg-amber/8 border border-amber/20 rounded-2xl p-4 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-serif text-base text-warm truncate">{c.name}</p>
-                      <p className="font-mono text-[11px] text-white/38 tracking-wider">
+                      <p className="font-serif text-base text-ink truncate">{c.name}</p>
+                      <p className="font-mono text-[11px] text-ink/50 tracking-wider">
                         résiliable avant le {frDateTime(deadline)}
                       </p>
                     </div>
@@ -166,11 +166,11 @@ export default function RappelsPage() {
 
         {/* Liste des rappels */}
         <div className="w-full">
-          <p className="font-mono text-[11px] tracking-[.13em] uppercase text-white/38 mb-3">Mes rappels</p>
+          <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-3">Mes rappels</p>
           {loaded && sorted.length === 0 && suggestions.length === 0 && (
-            <p className="text-center text-sm text-white/38 py-6">
+            <p className="text-center text-sm text-ink/50 py-6">
               Aucun rappel. Ajoutez des engagements avec une échéance depuis la page{' '}
-              <a href="/engagements" className="text-sage-light underline">Engagements</a>.
+              <a href="/engagements" className="text-moss underline">Engagements</a>.
             </p>
           )}
           <div className="flex flex-col gap-3">
@@ -179,28 +179,28 @@ export default function RappelsPage() {
               const read = r.status === 'read'
               return (
                 <div key={r.id} data-testid="reminder"
-                  className={`rounded-2xl p-5 border ${due ? 'bg-amber/10 border-amber/25' : read ? 'bg-white/2 border-white/6' : 'bg-white/3 border-white/7'}`}>
+                  className={`rounded-2xl p-5 border ${due ? 'bg-amber/10 border-amber/25' : read ? 'bg-surface border-ink/10' : 'bg-surface border-ink/10'}`}>
                   <div className="flex items-start justify-between gap-3 mb-1.5">
-                    <p className={`font-serif text-lg ${read ? 'text-white/40 line-through' : 'text-warm'} truncate`}>{nameOf(r.commitment_id)}</p>
+                    <p className={`font-serif text-lg ${read ? 'text-ink/45 line-through' : 'text-ink'} truncate`}>{nameOf(r.commitment_id)}</p>
                     <span className={`flex-shrink-0 text-[11px] font-semibold border rounded-full px-3 py-1 ${
-                      due ? 'bg-amber/15 text-amber-light border-amber/30' : 'bg-sage/12 text-sage-light border-sage/25'}`}>
+                      due ? 'bg-amber/15 text-amber border-amber/30' : 'bg-sage/12 text-moss border-sage/25'}`}>
                       {read ? 'Lu' : timingLabel(r.scheduled_for)}
                     </span>
                   </div>
-                  {r.message && <p className="text-[13.5px] text-white/65 leading-[1.55] mb-3">{r.message}</p>}
+                  {r.message && <p className="text-[13.5px] text-ink/70 leading-[1.55] mb-3">{r.message}</p>}
                   <div className="flex flex-wrap gap-2">
                     {!read && (
                       <button onClick={() => setStatus(r, 'read', 'Rappel marqué comme lu')}
-                        className="text-[13px] text-sage-light border border-sage/30 rounded-full px-4 py-2 hover:bg-sage/8 transition-colors">
+                        className="text-[13px] text-moss border border-sage/30 rounded-full px-4 py-2 hover:bg-sage/8 transition-colors">
                         Marquer comme lu
                       </button>
                     )}
                     <a href={`/resiliation?service=${encodeURIComponent(nameOf(r.commitment_id))}`}
-                      className="text-[13px] font-semibold bg-sage text-night-2 rounded-full px-4 py-2 hover:bg-sage-light transition-colors">
+                      className="text-[13px] font-semibold bg-sage text-cream rounded-full px-4 py-2 hover:bg-sage-light transition-colors">
                       Générer la lettre →
                     </a>
                     <button onClick={() => remove(r)}
-                      className="text-[13px] text-white/38 rounded-full px-3 py-2 hover:text-crimson transition-colors">
+                      className="text-[13px] text-ink/50 rounded-full px-3 py-2 hover:text-crimson transition-colors">
                       Supprimer
                     </button>
                   </div>

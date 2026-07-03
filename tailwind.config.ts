@@ -6,11 +6,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        night:    { DEFAULT: '#0A0B09', 2: '#111210', 3: '#181916', 4: '#1F201D' },
+        // ── Thème clair (charte de référence : crème / vert forêt / ambre) ──
+        cream:    { DEFAULT: '#FCFAF5', 2: '#F5F1E9', 3: '#EDE7DA' },
+        surface:  { DEFAULT: '#FFFFFF', 2: '#F7F4ED' },
+        ink:      { DEFAULT: '#26302A' },
         moss:     { DEFAULT: '#375538', mid: '#4E7350' },
-        sage:     { DEFAULT: '#82A884', light: '#AECBB0', faint: 'rgba(130,168,132,0.11)' },
-        amber:    { DEFAULT: '#BE7D38', light: '#EAB95E' },
-        crimson:  { DEFAULT: '#B84B38', faint: 'rgba(184,75,56,0.09)' },
+        sage:     { DEFAULT: '#557A59', light: '#6E946F', faint: 'rgba(85,122,89,0.10)' },
+        amber:    { DEFAULT: '#B5713A', light: '#C98F52' },
+        crimson:  { DEFAULT: '#B84B38', faint: 'rgba(184,75,56,0.08)' },
+        // conservés pour compat (plus utilisés après bascule claire)
+        night:    { DEFAULT: '#0A0B09', 2: '#111210', 3: '#181916', 4: '#1F201D' },
         warm:     '#F8F7F3',
       },
       fontFamily: {

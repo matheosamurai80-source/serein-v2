@@ -19,8 +19,8 @@ export function Toast({ message, visible, onHide }: ToastProps) {
     <div
       className={cn(
         'fixed bottom-24 left-1/2 -translate-x-1/2 z-[500]',
-        'bg-night-4 border border-white/7 rounded-xl px-5 py-3',
-        'text-sm text-white/65 text-center whitespace-nowrap max-w-[90vw]',
+        'bg-surface border border-ink/10 rounded-xl px-5 py-3',
+        'text-sm text-ink/70 text-center whitespace-nowrap max-w-[90vw]',
         'transition-all duration-300',
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
       )}

@@ -27,10 +27,10 @@ const CATEGORIES: { value: TransactionCategory; label: string }[] = [
 ]
 
 const inputCls =
-  'w-full bg-white/4 border border-white/10 rounded-xl px-4 py-3 text-sm text-warm ' +
-  'placeholder:text-white/25 focus:outline-none focus:border-sage/60 transition-colors'
+  'w-full bg-surface border border-ink/12 rounded-xl px-4 py-3 text-sm text-ink ' +
+  'placeholder:text-ink/35 focus:outline-none focus:border-sage/60 transition-colors'
 
-const labelCls = 'font-mono text-[11px] tracking-[.13em] uppercase text-white/38 mb-1.5 block text-left'
+const labelCls = 'font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-1.5 block text-left'
 
 export default function ResiliationPage() {
   const toast = useToast()
@@ -136,19 +136,19 @@ export default function ResiliationPage() {
     <>
     <SereinNav />
     <main className="min-h-screen max-w-[640px] mx-auto px-5 py-8 flex flex-col items-center animate-fade-up">
-      <p className="font-mono text-[11px] tracking-[.17em] uppercase text-sage mb-5 flex items-center gap-2.5">
+      <p className="font-mono text-[11px] tracking-[.17em] uppercase text-moss mb-5 flex items-center gap-2.5">
         <span className="w-6 h-px bg-moss" />Lettre de résiliation<span className="w-6 h-px bg-moss" />
       </p>
 
-      <h1 className="font-serif text-[clamp(26px,5.5vw,44px)] tracking-[-0.025em] leading-[1.15] text-warm mb-3 text-center">
-        Résiliez avec <em className="text-sage-light">la loi de votre côté.</em>
+      <h1 className="font-serif text-[clamp(26px,5.5vw,44px)] tracking-[-0.025em] leading-[1.15] text-ink mb-3 text-center">
+        Résiliez avec <em className="text-moss">la loi de votre côté.</em>
       </h1>
-      <p className="text-sm text-white/65 leading-[1.6] mb-8 text-center max-w-[440px]">
+      <p className="text-sm text-ink/70 leading-[1.6] mb-8 text-center max-w-[440px]">
         Serein détecte le régime légal applicable (loi Hamon, loi Chatel, télécom, énergie)
         et génère la lettre. C&apos;est vous qui l&apos;envoyez — vous gardez la main du début à la fin.
       </p>
 
-      <div className="w-full bg-white/3 border border-white/7 rounded-2xl p-7 flex flex-col gap-4 mb-6">
+      <div className="w-full bg-surface border border-ink/10 rounded-2xl p-7 flex flex-col gap-4 mb-6">
         <div>
           <label className={labelCls} htmlFor="service">Service à résilier *</label>
           <input id="service" className={inputCls} placeholder="Ex. Basic-Fit, Orange Livebox…"
@@ -160,7 +160,7 @@ export default function ResiliationPage() {
             <label className={labelCls} htmlFor="category">Type d&apos;abonnement</label>
             <select id="category" className={inputCls} value={category}
               onChange={e => setCategory(e.target.value as TransactionCategory)}>
-              {CATEGORIES.map(c => <option key={c.value} value={c.value} className="bg-night-2">{c.label}</option>)}
+              {CATEGORIES.map(c => <option key={c.value} value={c.value} className="bg-surface">{c.label}</option>)}
             </select>
           </div>
           <div>
@@ -170,16 +170,16 @@ export default function ResiliationPage() {
           </div>
         </div>
 
-        <label className="flex items-start gap-3 text-[13.5px] text-white/65 leading-[1.55] cursor-pointer">
+        <label className="flex items-start gap-3 text-[13.5px] text-ink/70 leading-[1.55] cursor-pointer">
           <input type="checkbox" className="mt-1 accent-[#82A884]"
             checked={noticeReceived} onChange={e => setNoticeReceived(e.target.checked)} />
           <span>
             J&apos;ai reçu l&apos;avis d&apos;échéance / de reconduction dans les délais.
-            <span className="block text-white/38">Si non coché, la loi Chatel peut permettre une résiliation gratuite à tout moment.</span>
+            <span className="block text-ink/50">Si non coché, la loi Chatel peut permettre une résiliation gratuite à tout moment.</span>
           </span>
         </label>
 
-        <div className="h-px bg-white/7 my-1" />
+        <div className="h-px bg-surface my-1" />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -221,13 +221,13 @@ export default function ResiliationPage() {
       {letter && (
         <div className="w-full animate-pop-in">
           <div className="w-full bg-sage/7 border border-sage/16 rounded-2xl p-5 mb-4">
-            <p className="font-mono text-[11px] tracking-[.13em] uppercase text-sage mb-1.5">
+            <p className="font-mono text-[11px] tracking-[.13em] uppercase text-moss mb-1.5">
               Régime détecté — {letter.regime.label}
             </p>
-            <p className="text-[13.5px] text-white/65 leading-[1.6]">{letter.regime.summary}</p>
+            <p className="text-[13.5px] text-ink/70 leading-[1.6]">{letter.regime.summary}</p>
           </div>
 
-          <pre className="w-full bg-white/3 border border-white/7 rounded-2xl p-6 text-[13px] text-warm leading-[1.7] whitespace-pre-wrap font-sans mb-4">
+          <pre className="w-full bg-surface border border-ink/10 rounded-2xl p-6 text-[13px] text-ink leading-[1.7] whitespace-pre-wrap font-sans mb-4">
             {letter.body}
           </pre>
 
@@ -238,22 +238,22 @@ export default function ResiliationPage() {
               Sauvegarder dans mon espace
             </Button>
           </div>
-          <p className="font-mono text-[11px] text-white/38 tracking-wider text-center mt-4">
+          <p className="font-mono text-[11px] text-ink/50 tracking-wider text-center mt-4">
             À envoyer en recommandé avec accusé de réception — gardez le récépissé.
           </p>
         </div>
       )}
 
       {saved.length > 0 && (
-        <div className="w-full bg-white/3 border border-white/7 rounded-2xl p-5 mt-6">
-          <p className="font-mono text-[11px] tracking-[.13em] uppercase text-white/38 mb-3">
+        <div className="w-full bg-surface border border-ink/10 rounded-2xl p-5 mt-6">
+          <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-3">
             Mes lettres sauvegardées
           </p>
           <ul className="flex flex-col gap-2">
             {saved.map(l => (
-              <li key={l.id} className="flex items-center justify-between text-[13.5px] text-white/65">
-                <span className="text-warm">{LETTER_TYPE_LABELS[l.letter_type] ?? l.letter_type}</span>
-                <span className="font-mono text-[11px] text-white/38">
+              <li key={l.id} className="flex items-center justify-between text-[13.5px] text-ink/70">
+                <span className="text-ink">{LETTER_TYPE_LABELS[l.letter_type] ?? l.letter_type}</span>
+                <span className="font-mono text-[11px] text-ink/50">
                   {new Date(l.generated_at).toLocaleDateString('fr-FR')}
                 </span>
               </li>

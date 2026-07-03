@@ -34,19 +34,19 @@ export function ScreenSimulation() {
 
   return (
     <div className="flex flex-col items-center w-full animate-fade-up">
-      <p className="font-mono text-[11px] tracking-[.17em] uppercase text-sage mb-5 flex items-center gap-2.5">
+      <p className="font-mono text-[11px] tracking-[.17em] uppercase text-moss mb-5 flex items-center gap-2.5">
         <span className="w-6 h-px bg-moss" />Votre estimation personnalisée<span className="w-6 h-px bg-moss" />
       </p>
 
-      <h2 className="font-serif text-[clamp(22px,5vw,38px)] tracking-[-0.02em] leading-[1.25] text-warm mb-6 text-center">
-        Ce que Serein trouve<br />en <em className="text-sage-light">3 minutes.</em>
+      <h2 className="font-serif text-[clamp(22px,5vw,38px)] tracking-[-0.02em] leading-[1.25] text-ink mb-6 text-center">
+        Ce que Serein trouve<br />en <em className="text-moss">3 minutes.</em>
       </h2>
 
       {/* Context */}
       <div className="w-full mb-4">
-        <p className="font-mono text-[11px] tracking-[.13em] uppercase text-white/38 mb-2 text-left">Basé sur votre réponse</p>
-        <p className="text-sm text-white/65 text-left">
-          Vous avez indiqué environ <strong className="text-warm">{choiceLabel}</strong>. Voici l&apos;estimation Serein.
+        <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-2 text-left">Basé sur votre réponse</p>
+        <p className="text-sm text-ink/70 text-left">
+          Vous avez indiqué environ <strong className="text-ink">{choiceLabel}</strong>. Voici l&apos;estimation Serein.
         </p>
       </div>
 
@@ -54,13 +54,13 @@ export function ScreenSimulation() {
       <div className="w-full bg-crimson-faint border border-crimson/20 rounded-2xl p-6 mb-4 relative overflow-hidden">
         <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-sage to-transparent animate-scan-line" />
         {scanRows.map(row => (
-          <div key={row.label} className="flex justify-between items-center py-2.5 border-b border-white/6 last:border-0">
-            <span className="text-sm text-white/65">{row.label}</span>
+          <div key={row.label} className="flex justify-between items-center py-2.5 border-b border-ink/10 last:border-0">
+            <span className="text-sm text-ink/70">{row.label}</span>
             <div className="flex items-center gap-2 font-mono text-[13.5px]">
-              <span className={row.muted ? 'text-white/65' : 'text-warm'}>{row.value}</span>
+              <span className={row.muted ? 'text-ink/70' : 'text-ink'}>{row.value}</span>
               {row.badge && (
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono uppercase tracking-wider
-                  ${row.badge.color === 'red' ? 'bg-crimson/15 text-[#E87060]' : 'bg-amber/15 text-amber-light'}`}>
+                  ${row.badge.color === 'red' ? 'bg-crimson/15 text-[#E87060]' : 'bg-amber/15 text-amber'}`}>
                   {row.badge.text}
                 </span>
               )}
@@ -70,12 +70,12 @@ export function ScreenSimulation() {
       </div>
 
       {/* Loss card */}
-      <div className="w-full bg-white/3 border border-white/7 rounded-2xl p-6 mb-6">
-        <p className="font-mono text-[11px] tracking-[.13em] uppercase text-white/38 mb-2 text-left">Vous perdez probablement</p>
-        <p className="font-serif text-[clamp(54px,13vw,80px)] tracking-[-0.04em] leading-none text-amber-light text-left animate-count-up">
+      <div className="w-full bg-surface border border-ink/10 rounded-2xl p-6 mb-6">
+        <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-2 text-left">Vous perdez probablement</p>
+        <p className="font-serif text-[clamp(54px,13vw,80px)] tracking-[-0.04em] leading-none text-amber text-left animate-count-up">
           <span ref={annualRef}>{simulation.annualLoss} € / an</span>
         </p>
-        <p className="font-mono text-[13px] text-white/38 tracking-wider mt-1.5 text-left">
+        <p className="font-mono text-[13px] text-ink/50 tracking-wider mt-1.5 text-left">
           ≈ {simulation.monthlyLoss} € / mois · {simulation.annualLoss} € / an
         </p>
       </div>
