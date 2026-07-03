@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { ensureUserId } from '@/lib/supabase/session'
@@ -143,7 +144,9 @@ export default function EngagementsPage() {
   const cancelled = items.filter(i => i.status !== 'active')
 
   return (
-    <main className="min-h-screen max-w-[640px] mx-auto px-5 py-12 flex flex-col items-center animate-fade-up">
+    <>
+    <SereinNav />
+    <main className="min-h-screen max-w-[640px] mx-auto px-5 py-8 flex flex-col items-center animate-fade-up">
       <p className="font-mono text-[11px] tracking-[.17em] uppercase text-sage mb-5 flex items-center gap-2.5">
         <span className="w-6 h-px bg-moss" />Engagements<span className="w-6 h-px bg-moss" />
       </p>
@@ -264,5 +267,6 @@ export default function EngagementsPage() {
 
       <Toast message={toast.message} visible={toast.visible} onHide={toast.hide} />
     </main>
+    </>
   )
 }

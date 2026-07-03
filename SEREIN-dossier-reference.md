@@ -82,6 +82,18 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   Même session anonyme que les lettres (RLS `user_id = auth.uid()`).
 - Testé : 18 cas sandbox PASS + 11 cas navigateur PASS (API Supabase simulée).
 
+### Onglet Rappels — `/rappels` (prévenir avant la fenêtre)
+- `src/lib/reminders/logic.ts` — logique testée : construction d'un rappel
+  depuis l'échéance d'un engagement (14 j avant par défaut, jamais planifié
+  dans le passé), timing (passé / aujourd'hui / à venir), « dû » (en attente
+  et échu), tri (dûs d'abord, traités en dernier).
+- Page : suggestions automatiques (engagements actifs avec échéance sans
+  rappel), création en un clic (insert `reminders`, kind `cancellation_window`,
+  canal `in_app`), liste triée avec badges de timing, « Marquer comme lu »
+  (status read), « Générer la lettre → », suppression.
+- Barre de navigation Engagements / Rappels / Lettre (`src/components/ui/nav.tsx`).
+- Testé : 16 cas sandbox PASS + 13 cas navigateur PASS (API Supabase simulée).
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -120,11 +132,11 @@ pas déjà fait.
 ## 4. Prochaines briques (dans l'ordre)
 
 1. Activer « Anonymous sign-ins » dans Supabase, puis tester lettres +
-   engagements en conditions réelles (le code est prêt et vérifié).
-2. Onglet Rappels : table `reminders` branchée sur les échéances des
-   engagements (canal in_app d'abord).
-3. Relier `/resiliation` à `commitment_id` (la lettre sauvegardée pointe vers
+   engagements + rappels en conditions réelles (le code est prêt et vérifié).
+2. Relier `/resiliation` à `commitment_id` (la lettre sauvegardée pointe vers
    son engagement) et aux abonnements détectés par l'analyse PDF.
+3. Rappels e-mail/SMS (canaux `email`/`sms` déjà prévus au schéma) — nécessite
+   un service d'envoi ; à cadrer avant de construire.
 
 ## 5. Historique des briques
 
@@ -135,3 +147,4 @@ pas déjà fait.
 | 2026-07-01 | Générateur de lettres de résiliation (`/resiliation`) : détection du régime légal + lettre LRAR | 15/15 PASS (sandbox lettres), build vert, rendu prod vérifié |
 | 2026-07-02 | Sauvegarde des lettres sur Supabase (`cancellation_letters`, auth anonyme, liste « Mes lettres ») | 34/34 PASS sandbox, 7/7 PASS navigateur (API Supabase simulée), contrat SQL vérifié en base, build vert |
 | 2026-07-02 | Page Engagements (`/engagements`) : urgence de résiliation, total mensuel, pont vers la lettre | 52/52 PASS sandbox, 11/11 PASS navigateur, build vert |
+| 2026-07-03 | Onglet Rappels (`/rappels`) : rappels auto avant la fenêtre de résiliation, nav inter-pages | 68/68 PASS sandbox, 13/13 PASS navigateur, build vert |
