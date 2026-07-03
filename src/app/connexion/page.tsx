@@ -34,14 +34,14 @@ export default function ConnexionPage() {
         const { data, error } = await supabase.auth.signUp(creds)
         if (error) throw new Error(error.message)
         if (data.session) {
-          window.location.href = '/engagements'   // connecté directement
+          window.location.href = '/dashboard'   // connecté directement
         } else {
           setNeedConfirm(true)                     // confirmation e-mail requise
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword(creds)
         if (error) throw new Error(error.message)
-        window.location.href = '/engagements'
+        window.location.href = '/dashboard'
       }
     } catch (e) {
       toast.show(friendlyAuthError(e instanceof Error ? e.message : undefined))

@@ -113,6 +113,15 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Testé : 11 cas sandbox + 7 cas navigateur (validation, refus, connexion,
   inscription avec confirmation).
 
+### Tableau de bord — `/dashboard` (accueil connecté)
+- `src/lib/dashboard/logic.ts` — `buildDashboardSummary(commitments, reminders)` :
+  total mensuel/annuel, nb d'engagements actifs/résiliés, rappels dûs,
+  3 prochains rappels, prochaine fenêtre de résiliation (la plus proche + urgence).
+- Page : 4 chiffres clés, carte « prochaine fenêtre de résiliation » (→ lettre
+  pré-remplie), « prochains rappels », accès rapides. Point d'atterrissage
+  après connexion. État vide géré (invite à ajouter un engagement).
+- Testé : 9 cas sandbox + 9 cas navigateur.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -186,3 +195,4 @@ pas déjà fait.
 | 2026-07-03 | Onboarding nettoyé : bank/PDF « Bientôt disponible », CTA vers l'app, formulations légales, zéro appel /api cassé | 10/10 PASS navigateur |
 | 2026-07-03 | Bascule thème clair (crème/vert forêt/ambre) sur toute l'app | build vert, 3 pages vérifiées en capture, contraste OK |
 | 2026-07-03 | Connexion (`/connexion`) : vrais comptes e-mail/mot de passe, nav connectée | 81/81 sandbox PASS, 7/7 navigateur PASS, build vert |
+| 2026-07-03 | Tableau de bord (`/dashboard`) : résumé + atterrissage après connexion | 90/90 sandbox PASS, 9/9 navigateur PASS, build vert |
