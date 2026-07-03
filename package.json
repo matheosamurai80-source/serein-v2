@@ -6,14 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:sandbox": "tsx sandbox/business-logic.test.ts && tsx sandbox/letters.test.ts && tsx sandbox/commitments.test.ts && tsx sandbox/reminders.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.14.0",
     "next": "15.3.2",
     "pdf-parse": "^1.1.1",
     "react": "^19.0.0",
@@ -23,13 +23,16 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/pdf-parse": "^1.1.4",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
     "tailwindcss": "4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }
