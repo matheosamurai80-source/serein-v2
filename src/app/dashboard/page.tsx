@@ -193,8 +193,9 @@ export default function DashboardPage() {
         )}
 
         {/* Accès rapides */}
-        <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="w-full grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
+            { href: '/analyse', emoji: '📄', title: 'Analyse', desc: 'Détecter depuis un relevé' },
             { href: '/engagements', emoji: '📋', title: 'Engagements', desc: 'Suivre mes abonnements' },
             { href: '/rappels', emoji: '🔔', title: 'Rappels', desc: 'Être prévenu à temps' },
             { href: '/resiliation', emoji: '✉️', title: 'Lettre', desc: 'Générer une résiliation' },

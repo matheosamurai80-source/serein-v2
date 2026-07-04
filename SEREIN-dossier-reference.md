@@ -162,6 +162,30 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   top 4 avec raisons, lien « passer en revue ».
 - Testé : 12 cas sandbox PASS + 7 cas navigateur PASS.
 
+### Analyse de relevé dans le navigateur — `/analyse` (livré 2026-07-04)
+- **Le relevé ne quitte jamais l'appareil** : extraction PDF (pdfjs-dist,
+  chargé dynamiquement), reconstruction des lignes (`linesFromTextItems`,
+  regroupement par ordonnée), puis le parseur bancaire et le moteur de
+  scoring existants tournent côté navigateur. Aucune clé serveur requise.
+- Deux entrées : dépôt de PDF (avec message clair si scan sans texte) ou
+  **collage du texte du relevé** (fallback universel, testable).
+- Résultats : stats (transactions lues, abonnements détectés, ≈ €/mois et
+  €/an), liste cochable avec risque + « pourquoi », dédoublonnage contre
+  les engagements déjà suivis (« Déjà suivi »), puis insertion
+  `commitments` (`detected_automatically: true`) → redirection Engagements.
+- Détection indicative, l'utilisateur choisit (ORIAS). Le bouton PDF de
+  l'onboarding pointe désormais sur `/analyse` (« Nouveau ») ; l'onglet
+  Analyse est dans la nav et le dashboard.
+- `src/lib/analyse/logic.ts` testé en sandbox (lignes PDF, suggestions,
+  dédoublonnage, stats).
+
+### Unik v1 — conseil légal par engagement (livré 2026-07-04)
+- `src/lib/unik/logic.ts` : conseil court et juste par type de service
+  (télécom → L.224-39 · énergie/eau → L.224-15 · assurance → Hamon/Chatel ·
+  streaming/sport → Chatel reconduction, adapté selon qu'une échéance est
+  connue) ; pas de conseil générique pour loyer/crédit/impôts.
+- Affiché sur chaque carte d'engagement (« Unik · … »).
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -245,3 +269,4 @@ identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
 | 2026-07-04 | Abonopack v1 : score de vigilance explicable + économies doublons sur le dashboard | 102/102 PASS sandbox, 7/7 PASS navigateur, build vert |
+| 2026-07-04 | Analyse de relevé 100 % navigateur (`/analyse`, PDF + collage) + Unik v1 (conseil légal par engagement) | 116/116 PASS sandbox, 8/8 PASS navigateur, build vert |

@@ -1,0 +1,218 @@
+'use client'
+import { useEffect, useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { SereinNav } from '@/components/ui/nav'
+import { useToast, Toast } from '@/components/ui/toast'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { ensureUserId } from '@/lib/supabase/session'
+import { parseTransactionsFromText } from '@/lib/pdf/parser'
+import { scoreSubscriptions } from '@/lib/scoring/engine'
+import { linesFromTextItems, buildSuggestions, analyseStats, type CommitmentSuggestion, type TextItem } from '@/lib/analyse/logic'
+
+// Analyse de relevé 100 % dans le navigateur : le fichier ne quitte jamais
+// l'appareil. Serein détecte et suggère ; le client choisit ce qu'il ajoute.
+
+const RISK_UI: Record<string, string> = {
+  high:   'bg-crimson/15 text-crimson border-crimson/30',
+  medium: 'bg-amber/15 text-amber border-amber/30',
+  low:    'bg-sage/12 text-moss border-sage/25',
+}
+const RISK_LABEL: Record<string, string> = { high: 'À examiner', medium: 'À surveiller', low: 'OK' }
+
+async function extractPdfText(file: File): Promise<string> {
+  const pdfjs = await import('pdfjs-dist')
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
+  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise
+  const pages: string[] = []
+  for (let p = 1; p <= doc.numPages; p++) {
+    const page = await doc.getPage(p)
+    const content = await page.getTextContent()
+    const items: TextItem[] = (content.items as { str?: string; transform?: number[] }[])
+      .filter(i => typeof i.str === 'string' && Array.isArray(i.transform))
+      .map(i => ({ str: i.str as string, x: i.transform![4], y: i.transform![5] }))
+    pages.push(linesFromTextItems(items).join('\n'))
+  }
+  return pages.join('\n')
+}
+
+export default function AnalysePage() {
+  const toast = useToast()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [pasted, setPasted] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [adding, setAdding] = useState(false)
+  const [suggestions, setSuggestions] = useState<CommitmentSuggestion[] | null>(null)
+  const [stats, setStats] = useState<ReturnType<typeof analyseStats> | null>(null)
+  const [checked, setChecked] = useState<Set<string>>(new Set())
+  const [existingNames, setExistingNames] = useState<string[]>([])
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const supabase = createSupabaseBrowserClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const { data } = await supabase.from('commitments').select('name').eq('status', 'active')
+          if (data) setExistingNames(data.map(d => d.name))
+        }
+      } catch { /* pas de session : dédoublonnage désactivé */ }
+    })()
+  }, [])
+
+  const runAnalysis = (text: string) => {
+    const txs = parseTransactionsFromText(text, 'browser')
+    if (!txs.length) {
+      toast.show('Aucune transaction reconnue — vérifiez que le texte contient dates et montants.')
+      return
+    }
+    const { subscriptions } = scoreSubscriptions(txs, 'browser')
+    const sugg = buildSuggestions(subscriptions, existingNames)
+    setSuggestions(sugg)
+    setStats(analyseStats(txs, sugg))
+    setChecked(new Set(sugg.filter(s => !s.alreadyTracked).map(s => s.name)))
+  }
+
+  const handleFile = async (file: File) => {
+    if (file.type !== 'application/pdf') { toast.show('⚠️ Fichier PDF uniquement'); return }
+    if (file.size > 15 * 1024 * 1024) { toast.show('⚠️ Fichier trop lourd (max 15 Mo)'); return }
+    setBusy(true)
+    try {
+      const text = await extractPdfText(file)
+      if (text.trim().length < 40) {
+        toast.show('PDF sans texte lisible (scan ?) — collez plutôt le texte du relevé ci-dessous.')
+        return
+      }
+      runAnalysis(text)
+    } catch {
+      toast.show('Lecture du PDF impossible — collez plutôt le texte du relevé ci-dessous.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const toggle = (name: string) => setChecked(prev => {
+    const next = new Set(prev)
+    if (next.has(name)) next.delete(name); else next.add(name)
+    return next
+  })
+
+  const addSelected = async () => {
+    if (!suggestions || adding) return
+    const selected = suggestions.filter(s => checked.has(s.name) && !s.alreadyTracked)
+    if (!selected.length) { toast.show('Cochez au moins un abonnement à suivre.'); return }
+    setAdding(true)
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const userId = await ensureUserId(supabase)
+      const { error } = await supabase.from('commitments').insert(selected.map(s => ({
+        user_id: userId,
+        name: s.name,
+        service_type: s.service_type,
+        amount: s.amount,
+        frequency: 'monthly',
+        detected_automatically: true,
+      })))
+      if (error) throw new Error(error.message)
+      toast.show(`${selected.length} engagement${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} ✓`)
+      setTimeout(() => { window.location.href = '/engagements' }, 900)
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : 'Ajout impossible.')
+      setAdding(false)
+    }
+  }
+
+  return (
+    <>
+      <SereinNav />
+      <main className="min-h-screen max-w-[640px] mx-auto px-5 py-8 flex flex-col items-center animate-fade-up">
+        <p className="font-mono text-[11px] tracking-[.17em] uppercase text-moss mb-5 flex items-center gap-2.5">
+          <span className="w-6 h-px bg-moss" />Analyse de relevé<span className="w-6 h-px bg-moss" />
+        </p>
+        <h1 className="font-serif text-[clamp(26px,5.5vw,44px)] tracking-[-0.025em] leading-[1.15] text-ink mb-3 text-center">
+          Votre relevé ne quitte <em className="text-moss">jamais votre appareil.</em>
+        </h1>
+        <p className="text-sm text-ink/70 leading-[1.6] mb-8 text-center max-w-[460px]">
+          L&apos;analyse tourne entièrement dans votre navigateur — rien n&apos;est envoyé sur
+          un serveur. Serein détecte vos abonnements récurrents ; vous choisissez
+          lesquels suivre.
+        </p>
+
+        {/* Zone PDF */}
+        <div
+          className="w-full rounded-2xl border-2 border-dashed border-sage/40 bg-surface mb-4 transition-colors"
+          onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-sage', 'bg-sage/7') }}
+          onDragLeave={e => e.currentTarget.classList.remove('border-sage', 'bg-sage/7')}
+          onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('border-sage', 'bg-sage/7'); const f = e.dataTransfer.files[0]; if (f) void handleFile(f) }}
+        >
+          <label htmlFor="pdf" className="flex flex-col items-center justify-center gap-2 p-8 cursor-pointer text-center">
+            <span className="text-[28px]">📄</span>
+            <span className="text-sm text-ink leading-[1.6]">
+              {busy ? 'Analyse en cours…' : <>Déposez votre relevé PDF ici<br />
+              <small className="text-xs text-ink/45 font-mono">ou cliquez · max 15 Mo · lu localement, jamais envoyé</small></>}
+            </span>
+            <input id="pdf" ref={fileRef} type="file" accept=".pdf,application/pdf" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) void handleFile(f) }} />
+          </label>
+        </div>
+
+        {/* Ou coller le texte */}
+        <div className="w-full mb-6">
+          <label htmlFor="paste" className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-1.5 block">
+            …ou collez le texte de votre relevé (depuis votre appli bancaire)
+          </label>
+          <textarea id="paste" rows={4} value={pasted} onChange={e => setPasted(e.target.value)}
+            placeholder={'05/01/2026 PRLV SEPA NETFLIX.COM -13,49\n12/01/2026 PRLV SPOTIFY -10,99\n…'}
+            className="w-full bg-surface border border-ink/12 rounded-xl px-4 py-3 text-[13px] font-mono text-ink placeholder:text-ink/30 focus:outline-none focus:border-sage/60 transition-colors" />
+          <Button size="md" className="mt-2" disabled={pasted.trim().length < 20}
+            onClick={() => runAnalysis(pasted)}>
+            Analyser ce texte
+          </Button>
+        </div>
+
+        {/* Résultats */}
+        {suggestions && stats && (
+          <div className="w-full animate-pop-in">
+            <div className="w-full bg-sage/8 border border-sage/20 rounded-2xl p-5 mb-4" data-testid="analyse-stats">
+              <p className="text-[13.5px] text-ink leading-[1.6]">
+                <strong>{stats.transactionCount} transactions lues</strong> ·{' '}
+                <strong>{stats.subscriptionCount} abonnement{stats.subscriptionCount > 1 ? 's' : ''} récurrent{stats.subscriptionCount > 1 ? 's' : ''} détecté{stats.subscriptionCount > 1 ? 's' : ''}</strong>
+                {stats.newCount < stats.subscriptionCount && <> (dont {stats.subscriptionCount - stats.newCount} déjà suivi{stats.subscriptionCount - stats.newCount > 1 ? 's' : ''})</>}
+                {' '}— soit ≈ {stats.monthlyTotal.toLocaleString('fr-FR')} €/mois ({stats.annualTotal.toLocaleString('fr-FR')} €/an).
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2.5 mb-4">
+              {suggestions.map(s => (
+                <label key={s.name} data-testid="suggestion"
+                  className={`flex items-start gap-3 bg-surface border rounded-2xl p-4 cursor-pointer transition-colors ${checked.has(s.name) && !s.alreadyTracked ? 'border-sage/50' : 'border-ink/10'} ${s.alreadyTracked ? 'opacity-60' : ''}`}>
+                  <input type="checkbox" className="mt-1 accent-[#557A59]" disabled={s.alreadyTracked}
+                    checked={s.alreadyTracked || checked.has(s.name)} onChange={() => toggle(s.name)} />
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-ink text-sm">{s.name}</span>
+                      {s.alreadyTracked
+                        ? <span className="text-[10.5px] font-semibold border rounded-full px-2.5 py-0.5 bg-ink/8 text-ink/50 border-ink/12">Déjà suivi</span>
+                        : <span className={`text-[10.5px] font-semibold border rounded-full px-2.5 py-0.5 ${RISK_UI[s.risk_level]}`}>{RISK_LABEL[s.risk_level]}</span>}
+                    </span>
+                    <span className="block text-xs text-ink/50 mt-0.5">
+                      {s.amount.toLocaleString('fr-FR')} €/mois · vu {s.occurrences} fois · {s.why}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <Button onClick={addSelected} loading={adding} data-testid="add-selected">
+              Suivre la sélection dans mes engagements →
+            </Button>
+            <p className="font-mono text-[11px] text-ink/45 tracking-wider text-center mt-3">
+              Détection indicative — c&apos;est vous qui décidez de ce que Serein suit.
+            </p>
+          </div>
+        )}
+
+        <Toast message={toast.message} visible={toast.visible} onHide={toast.hide} />
+      </main>
+    </>
+  )
+}
