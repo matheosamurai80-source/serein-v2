@@ -10,6 +10,7 @@ import {
   totalMonthly, serviceTypeToCategory,
   type ServiceType, type CommitmentFrequency, type Urgency,
 } from '@/lib/commitments/logic'
+import { unikAdviceFor } from '@/lib/unik/logic'
 
 interface Commitment {
   id: string
@@ -226,6 +227,7 @@ export default function EngagementsPage() {
           const u = urgencyOf(c)
           const deadline = effectiveDeadline(c)
           const monthly = monthlyEquivalent(c.amount, c.frequency)
+          const advice = unikAdviceFor(c)
           return (
             <div key={c.id} className="bg-surface border border-ink/10 rounded-2xl p-5" data-testid="commitment">
               <div className="flex items-start justify-between gap-3 mb-2">
@@ -243,6 +245,11 @@ export default function EngagementsPage() {
                   </span>
                 )}
               </div>
+              {advice && (
+                <p className="text-[12.5px] text-ink/70 leading-[1.55] bg-sage/7 border border-sage/15 rounded-xl px-3.5 py-2.5 mt-2" data-testid="unik-advice">
+                  <span className="font-semibold text-moss">Unik · </span>{advice.text}
+                </p>
+              )}
               <div className="flex flex-wrap gap-2 mt-3">
                 <a href={`/resiliation?service=${encodeURIComponent(c.name)}&category=${serviceTypeToCategory(c.service_type)}&commitment=${c.id}`}
                   className="text-[13px] font-semibold bg-sage text-cream rounded-full px-4 py-2 hover:bg-sage-light transition-colors">

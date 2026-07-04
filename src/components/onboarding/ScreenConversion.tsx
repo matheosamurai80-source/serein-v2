@@ -79,20 +79,20 @@ export function ScreenConversion() {
           </span>
         </button>
 
-        <button
-          onClick={() => comingSoon('📄 Import de relevé PDF')}
-          data-testid="soon-pdf"
-          className="w-full bg-surface border-2 border-ink/10 rounded-[18px] p-5 flex items-center gap-4 text-left opacity-70 hover:opacity-100 transition-all"
+        <a
+          href="/analyse"
+          data-testid="link-analyse"
+          className="w-full bg-surface border-2 border-sage/40 rounded-[18px] p-5 flex items-center gap-4 text-left hover:border-sage hover:bg-sage/7 transition-all"
         >
           <div className="w-11 h-11 rounded-xl bg-amber/12 flex items-center justify-center text-xl flex-shrink-0">📄</div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-ink mb-0.5">Import de relevé PDF</p>
-            <p className="text-xs text-ink/50 leading-[1.5]">Analyse automatique de vos prélèvements</p>
+            <p className="text-sm font-semibold text-ink mb-0.5">Analyser un relevé PDF</p>
+            <p className="text-xs text-ink/50 leading-[1.5]">100 % dans votre navigateur — le fichier ne quitte jamais votre appareil</p>
           </div>
-          <span className="font-mono text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full bg-amber/15 text-amber flex-shrink-0">
-            Bientôt
+          <span className="font-mono text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full bg-sage/15 text-moss flex-shrink-0">
+            Nouveau
           </span>
-        </button>
+        </a>
       </div>
 
       {/* E-mail optionnel */}
@@ -110,7 +110,7 @@ export function ScreenConversion() {
           onBlur={rememberEmail}
           className={cn(
             'w-full px-[18px] py-4 bg-surface border rounded-2xl',
-            'text-base font-sans text-[#F8F7F3] outline-none',
+            'text-base font-sans text-ink outline-none',
             'transition-all duration-200 placeholder:text-ink/35',
             'border-ink/12 focus:border-sage focus:shadow-[0_0_0_3px_rgba(130,168,132,.14)]'
           )}

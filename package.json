@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:sandbox": "tsx sandbox/business-logic.test.ts && tsx sandbox/letters.test.ts && tsx sandbox/commitments.test.ts && tsx sandbox/reminders.test.ts && tsx sandbox/auth.test.ts && tsx sandbox/dashboard.test.ts && tsx sandbox/abonopack.test.ts"
+    "test:sandbox": "tsx sandbox/business-logic.test.ts && tsx sandbox/letters.test.ts && tsx sandbox/commitments.test.ts && tsx sandbox/reminders.test.ts && tsx sandbox/auth.test.ts && tsx sandbox/dashboard.test.ts && tsx sandbox/abonopack.test.ts && tsx sandbox/analyse.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
@@ -16,6 +16,7 @@
     "clsx": "^2.1.1",
     "next": "^15.5.20",
     "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^6.1.200",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.3.0",
