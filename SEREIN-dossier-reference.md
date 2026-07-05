@@ -256,6 +256,15 @@ qui crée le profil à l'inscription, y compris anonyme). Le module Lettre
   `service_role` n'est jamais commitée (à mettre dans Vercel → Env Variables
   si on veut le pipeline PDF `/api/*`).
 - Le déploiement de `main` se fait via l'intégration GitHub de Vercel.
+- **Deuxième cause racine (corrigée le 2026-07-05) :** les variables
+  d'environnement du tableau de bord Vercel pointaient encore vers l'ANCIEN
+  projet Supabase (`oujdbevbgqntkousvsms`) et écrasaient `.env.production`
+  au build → sessions fantômes des anciens visiteurs + ajouts en échec.
+  Correctif : `src/lib/supabase/config.ts` inscrit l'URL et la clé anon
+  (publiques par conception) du projet officiel dans le code — plus aucun
+  réglage d'hébergeur ne peut les écraser. Ménage recommandé un jour :
+  supprimer les variables `NEXT_PUBLIC_SUPABASE_*` obsolètes dans
+  Vercel → Settings → Environment Variables (sans urgence, sans effet).
 
 ## 3bis. État des lieux — 2026-07-01
 
@@ -308,3 +317,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-04 | Abonopack v1 : score de vigilance explicable + économies doublons sur le dashboard | 102/102 PASS sandbox, 7/7 PASS navigateur, build vert |
 | 2026-07-04 | Analyse de relevé 100 % navigateur (`/analyse`, PDF + collage) + Unik v1 (conseil légal par engagement) | 116/116 PASS sandbox, 8/8 PASS navigateur, build vert |
 | 2026-07-05 | Corrections retours : mode invité local (ajouts qui marchent sans réglage Supabase, migration à la connexion), lettres au bon terme par catégorie, annuaire 17 prestataires + lecture de contrat PDF + expéditeur mémorisé, hub racine Serein + PanierMalin | 146/146 PASS sandbox, 18/18 PASS navigateur (Supabase bloqué), build + lint verts |
+| 2026-07-05 | Fix critique : la prod compilait avec l'ANCIEN projet Supabase (variables Vercel obsolètes) → config officielle inscrite dans le code (`supabase/config.ts`) + repli mémoire si localStorage bloqué | bundle en ligne vérifié (bon projet, ancien absent), 18/18 PASS navigateur |
