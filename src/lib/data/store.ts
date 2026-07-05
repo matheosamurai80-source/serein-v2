@@ -58,13 +58,35 @@ type Backend =
   | { kind: 'cloud'; supabase: Supabase; userId: string }
   | { kind: 'local'; kv: KV }
 
+// Si localStorage est interdit (navigation privée stricte), on retombe sur
+// une mémoire de session : l'app reste utilisable, sans persistance.
+const memoryKV: KV = (() => {
+  const m = new Map<string, string>()
+  return {
+    getItem: k => m.get(k) ?? null,
+    setItem: (k, v) => { m.set(k, v) },
+    removeItem: k => { m.delete(k) },
+  }
+})()
+
+function safeKV(): KV {
+  try {
+    const probe = '__serein_probe__'
+    window.localStorage.setItem(probe, '1')
+    window.localStorage.removeItem(probe)
+    return window.localStorage
+  } catch {
+    return memoryKV
+  }
+}
+
 async function backend(): Promise<Backend> {
   try {
     const supabase = createSupabaseBrowserClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (session?.user) return { kind: 'cloud', supabase, userId: session.user.id }
   } catch { /* env Supabase absente → mode local */ }
-  return { kind: 'local', kv: window.localStorage }
+  return { kind: 'local', kv: safeKV() }
 }
 
 /** Vrai si l'utilisateur travaille sans compte (données sur cet appareil). */
@@ -243,8 +265,7 @@ export async function addLetter(params: {
 export async function migrateGuestData(): Promise<number> {
   const b = await backend()
   if (b.kind !== 'cloud') return 0
-  let kv: KV
-  try { kv = window.localStorage } catch { return 0 }
+  const kv = safeKV()
   if (!hasGuestData(kv)) return 0
 
   let migrated = 0
