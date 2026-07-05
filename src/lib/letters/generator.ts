@@ -27,6 +27,19 @@ export interface GeneratedLetter {
   body: string
 }
 
+/**
+ * Le bon mot pour le bon contrat : une assurance n'est pas un « abonnement ».
+ * C'est ce terme qui apparaît dans l'objet et le corps de la lettre.
+ */
+export function contractNoun(category: RegimeInput['category']): string {
+  switch (category) {
+    case 'insurance': return "contrat d'assurance"
+    case 'utility':   return "contrat de fourniture d'énergie"
+    case 'telecom':   return 'contrat'
+    default:          return 'abonnement'
+  }
+}
+
 function frDate(iso?: string): string {
   const d = iso ? new Date(iso) : new Date()
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -51,8 +64,9 @@ function effectivenessSentence(r: RegimeResult): string {
 
 export function generateCancellationLetter(input: LetterInput): GeneratedLetter {
   const regime = detectLegalRegime(input)
+  const noun = contractNoun(input.category)
   const ref = input.contractRef ? `\nRéférence client / contrat : ${input.contractRef}` : ''
-  const subject = `Résiliation de mon abonnement ${input.serviceName}`
+  const subject = `Résiliation de mon ${noun} ${input.serviceName}`
 
   const body = `${input.senderName}
 ${input.senderAddress}
@@ -67,7 +81,7 @@ Lettre recommandée avec accusé de réception
 
 Madame, Monsieur,
 
-Par la présente, je vous notifie ma décision de résilier mon abonnement « ${input.serviceName} » souscrit auprès de vos services${input.subscribedAt ? ` le ${frDate(input.subscribedAt)}` : ''}.
+Par la présente, je vous notifie ma décision de résilier mon ${noun} « ${input.serviceName} » souscrit auprès de vos services${input.subscribedAt ? ` le ${frDate(input.subscribedAt)}` : ''}.
 
 Cette résiliation s'appuie sur l'${regime.article}. ${effectivenessSentence(regime)}
 

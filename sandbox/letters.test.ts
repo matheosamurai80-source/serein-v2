@@ -4,7 +4,7 @@
  * Lancer : npm run test:sandbox
  */
 import { detectLegalRegime } from '@/lib/letters/legal'
-import { generateCancellationLetter } from '@/lib/letters/generator'
+import { generateCancellationLetter, contractNoun } from '@/lib/letters/generator'
 import { mapRegimeToLetterType, buildLetterRow } from '@/lib/letters/db'
 
 let failures = 0
@@ -92,6 +92,32 @@ check('Générateur : 4 régimes distincts couverts par la même API',
   JSON.stringify(regimes) === JSON.stringify(['energie', 'hamon', 'chatel_conso', 'droit_commun']),
   JSON.stringify(regimes))
 
+
+// ─── 3. LE BON MOT POUR LE BON CONTRAT (retour utilisateur) ─────────────────
+// Une assurance n'est PAS un « abonnement » : la lettre doit dire « contrat ».
+check('Terme : assurance → « contrat d\'assurance », énergie → « contrat de fourniture », streaming → « abonnement »',
+  contractNoun('insurance') === "contrat d'assurance"
+  && contractNoun('utility') === "contrat de fourniture d'énergie"
+  && contractNoun('telecom') === 'contrat'
+  && contractNoun('streaming') === 'abonnement'
+  && contractNoun('fitness') === 'abonnement')
+
+const insuranceLetter = generateCancellationLetter({
+  ...base, category: 'insurance', serviceName: 'AXA Auto', subscribedAt: monthsAgo(24),
+})
+check('Lettre assurance : objet et corps disent « contrat d\'assurance », jamais « abonnement »',
+  insuranceLetter.subject.includes("contrat d'assurance")
+  && insuranceLetter.body.includes("mon contrat d'assurance « AXA Auto »")
+  && !insuranceLetter.subject.includes('abonnement')
+  && !insuranceLetter.body.includes('abonnement'))
+
+const energyLetter = generateCancellationLetter({ ...base, category: 'utility', serviceName: 'EDF' })
+check('Lettre énergie : « contrat de fourniture d\'énergie », jamais « abonnement »',
+  energyLetter.body.includes("contrat de fourniture d'énergie") && !energyLetter.body.includes('abonnement'))
+
+const streamingLetter = generateCancellationLetter({ ...base, category: 'streaming', serviceName: 'Netflix' })
+check('Lettre streaming : « abonnement » reste le bon terme',
+  streamingLetter.subject === 'Résiliation de mon abonnement Netflix')
 
 // ─── SAUVEGARDE : correspondance régime → letter_type (schéma v5) ───────────
 check('Mapping : hamon → hamon, chatel_* → chatel, reste → standard',

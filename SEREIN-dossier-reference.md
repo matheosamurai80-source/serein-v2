@@ -90,16 +90,29 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   moment) · sinon droit commun (préavis contractuel).
 - `src/lib/letters/generator.ts` — lettre formelle complète (LRAR, article
   cité, date d'effet selon le régime, demande d'arrêt des prélèvements).
+- **Le bon mot pour le bon contrat** (retour utilisateur 2026-07-05) :
+  `contractNoun(category)` — assurance → « contrat d'assurance », énergie →
+  « contrat de fourniture d'énergie », télécom → « contrat », reste →
+  « abonnement ». Fini la lettre d'assurance qui parlait d'« abonnement ».
+- **Annuaire des services résiliation** (`src/lib/letters/providers.ts`) :
+  17 prestataires FR (Orange, SFR, Free, Bouygues, AXA, MAIF, MACIF, Matmut,
+  GMF, Allianz, EDF, Engie, TotalEnergies, Canal+, Netflix, Spotify,
+  Basic-Fit) avec adresse du service résiliation (indicative — l'UI rappelle
+  de vérifier sur la facture). `findProvider()` retrouve depuis un nom libre
+  (« Freebox » → Free). Un `<select>` remplit prestataire + adresse +
+  catégorie d'un coup.
+- **Charger son contrat (PDF)** : lu 100 % dans le navigateur (pdfjs mutualisé
+  dans `src/lib/pdf/browser.ts`), `extractContractInfo()` reconnaît le
+  prestataire et le n° de client/contrat → champs pré-remplis.
+- **Nom + adresse mémorisés** sur l'appareil (localStorage `serein.sender`) :
+  plus besoin de les retaper à chaque lettre.
 - Page `/resiliation` : formulaire → régime détecté + lettre → copier /
-  télécharger .txt / **sauvegarder dans son espace** (connexion anonyme
-  Supabase → insert `cancellation_letters`, liste « Mes lettres »).
-  C'est toujours le client qui envoie (limite ORIAS respectée).
+  télécharger .txt / sauvegarder (espace connecté, ou sur l'appareil en mode
+  invité). C'est toujours le client qui envoie (limite ORIAS respectée).
 - `src/lib/letters/db.ts` : correspondance régimes → `letter_type` v5
   (hamon→hamon, chatel_*→chatel, reste→standard) + validation avant insert.
-- Testé par `sandbox/letters.test.ts` (19 cas PASS/FAIL) + parcours navigateur
-  simulé au format exact de l'API Supabase (7 cas, dont anonyme désactivé).
-- ⚠️ Action requise une fois : activer « Anonymous sign-ins » dans
-  Supabase → Authentication → Providers (sinon la page l'explique en clair).
+- Testé : `sandbox/letters.test.ts` (25 cas) + `sandbox/providers.test.ts`
+  (15 cas) + parcours navigateur réel sans Supabase (18 cas).
 
 ### Page Engagements — `/engagements` (le cœur du schéma v5)
 - `src/lib/commitments/logic.ts` — logique testée : coût mensualisé (hebdo/
@@ -110,7 +123,7 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Page : total récurrent /mois, formulaire d'ajout, liste triée par urgence
   avec badges, **« Générer la lettre → »** pré-remplit `/resiliation`
   (service + catégorie), « Résilié ✓ » (status cancelled), suppression.
-  Même session anonyme que les lettres (RLS `user_id = auth.uid()`).
+  Fonctionne connecté (Supabase) comme sans compte (stockage local).
 - **« Générer la lettre → » transmet `commitment_id`** ; une fois la lettre
   sauvegardée, l'engagement affiche « Revoir la lettre » (boucle fermée).
 - Testé : 18 cas sandbox PASS + 14 cas navigateur PASS (dont le lien lettre).
@@ -131,12 +144,13 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - `src/lib/auth/logic.ts` — validation e-mail + mot de passe (≥ 8) et
   traduction des erreurs Supabase Auth en français (testé, 11 cas).
 - Page : bascule Se connecter / Créer un compte (e-mail + mot de passe),
-  `signInWithPassword` / `signUp`, redirection vers `/engagements`,
-  message « vérifiez votre boîte mail » si confirmation requise,
-  lien « continuer sans connexion » (l'anonyme reste possible).
+  `signInWithPassword` / `signUp`, message « vérifiez votre boîte mail » si
+  confirmation requise, lien « continuer sans connexion ».
+- **À la connexion, `migrateGuestData()` transfère les données saisies sans
+  compte** (engagements dédoublonnés par nom + lettres) vers l'espace
+  Supabase, puis vide le stockage local.
 - `src/components/ui/nav.tsx` : affiche l'e-mail connecté + « Déconnexion »,
   sinon un lien « Connexion » (via `onAuthStateChange`).
-- Un compte réel supprime le besoin d'activer les connexions anonymes.
 - Testé : 11 cas sandbox + 7 cas navigateur (validation, refus, connexion,
   inscription avec confirmation).
 
@@ -185,6 +199,31 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   streaming/sport → Chatel reconduction, adapté selon qu'une échéance est
   connue) ; pas de conseil générique pour loyer/crédit/impôts.
 - Affiché sur chaque carte d'engagement (« Unik · … »).
+
+### Mode invité — façade de données unique (livré 2026-07-05)
+- **Pourquoi** : « les ajouts d'abonnement ne fonctionnent pas » — cause
+  vérifiée en base : 0 utilisateur anonyme jamais créé, la connexion anonyme
+  Supabase n'a jamais été activée. Plutôt que de dépendre d'un réglage
+  serveur, le mode sans compte est passé en **stockage local** : ça marche
+  pour tout le monde, tout de suite, et rien ne quitte l'appareil.
+- `src/lib/data/local.ts` — CRUD localStorage pur et testable (stockage
+  injecté), clés `serein.local.*`, JSON corrompu toléré, dédoublonnage de
+  migration par nom.
+- `src/lib/data/store.ts` — façade unique : compte connecté → Supabase,
+  sinon → localStorage. Les 5 pages (engagements, rappels, analyse,
+  dashboard, résiliation) ne parlent plus qu'à cette façade.
+- Bandeau discret « Mode sans compte : tout est enregistré sur cet appareil »
+  avec lien vers `/connexion` ; à la connexion, migration automatique.
+- `src/lib/supabase/session.ts` (connexion anonyme) supprimé.
+- Testé : `sandbox/localstore.test.ts` 11 cas + 18 cas navigateur réels
+  (Supabase volontairement bloqué pendant le test pour prouver l'autonomie).
+
+### Hub d'accueil — `/` (livré 2026-07-05)
+- La racine n'est plus une redirection vers l'onboarding : c'est le point
+  d'accès à tout — 6 entrées Serein (dashboard, analyse, engagements,
+  rappels, lettre, compte), lien « Découvrir » vers l'onboarding, et carte
+  PanierMalin (https://serein-v2.vercel.app/paniermalin/).
+- PanierMalin aussi en accès rapide sur le dashboard.
 
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
@@ -237,14 +276,12 @@ pas déjà fait.
 
 ## 4. Prochaines briques (dans l'ordre)
 
-1. **Unik v1** : recommandations personnalisées par profil, au-dessus
-   d'Abonopack (à cadrer avant de construire).
-2. Activer « Anonymous sign-ins » dans Supabase (mode sans compte), puis
-   tester lettres + engagements + rappels en conditions réelles.
-2. Relier `/resiliation` aux abonnements détectés par l'analyse PDF
-   (pré-remplissage depuis un abonnement repéré). [lien commitment_id fait]
-3. Rappels e-mail/SMS (canaux `email`/`sms` déjà prévus au schéma) — nécessite
-   un service d'envoi ; à cadrer avant de construire.
+1. Rappels e-mail (canal `email` déjà prévu au schéma) — nécessite un
+   service d'envoi ; à cadrer avant de construire.
+2. Étendre l'annuaire des prestataires (mutuelles, presse, SaaS) et
+   vérifier/actualiser les adresses de résiliation.
+3. Landing publique + partage (le hub racine en tient lieu pour l'instant).
+~~Activer « Anonymous sign-ins »~~ → plus nécessaire : mode invité local.
 
 ## 5. Historique des briques
 
@@ -270,3 +307,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
 | 2026-07-04 | Abonopack v1 : score de vigilance explicable + économies doublons sur le dashboard | 102/102 PASS sandbox, 7/7 PASS navigateur, build vert |
 | 2026-07-04 | Analyse de relevé 100 % navigateur (`/analyse`, PDF + collage) + Unik v1 (conseil légal par engagement) | 116/116 PASS sandbox, 8/8 PASS navigateur, build vert |
+| 2026-07-05 | Corrections retours : mode invité local (ajouts qui marchent sans réglage Supabase, migration à la connexion), lettres au bon terme par catégorie, annuaire 17 prestataires + lecture de contrat PDF + expéditeur mémorisé, hub racine Serein + PanierMalin | 146/146 PASS sandbox, 18/18 PASS navigateur (Supabase bloqué), build + lint verts |

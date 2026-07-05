@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { ensureUserId } from '@/lib/supabase/session'
+import {
+  listCommitments, listReminders, addReminder, updateReminder, deleteReminder,
+} from '@/lib/data/store'
 import { effectiveDeadline, type ServiceType, type CommitmentFrequency } from '@/lib/commitments/logic'
 import {
   buildReminderForCommitment, reminderTiming, daysUntil, isDue, sortReminders,
@@ -53,17 +54,10 @@ export default function RappelsPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const [{ data: c }, { data: r }] = await Promise.all([
-            supabase.from('commitments').select('id, name, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status'),
-            supabase.from('reminders').select('id, commitment_id, kind, scheduled_for, channel, message, status'),
-          ])
-          if (c) setCommitments(c)
-          if (r) setReminders(r)
-        }
-      } catch { /* env Supabase absente : la page reste consultable */ }
+        const [c, r] = await Promise.all([listCommitments(), listReminders()])
+        setCommitments(c as Commitment[])
+        setReminders(r as Reminder[])
+      } catch { /* stockage indisponible : la page reste consultable */ }
       setLoaded(true)
     })()
   }, [])
@@ -81,15 +75,8 @@ export default function RappelsPage() {
     try {
       const draft = buildReminderForCommitment(c)
       if (!draft) return
-      const supabase = createSupabaseBrowserClient()
-      const userId = await ensureUserId(supabase)
-      const { data, error } = await supabase
-        .from('reminders')
-        .insert({ user_id: userId, commitment_id: c.id, ...draft })
-        .select('id, commitment_id, kind, scheduled_for, channel, message, status')
-        .single()
-      if (error) throw new Error(error.message)
-      if (data) setReminders(prev => [...prev, data])
+      const data = await addReminder(c.id, draft)
+      setReminders(prev => [...prev, data as Reminder])
       toast.show('Rappel programmé ✓')
     } catch (e) {
       toast.show(e instanceof Error ? e.message : 'Impossible de créer le rappel.')
@@ -100,9 +87,7 @@ export default function RappelsPage() {
 
   const setStatus = async (r: Reminder, status: ReminderStatus, msg: string) => {
     try {
-      const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.from('reminders').update({ status }).eq('id', r.id)
-      if (error) throw new Error(error.message)
+      await updateReminder(r.id, { status })
       setReminders(prev => prev.map(x => x.id === r.id ? { ...x, status } : x))
       toast.show(msg)
     } catch (e) { toast.show(e instanceof Error ? e.message : 'Mise à jour impossible.') }
@@ -110,9 +95,7 @@ export default function RappelsPage() {
 
   const remove = async (r: Reminder) => {
     try {
-      const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.from('reminders').delete().eq('id', r.id)
-      if (error) throw new Error(error.message)
+      await deleteReminder(r.id)
       setReminders(prev => prev.filter(x => x.id !== r.id))
     } catch (e) { toast.show(e instanceof Error ? e.message : 'Suppression impossible.') }
   }

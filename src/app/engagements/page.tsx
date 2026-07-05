@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { ensureUserId } from '@/lib/supabase/session'
+import {
+  listCommitments, addCommitments, updateCommitment, deleteCommitment,
+  listLetterCommitmentIds, isGuest,
+} from '@/lib/data/store'
 import {
   monthlyEquivalent, effectiveDeadline, urgencyOf, sortCommitments,
   totalMonthly, serviceTypeToCategory,
@@ -72,21 +74,18 @@ export default function EngagementsPage() {
   const [frequency, setFrequency] = useState<CommitmentFrequency>('monthly')
   const [anniversary, setAnniversary] = useState('')
   const [noticeDays, setNoticeDays] = useState('')
+  const [guest, setGuest] = useState(false)
 
   useEffect(() => {
     void (async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const [{ data }, { data: letters }] = await Promise.all([
-            supabase.from('commitments').select('id, name, provider, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status'),
-            supabase.from('cancellation_letters').select('commitment_id'),
-          ])
-          if (data) setItems(data)
-          if (letters) setLetteredIds(new Set(letters.map(l => l.commitment_id).filter(Boolean) as string[]))
-        }
-      } catch { /* env Supabase absente : la page reste consultable */ }
+        const [data, letterIds, g] = await Promise.all([
+          listCommitments(), listLetterCommitmentIds(), isGuest(),
+        ])
+        setItems(data as Commitment[])
+        setLetteredIds(new Set(letterIds))
+        setGuest(g)
+      } catch { /* stockage indisponible : la page reste consultable */ }
       setLoaded(true)
     })()
   }, [])
@@ -95,25 +94,17 @@ export default function EngagementsPage() {
     if (!name || saving) return
     setSaving(true)
     try {
-      const supabase = createSupabaseBrowserClient()
-      const userId = await ensureUserId(supabase)
       const parsedAmount = parseFloat(amount.replace(',', '.'))
-      const { data, error } = await supabase
-        .from('commitments')
-        .insert({
-          user_id: userId,
-          name,
-          service_type: serviceType,
-          amount: parsedAmount > 0 ? parsedAmount : null,
-          frequency,
-          anniversary_date: anniversary || null,
-          cancellation_notice_days: Number.isInteger(parseInt(noticeDays, 10)) && parseInt(noticeDays, 10) >= 0
-            ? parseInt(noticeDays, 10) : null,
-        })
-        .select('id, name, provider, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status')
-        .single()
-      if (error) throw new Error(error.message)
-      if (data) setItems(prev => [...prev, data])
+      const [data] = await addCommitments([{
+        name,
+        service_type: serviceType,
+        amount: parsedAmount > 0 ? parsedAmount : null,
+        frequency,
+        anniversary_date: anniversary || null,
+        cancellation_notice_days: Number.isInteger(parseInt(noticeDays, 10)) && parseInt(noticeDays, 10) >= 0
+          ? parseInt(noticeDays, 10) : null,
+      }])
+      if (data) setItems(prev => [...prev, data as Commitment])
       setName(''); setAmount(''); setAnniversary(''); setNoticeDays('')
       toast.show('Engagement ajouté ✓')
     } catch (e) {
@@ -125,9 +116,7 @@ export default function EngagementsPage() {
 
   const markCancelled = async (c: Commitment) => {
     try {
-      const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.from('commitments').update({ status: 'cancelled' }).eq('id', c.id)
-      if (error) throw new Error(error.message)
+      await updateCommitment(c.id, { status: 'cancelled' })
       setItems(prev => prev.map(i => i.id === c.id ? { ...i, status: 'cancelled' } : i))
       toast.show(`${c.name} marqué comme résilié 🎉`)
     } catch (e) { toast.show(e instanceof Error ? e.message : 'Mise à jour impossible.') }
@@ -135,9 +124,7 @@ export default function EngagementsPage() {
 
   const remove = async (c: Commitment) => {
     try {
-      const supabase = createSupabaseBrowserClient()
-      const { error } = await supabase.from('commitments').delete().eq('id', c.id)
-      if (error) throw new Error(error.message)
+      await deleteCommitment(c.id)
       setItems(prev => prev.filter(i => i.id !== c.id))
     } catch (e) { toast.show(e instanceof Error ? e.message : 'Suppression impossible.') }
   }
@@ -161,6 +148,13 @@ export default function EngagementsPage() {
         Serein surveille les fenêtres de résiliation et vous prévient avant qu&apos;elles ne se referment.
         À vous de décider — la lettre est prête quand vous l&apos;êtes.
       </p>
+
+      {loaded && guest && (
+        <p data-testid="guest-hint" className="w-full font-mono text-[11px] text-ink/50 tracking-wider text-center mb-4 leading-[1.7]">
+          Mode sans compte : tout est enregistré sur cet appareil.{' '}
+          <a href="/connexion" className="text-moss underline">Créez un compte</a> pour retrouver vos données partout.
+        </p>
+      )}
 
       {/* Total mensuel */}
       <div className="w-full bg-sage/7 border border-sage/16 rounded-2xl p-5 mb-6 flex items-baseline justify-between">

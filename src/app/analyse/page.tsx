@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { ensureUserId } from '@/lib/supabase/session'
+import { listCommitments, addCommitments } from '@/lib/data/store'
 import { parseTransactionsFromText } from '@/lib/pdf/parser'
 import { scoreSubscriptions } from '@/lib/scoring/engine'
-import { linesFromTextItems, buildSuggestions, analyseStats, type CommitmentSuggestion, type TextItem } from '@/lib/analyse/logic'
+import { buildSuggestions, analyseStats, type CommitmentSuggestion } from '@/lib/analyse/logic'
+import { extractPdfText } from '@/lib/pdf/browser'
 
 // Analyse de relevé 100 % dans le navigateur : le fichier ne quitte jamais
 // l'appareil. Serein détecte et suggère ; le client choisit ce qu'il ajoute.
@@ -18,22 +18,6 @@ const RISK_UI: Record<string, string> = {
   low:    'bg-sage/12 text-moss border-sage/25',
 }
 const RISK_LABEL: Record<string, string> = { high: 'À examiner', medium: 'À surveiller', low: 'OK' }
-
-async function extractPdfText(file: File): Promise<string> {
-  const pdfjs = await import('pdfjs-dist')
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString()
-  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise
-  const pages: string[] = []
-  for (let p = 1; p <= doc.numPages; p++) {
-    const page = await doc.getPage(p)
-    const content = await page.getTextContent()
-    const items: TextItem[] = (content.items as { str?: string; transform?: number[] }[])
-      .filter(i => typeof i.str === 'string' && Array.isArray(i.transform))
-      .map(i => ({ str: i.str as string, x: i.transform![4], y: i.transform![5] }))
-    pages.push(linesFromTextItems(items).join('\n'))
-  }
-  return pages.join('\n')
-}
 
 export default function AnalysePage() {
   const toast = useToast()
@@ -49,13 +33,9 @@ export default function AnalysePage() {
   useEffect(() => {
     void (async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const { data } = await supabase.from('commitments').select('name').eq('status', 'active')
-          if (data) setExistingNames(data.map(d => d.name))
-        }
-      } catch { /* pas de session : dédoublonnage désactivé */ }
+        const data = await listCommitments()
+        setExistingNames(data.filter(d => d.status === 'active').map(d => d.name))
+      } catch { /* stockage indisponible : dédoublonnage désactivé */ }
     })()
   }, [])
 
@@ -102,17 +82,13 @@ export default function AnalysePage() {
     if (!selected.length) { toast.show('Cochez au moins un abonnement à suivre.'); return }
     setAdding(true)
     try {
-      const supabase = createSupabaseBrowserClient()
-      const userId = await ensureUserId(supabase)
-      const { error } = await supabase.from('commitments').insert(selected.map(s => ({
-        user_id: userId,
+      await addCommitments(selected.map(s => ({
         name: s.name,
         service_type: s.service_type,
         amount: s.amount,
         frequency: 'monthly',
         detected_automatically: true,
       })))
-      if (error) throw new Error(error.message)
       toast.show(`${selected.length} engagement${selected.length > 1 ? 's' : ''} ajouté${selected.length > 1 ? 's' : ''} ✓`)
       setTimeout(() => { window.location.href = '/engagements' }, 900)
     } catch (e) {
