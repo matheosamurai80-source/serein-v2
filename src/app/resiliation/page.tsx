@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button'
 import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
 import { generateCancellationLetter, type GeneratedLetter } from '@/lib/letters/generator'
-import { buildLetterRow } from '@/lib/letters/db'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { ensureUserId } from '@/lib/supabase/session'
+import { PROVIDERS, providerById, findProvider, extractContractInfo } from '@/lib/letters/providers'
+import { extractPdfText } from '@/lib/pdf/browser'
+import { listLetters, addLetter, isGuest, type LetterListItem } from '@/lib/data/store'
 import type { TransactionCategory } from '@/types'
 
-interface SavedLetter { id: string; letter_type: string; generated_at: string }
+const SENDER_KEY = 'serein.sender' // nom + adresse mémorisés sur l'appareil
 
 const LETTER_TYPE_LABELS: Record<string, string> = {
   standard: 'Standard', chatel: 'Loi Chatel', hamon: 'Loi Hamon', negotiation: 'Négociation',
@@ -45,52 +45,85 @@ export default function ResiliationPage() {
   const [contractRef, setContractRef] = useState('')
   const [letter, setLetter] = useState<GeneratedLetter | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState<SavedLetter[]>([])
+  const [saved, setSaved] = useState<LetterListItem[]>([])
   const [commitmentId, setCommitmentId] = useState<string | undefined>(undefined)
+  const [providerId, setProviderId] = useState('')
+  const [guest, setGuest] = useState(false)
+  const [readingPdf, setReadingPdf] = useState(false)
 
   useEffect(() => {
     // Pré-remplissage depuis la page Engagements (?service=…&category=…)
     const q = new URLSearchParams(window.location.search)
     const s = q.get('service')
     const c = q.get('category')
-    if (s) setServiceName(s)
+    if (s) {
+      setServiceName(s)
+      // Si le service est connu de l'annuaire, l'adresse arrive toute seule
+      const p = findProvider(s)
+      if (p) applyProvider(p.id, !c)
+    }
     if (c && CATEGORIES.some(x => x.value === c)) setCategory(c as TransactionCategory)
     const cid = q.get('commitment')
     if (cid) setCommitmentId(cid)
+    // Nom et adresse mémorisés sur l'appareil : plus besoin de les retaper
+    try {
+      const raw = localStorage.getItem(SENDER_KEY)
+      if (raw) {
+        const sd = JSON.parse(raw) as { name?: string; address?: string }
+        if (sd.name) setSenderName(sd.name)
+        if (sd.address) setSenderAddress(sd.address)
+      }
+    } catch { /* stockage indisponible */ }
   }, [])
 
   useEffect(() => {
-    // Liste « Mes lettres » si une session existe déjà (pas de connexion forcée)
+    // « Mes lettres » : local sans compte, Supabase avec compte
     void (async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) return
-        const { data } = await supabase
-          .from('cancellation_letters')
-          .select('id, letter_type, generated_at')
-          .order('generated_at', { ascending: false })
-          .limit(5)
-        if (data) setSaved(data)
-      } catch { /* env Supabase absente : la page reste utilisable sans sauvegarde */ }
+        const [letters, g] = await Promise.all([listLetters(5), isGuest()])
+        setSaved(letters)
+        setGuest(g)
+      } catch { /* la page reste utilisable sans sauvegarde */ }
     })()
   }, [])
+
+  function applyProvider(id: string, alsoCategory = true) {
+    const p = providerById(id)
+    setProviderId(p ? p.id : '')
+    if (!p) return
+    setProviderName(p.service)
+    setProviderAddress(p.address)
+    if (alsoCategory) setCategory(p.category)
+    setServiceName(prev => prev || p.name)
+  }
+
+  const loadContract = async (file: File) => {
+    if (file.type !== 'application/pdf') { toast.show('⚠️ Fichier PDF uniquement'); return }
+    setReadingPdf(true)
+    try {
+      const text = await extractPdfText(file)
+      const info = extractContractInfo(text)
+      if (info.provider) applyProvider(info.provider.id)
+      if (info.contractRef) setContractRef(info.contractRef)
+      toast.show(
+        info.provider || info.contractRef
+          ? `Contrat lu ✓ ${info.provider ? info.provider.name : ''}${info.provider && info.contractRef ? ' · ' : ''}${info.contractRef ? `réf. ${info.contractRef}` : ''}`
+          : 'Contrat lu, mais rien de reconnu — complétez à la main.'
+      )
+    } catch {
+      toast.show('Lecture du PDF impossible — complétez le formulaire à la main.')
+    } finally {
+      setReadingPdf(false)
+    }
+  }
 
   const saveLetter = async () => {
     if (!letter || saving) return
     setSaving(true)
     try {
-      const supabase = createSupabaseBrowserClient()
-      const userId = await ensureUserId(supabase)
-      const row = buildLetterRow({ userId, regime: letter.regime, content: letter.body, commitmentId })
-      const { data, error } = await supabase
-        .from('cancellation_letters')
-        .insert(row)
-        .select('id, letter_type, generated_at')
-        .single()
-      if (error) throw new Error(error.message)
-      if (data) setSaved(prev => [data, ...prev].slice(0, 5))
-      toast.show('Lettre sauvegardée dans votre espace ✓')
+      const data = await addLetter({ regime: letter.regime, content: letter.body, commitmentId })
+      setSaved(prev => [data, ...prev].slice(0, 5))
+      toast.show(guest ? 'Lettre enregistrée sur cet appareil ✓' : 'Lettre sauvegardée dans votre espace ✓')
     } catch (e) {
       toast.show(e instanceof Error ? e.message : 'Sauvegarde impossible.')
     } finally {
@@ -102,6 +135,9 @@ export default function ResiliationPage() {
 
   const generate = () => {
     if (!ready) return
+    try {
+      localStorage.setItem(SENDER_KEY, JSON.stringify({ name: senderName, address: senderAddress }))
+    } catch { /* stockage indisponible */ }
     setLetter(generateCancellationLetter({
       category,
       serviceName,
@@ -149,6 +185,34 @@ export default function ResiliationPage() {
       </p>
 
       <div className="w-full bg-surface border border-ink/10 rounded-2xl p-7 flex flex-col gap-4 mb-6">
+        {/* Deux raccourcis pour éviter la saisie manuelle */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls} htmlFor="directory">Prestataire connu ? Choisissez-le</label>
+            <select id="directory" data-testid="directory" className={inputCls} value={providerId}
+              onChange={e => applyProvider(e.target.value)}>
+              <option value="" className="bg-surface">— Remplissage automatique —</option>
+              {PROVIDERS.map(p => (
+                <option key={p.id} value={p.id} className="bg-surface">{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="contract-pdf">…ou chargez votre contrat (PDF)</label>
+            <label htmlFor="contract-pdf"
+              className="w-full flex items-center justify-center gap-2 bg-surface border border-dashed border-sage/45 rounded-xl px-4 py-3 text-sm text-moss cursor-pointer hover:border-sage transition-colors">
+              📄 {readingPdf ? 'Lecture…' : 'Lire mon contrat (reste sur l’appareil)'}
+            </label>
+            <input id="contract-pdf" data-testid="contract-pdf" type="file" accept=".pdf,application/pdf" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) void loadContract(f) }} />
+          </div>
+        </div>
+        <p className="font-mono text-[10.5px] text-ink/45 tracking-wider -mt-1">
+          Adresses de résiliation indicatives — vérifiez sur votre dernière facture ou votre espace client.
+        </p>
+
+        <div className="h-px bg-surface-2 my-1" />
+
         <div>
           <label className={labelCls} htmlFor="service">Service à résilier *</label>
           <input id="service" className={inputCls} placeholder="Ex. Basic-Fit, Orange Livebox…"
@@ -235,7 +299,7 @@ export default function ResiliationPage() {
             <Button onClick={copy} size="md">Copier la lettre</Button>
             <Button onClick={download} variant="secondary" size="md">Télécharger (.txt)</Button>
             <Button onClick={saveLetter} variant="secondary" size="md" loading={saving}>
-              Sauvegarder dans mon espace
+              {guest ? 'Enregistrer sur cet appareil' : 'Sauvegarder dans mon espace'}
             </Button>
           </div>
           <p className="font-mono text-[11px] text-ink/50 tracking-wider text-center mt-4">

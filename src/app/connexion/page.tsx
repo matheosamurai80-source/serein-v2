@@ -5,6 +5,7 @@ import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { validateCredentials, friendlyAuthError } from '@/lib/auth/logic'
+import { migrateGuestData } from '@/lib/data/store'
 
 type Mode = 'signin' | 'signup'
 
@@ -21,6 +22,19 @@ export default function ConnexionPage() {
   const [busy, setBusy] = useState(false)
   const [needConfirm, setNeedConfirm] = useState(false)
 
+  // Les données saisies sans compte suivent l'utilisateur dans son espace.
+  const syncThenGo = async () => {
+    try {
+      const n = await migrateGuestData()
+      if (n > 0) {
+        toast.show(`${n} élément${n > 1 ? 's' : ''} de cet appareil transféré${n > 1 ? 's' : ''} dans votre espace ✓`)
+        setTimeout(() => { window.location.href = '/dashboard' }, 900)
+        return
+      }
+    } catch { /* la connexion reste valable même si la migration échoue */ }
+    window.location.href = '/dashboard'
+  }
+
   const submit = async () => {
     if (busy) return
     const v = validateCredentials(email, password)
@@ -34,14 +48,14 @@ export default function ConnexionPage() {
         const { data, error } = await supabase.auth.signUp(creds)
         if (error) throw new Error(error.message)
         if (data.session) {
-          window.location.href = '/dashboard'   // connecté directement
+          await syncThenGo()                       // connecté directement
         } else {
           setNeedConfirm(true)                     // confirmation e-mail requise
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword(creds)
         if (error) throw new Error(error.message)
-        window.location.href = '/dashboard'
+        await syncThenGo()
       }
     } catch (e) {
       toast.show(friendlyAuthError(e instanceof Error ? e.message : undefined))

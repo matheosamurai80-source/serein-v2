@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { SereinNav } from '@/components/ui/nav'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { listCommitments, listReminders } from '@/lib/data/store'
 import { serviceTypeToCategory, type ServiceType, type CommitmentFrequency, type Urgency } from '@/lib/commitments/logic'
 import { buildDashboardSummary, type DashCommitment, type DashReminder } from '@/lib/dashboard/logic'
 import { reminderTiming, daysUntil } from '@/lib/reminders/logic'
@@ -43,17 +43,10 @@ export default function DashboardPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const supabase = createSupabaseBrowserClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          const [{ data: c }, { data: r }] = await Promise.all([
-            supabase.from('commitments').select('id, name, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status'),
-            supabase.from('reminders').select('id, commitment_id, scheduled_for, status, message'),
-          ])
-          if (c) setCommitments(c as CommitmentRow[])
-          if (r) setReminders(r as DashReminder[])
-        }
-      } catch { /* env Supabase absente */ }
+        const [c, r] = await Promise.all([listCommitments(), listReminders()])
+        setCommitments(c as unknown as CommitmentRow[])
+        setReminders(r as unknown as DashReminder[])
+      } catch { /* stockage indisponible */ }
       setLoaded(true)
     })()
   }, [])
@@ -199,6 +192,7 @@ export default function DashboardPage() {
             { href: '/engagements', emoji: '📋', title: 'Engagements', desc: 'Suivre mes abonnements' },
             { href: '/rappels', emoji: '🔔', title: 'Rappels', desc: 'Être prévenu à temps' },
             { href: '/resiliation', emoji: '✉️', title: 'Lettre', desc: 'Générer une résiliation' },
+            { href: '/paniermalin', emoji: '🛒', title: 'PanierMalin', desc: 'Courses : prix & Nutri-Score' },
           ].map(x => (
             <a key={x.href} href={x.href} className="bg-surface border border-ink/10 rounded-2xl p-5 hover:border-sage/40 transition-colors">
               <span className="text-2xl block mb-2">{x.emoji}</span>
