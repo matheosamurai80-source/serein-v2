@@ -75,12 +75,17 @@
     <div id="listSuggs" class="hint" style="margin-top:8px"></div>
     <div id="listItems" style="margin-top:6px"><p class="empty">Votre liste est vide.</p></div>
     <div class="row">
-      <button id="listShare" style="flex:1">📤 Partager (famille)</button>
+      <button id="listShare" style="flex:1">📤 Partager (texte)</button>
       <button id="listWeek" class="ghost" title="Les articles 🔁 récurrents reviennent, les achats ponctuels cochés disparaissent">🔁 Nouvelle semaine</button>
     </div>
+    <div class="row">
+      <button id="famBtn" class="ghost" style="flex:1">👨‍👩‍👧 Synchro famille en direct</button>
+      <button id="famStop" class="del" style="display:none" title="désactiver la synchro sur ce téléphone">✕</button>
+    </div>
+    <p class="hint" id="famInfo" style="margin-top:4px"></p>
     <p class="hint" style="margin-top:8px">Touchez ⭐ pour rendre un article <strong>récurrent</strong> : il revient
-    automatiquement à chaque « nouvelle semaine ». « Partager » envoie la liste par SMS/WhatsApp — lisible par
-    toute la famille, sans installer quoi que ce soit.</p>
+    automatiquement à chaque « nouvelle semaine ». « Partager (texte) » envoie la liste par SMS/WhatsApp.
+    « Synchro famille » crée un lien : chacun coche depuis son téléphone et tout le monde voit la liste à jour.</p>
   </div>
 
   <div class="card">
@@ -94,7 +99,7 @@
 
 <script type="module">
 import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate } from './logic.mjs'
-import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory } from './listes.mjs'
+import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
 const status = (msg, err = false) => { $('status').textContent = msg; $('status').className = err ? 'err' : '' }
@@ -197,7 +202,7 @@ $('scanBtn').onclick = async () => {
 
 // ─── LISTE DE COURSES (partagée famille, récurrents) ───────────────────────
 let liste = JSON.parse(localStorage.getItem('pm.liste') ?? '[]')
-const saveListe = () => localStorage.setItem('pm.liste', JSON.stringify(liste))
+const saveListe = () => { localStorage.setItem('pm.liste', JSON.stringify(liste)); schedulePush() }
 
 function renderListe() {
   const box = $('listItems')
@@ -247,7 +252,77 @@ $('listShare').onclick = async () => {
   else { await navigator.clipboard.writeText(text); status('Liste copiée — collez-la dans SMS/WhatsApp.') }
 }
 
+// ─── SYNCHRO FAMILLE EN DIRECT (par code secret, via fonctions dédiées) ────
+// Chaque téléphone qui a le lien voit la même liste ; les modifications se
+// fusionnent (la plus récente gagne). Sans réseau, tout marche en local.
+const SB_URL = 'https://xfcrryjhxqjdkzsymlro.supabase.co'
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmY3JyeWpoeHFqZGt6c3ltbHJvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNDA3NTUsImV4cCI6MjA5MzgxNjc1NX0.5kBWzDomeqUfwZjQ-UhuOExK5ZWPMDATxXtqtKWSlnU'
+async function rpc(fn, body) {
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!r.ok) throw new Error('sync')
+  const txt = await r.text()
+  return txt ? JSON.parse(txt) : null
+}
+
+let shareCode = localStorage.getItem('pm.code') || ''
+const urlCode = normalizeShareCode(new URL(location.href).searchParams.get('liste') || '')
+if (urlCode && isValidShareCode(urlCode)) { shareCode = urlCode; localStorage.setItem('pm.code', shareCode) }
+
+let pushTimer = null
+function schedulePush() {
+  if (!shareCode) return
+  clearTimeout(pushTimer)
+  pushTimer = setTimeout(() => { rpc('pm_save_list', { p_code: shareCode, p_items: liste }).catch(() => {}) }, 600)
+}
+async function pullSync() {
+  if (!shareCode || document.hidden) return
+  try {
+    const remote = await rpc('pm_get_list', { p_code: shareCode })
+    if (Array.isArray(remote)) {
+      const merged = mergeLists(liste, remote)
+      if (!sameLists(merged, liste)) { liste = merged; localStorage.setItem('pm.liste', JSON.stringify(liste)); renderListe() }
+      if (!sameLists(merged, remote)) schedulePush()
+    } else {
+      schedulePush() // la liste n'existe pas encore côté serveur : on la crée
+    }
+  } catch { /* hors ligne : prochain essai dans 8 s */ }
+}
+setInterval(pullSync, 8000)
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pullSync() })
+
+function renderFam() {
+  $('famStop').style.display = shareCode ? '' : 'none'
+  $('famBtn').textContent = shareCode ? '👨‍👩‍👧 Inviter la famille (lien)' : '👨‍👩‍👧 Synchro famille en direct'
+  $('famInfo').textContent = shareCode
+    ? `Synchro activée · code ${shareCode} — la liste se met à jour sur tous les téléphones qui ont le lien.`
+    : ''
+}
+$('famBtn').onclick = async () => {
+  if (!shareCode) {
+    shareCode = genShareCode()
+    localStorage.setItem('pm.code', shareCode)
+    renderFam(); schedulePush()
+  }
+  const link = `https://serein-v2.vercel.app/paniermalin/index.html?liste=${shareCode}`
+  const text = `Rejoins notre liste de courses PanierMalin : ${link}`
+  if (navigator.share) { try { await navigator.share({ text }) } catch { /* partage annulé */ } }
+  else { await navigator.clipboard.writeText(link); status('Lien copié — envoyez-le à la famille.') }
+  pullSync()
+}
+$('famStop').onclick = () => {
+  shareCode = ''
+  localStorage.removeItem('pm.code')
+  renderFam()
+  status('Synchro désactivée sur ce téléphone (la liste locale reste).')
+}
+
+renderFam()
 renderListe()
+pullSync()
 
 // ─── PWA ────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')

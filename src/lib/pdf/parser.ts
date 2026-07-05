@@ -136,24 +136,56 @@ function parseDate(raw: string): string {
   return now.toISOString().slice(0, 10)
 }
 
+export interface ParseReport {
+  transactions: Omit<Transaction, 'id'>[]
+  /** Lignes qui ressemblent à des opérations mais n'ont pas été comprises */
+  unmatchedLines: string[]
+}
+
 export function parseTransactionsFromText(
   text: string,
   uploadId: string
 ): Omit<Transaction, 'id'>[] {
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  return parseStatement(text, uploadId).transactions
+}
+
+export function parseStatement(text: string, uploadId: string): ParseReport {
+  const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
+
+  // Certains PDF coupent une opération sur deux lignes :
+  //   « 04/01 PRLV SEPA »  puis  « NETFLIX INTERNATIONAL B.V. -13,49 »
+  // → on recolle une ligne sans montant avec la suivante.
+  const lines: string[] = []
+  for (let i = 0; i < rawLines.length; i++) {
+    const cur = rawLines[i]!
+    const hasAmount = AMOUNT_RE.test(cur); AMOUNT_RE.lastIndex = 0
+    const next = rawLines[i + 1]
+    if (!hasAmount && next && DATE_RE.test(cur) && !SKIP_RE.test(cur) && !DATE_RE.test(next)) {
+      lines.push(`${cur} ${next}`)
+      i++
+    } else {
+      lines.push(cur)
+    }
+  }
+
   const transactions: Omit<Transaction, 'id'>[] = []
+  const unmatchedLines: string[] = []
 
   for (const line of lines) {
     if (SKIP_RE.test(line)) continue
 
     const amounts = [...line.matchAll(AMOUNT_RE)]
-    if (amounts.length === 0) continue
+    if (amounts.length === 0) {
+      // Une date sans montant : probablement une opération mal comprise
+      if (DATE_RE.test(line) && line.length > 12) unmatchedLines.push(line)
+      continue
+    }
 
     // Colonne débit avant la colonne solde : signe « - » prioritaire, sinon
     // le premier montant de la ligne.
     const chosen = amounts.find(m => m[0].startsWith('-')) ?? amounts[0]!
     const amount = Math.abs(parseAmount(chosen[0]))
-    if (!(amount > 0) || amount > 10000) continue
+    if (!(amount > 0) || amount > 10000) { unmatchedLines.push(line); continue }
 
     const dateMatch = line.match(DATE_RE)
     const date = dateMatch?.[1] ? parseDate(dateMatch[1]) : new Date().toISOString().slice(0, 10)
@@ -163,7 +195,7 @@ export function parseTransactionsFromText(
     if (dateMatch?.[1]) label = label.replace(dateMatch[1], ' ')
     for (const m of amounts) label = label.replace(m[0], ' ')
     label = label.replace(/\b(eur|euros?)\b/gi, ' ').replace(/€/g, ' ').replace(/\s+/g, ' ').trim()
-    if (!label) continue
+    if (!label) { unmatchedLines.push(line); continue }
 
     const normalized = normalizeLabel(label)
     const { name: merchant, category } = resolveMerchant(normalized)
@@ -179,6 +211,6 @@ export function parseTransactionsFromText(
     })
   }
 
-  logger.info('PDF parsed', { lines: lines.length, transactions: transactions.length })
-  return transactions
+  logger.info('PDF parsed', { lines: lines.length, transactions: transactions.length, unmatched: unmatchedLines.length })
+  return { transactions, unmatchedLines: unmatchedLines.slice(0, 8) }
 }

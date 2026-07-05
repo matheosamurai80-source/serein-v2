@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
 import { listCommitments, addCommitments } from '@/lib/data/store'
-import { parseTransactionsFromText } from '@/lib/pdf/parser'
+import { parseStatement } from '@/lib/pdf/parser'
 import { scoreSubscriptions } from '@/lib/scoring/engine'
 import { buildSuggestions, analyseStats, type CommitmentSuggestion } from '@/lib/analyse/logic'
 import { extractPdfText } from '@/lib/pdf/browser'
@@ -29,6 +29,7 @@ export default function AnalysePage() {
   const [stats, setStats] = useState<ReturnType<typeof analyseStats> | null>(null)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [existingNames, setExistingNames] = useState<string[]>([])
+  const [unmatched, setUnmatched] = useState<string[]>([])
 
   useEffect(() => {
     void (async () => {
@@ -40,7 +41,8 @@ export default function AnalysePage() {
   }, [])
 
   const runAnalysis = (text: string) => {
-    const txs = parseTransactionsFromText(text, 'browser')
+    const { transactions: txs, unmatchedLines } = parseStatement(text, 'browser')
+    setUnmatched(unmatchedLines)
     if (!txs.length) {
       toast.show('Aucune transaction reconnue — vérifiez que le texte contient dates et montants.')
       return
@@ -177,6 +179,21 @@ export default function AnalysePage() {
                 </label>
               ))}
             </div>
+
+            {unmatched.length > 0 && (
+              <div className="w-full bg-surface border border-ink/10 rounded-2xl p-4 mb-4" data-testid="unmatched">
+                <p className="text-[12.5px] text-ink/70 leading-[1.55] mb-2">
+                  ⚠️ {unmatched.length} ligne{unmatched.length > 1 ? 's' : ''} du relevé n&apos;a{unmatched.length > 1 ? 'ont' : ''} pas
+                  été comprise{unmatched.length > 1 ? 's' : ''}. Copiez-les et envoyez-les nous : la détection s&apos;améliorera.
+                </p>
+                <pre className="text-[11px] font-mono text-ink/50 whitespace-pre-wrap leading-[1.6] max-h-32 overflow-y-auto">{unmatched.join('\n')}</pre>
+                <button
+                  onClick={() => { void navigator.clipboard.writeText(unmatched.join('\n')); toast.show('Lignes copiées ✓') }}
+                  className="text-[12px] text-moss underline mt-1">
+                  Copier ces lignes
+                </button>
+              </div>
+            )}
 
             <Button onClick={addSelected} loading={adding} data-testid="add-selected">
               Suivre la sélection dans mes engagements →
