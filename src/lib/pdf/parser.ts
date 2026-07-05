@@ -2,13 +2,28 @@ import type { Transaction, TransactionCategory } from '@/types'
 import { logger } from '@/lib/logger'
 
 // ─── MERCHANT MAP ──────────────────────────────────────────────────────────
+// L'ordre compte : les clés spécifiques AVANT les génériques
+// (« orange bleue » avant « orange », « apple tv » avant « apple »).
 const MERCHANT_MAP: Record<string, { name: string; category: TransactionCategory }> = {
+  // Streaming / divertissement
   netflix:          { name: 'Netflix',              category: 'streaming' },
   spotify:          { name: 'Spotify',              category: 'streaming' },
   disney:           { name: 'Disney+',              category: 'streaming' },
   'amazon prime':   { name: 'Amazon Prime',         category: 'streaming' },
+  'prime video':    { name: 'Amazon Prime',         category: 'streaming' },
   'canal+':         { name: 'Canal+',               category: 'streaming' },
+  canalplus:        { name: 'Canal+',               category: 'streaming' },
   deezer:           { name: 'Deezer',               category: 'streaming' },
+  youtube:          { name: 'YouTube Premium',      category: 'streaming' },
+  dazn:             { name: 'DAZN',                 category: 'streaming' },
+  paramount:        { name: 'Paramount+',           category: 'streaming' },
+  crunchyroll:      { name: 'Crunchyroll',          category: 'streaming' },
+  audible:          { name: 'Audible',              category: 'streaming' },
+  'apple tv':       { name: 'Apple TV+',            category: 'streaming' },
+  'apple music':    { name: 'Apple Music',          category: 'streaming' },
+  // Logiciels / apps
+  icloud:           { name: 'iCloud+',              category: 'saas' },
+  'apple.com':      { name: 'Apple (services)',     category: 'saas' },
   notion:           { name: 'Notion',               category: 'saas' },
   adobe:            { name: 'Adobe Creative Cloud', category: 'saas' },
   openai:           { name: 'ChatGPT Plus',         category: 'saas' },
@@ -17,25 +32,63 @@ const MERCHANT_MAP: Record<string, { name: string; category: TransactionCategory
   dropbox:          { name: 'Dropbox',              category: 'saas' },
   'google one':     { name: 'Google One',           category: 'saas' },
   'microsoft 365':  { name: 'Microsoft 365',        category: 'saas' },
+  // Salle de sport (AVANT télécom : « orange bleue » ≠ « orange »)
+  'orange bleue':   { name: "L'Orange Bleue",       category: 'fitness' },
+  'basic fit':      { name: 'Basic-Fit',            category: 'fitness' },
+  'basic-fit':      { name: 'Basic-Fit',            category: 'fitness' },
+  basicfit:         { name: 'Basic-Fit',            category: 'fitness' },
+  'fitness park':   { name: 'Fitness Park',         category: 'fitness' },
+  keepcool:         { name: 'Keepcool',             category: 'fitness' },
+  'keep cool':      { name: 'Keepcool',             category: 'fitness' },
+  neoness:          { name: 'Neoness',              category: 'fitness' },
+  // Télécom
+  sosh:             { name: 'Sosh',                 category: 'telecom' },
   orange:           { name: 'Orange',               category: 'telecom' },
+  'red by sfr':     { name: 'RED by SFR',           category: 'telecom' },
   sfr:              { name: 'SFR',                  category: 'telecom' },
-  free:             { name: 'Free',                 category: 'telecom' },
+  'b you':          { name: 'B&You',                category: 'telecom' },
+  byou:             { name: 'B&You',                category: 'telecom' },
   bouygues:         { name: 'Bouygues Telecom',     category: 'telecom' },
+  bouygtel:         { name: 'Bouygues Telecom',     category: 'telecom' },
+  free:             { name: 'Free',                 category: 'telecom' },
+  'la poste mobile': { name: 'La Poste Mobile',     category: 'telecom' },
+  prixtel:          { name: 'Prixtel',              category: 'telecom' },
+  'nrj mobile':     { name: 'NRJ Mobile',           category: 'telecom' },
+  // Assurance / mutuelle
   axa:              { name: 'AXA',                  category: 'insurance' },
   maif:             { name: 'MAIF',                 category: 'insurance' },
+  macif:            { name: 'MACIF',                category: 'insurance' },
+  matmut:           { name: 'Matmut',               category: 'insurance' },
+  gmf:              { name: 'GMF',                  category: 'insurance' },
+  maaf:             { name: 'MAAF',                 category: 'insurance' },
+  mma:              { name: 'MMA',                  category: 'insurance' },
+  groupama:         { name: 'Groupama',             category: 'insurance' },
   allianz:          { name: 'Allianz',              category: 'insurance' },
+  'direct assurance': { name: 'Direct Assurance',   category: 'insurance' },
+  'harmonie mutuelle': { name: 'Harmonie Mutuelle', category: 'insurance' },
+  mgen:             { name: 'MGEN',                 category: 'insurance' },
   alan:             { name: 'Alan',                 category: 'insurance' },
-  'basic fit':      { name: 'Basic Fit',            category: 'fitness' },
-  neoness:          { name: 'Neoness',              category: 'fitness' },
+  luko:             { name: 'Luko',                 category: 'insurance' },
+  // Énergie / eau
+  totalenergies:    { name: 'TotalEnergies',        category: 'utility' },
+  'total direct energie': { name: 'TotalEnergies',  category: 'utility' },
   edf:              { name: 'EDF',                  category: 'utility' },
   engie:            { name: 'Engie',                category: 'utility' },
+  ekwateur:         { name: 'Ekwateur',             category: 'utility' },
+  'mint energie':   { name: 'Mint Énergie',         category: 'utility' },
+  'ohm energie':    { name: 'Ohm Énergie',          category: 'utility' },
+  wekiwi:           { name: 'Wekiwi',               category: 'utility' },
+  eni:              { name: 'Eni',                  category: 'utility' },
+  veolia:           { name: 'Veolia',               category: 'utility' },
+  suez:             { name: 'Suez',                 category: 'utility' },
+  saur:             { name: 'Saur',                 category: 'utility' },
 }
 
 // ─── NORMALIZE ─────────────────────────────────────────────────────────────
 function normalizeLabel(raw: string): string {
   return raw
     .toLowerCase()
-    .replace(/[^a-z0-9\s\-\.]/g, ' ')
+    .replace(/[^a-z0-9\s\-\.+]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -44,33 +97,43 @@ function resolveMerchant(label: string): { name: string; category: TransactionCa
   for (const [key, value] of Object.entries(MERCHANT_MAP)) {
     if (label.includes(key)) return value
   }
-  const words = label.split(' ').filter(w => w.length > 2)
+  // Repli : premier mot « utile » du libellé, sans les préfixes bancaires
+  const words = label
+    .replace(/\b(prlv|prelevement|sepa|carte|cb|vir|virement|paiement|achat|echeance|de|du)\b/g, ' ')
+    .split(/\s+/)
+    .filter(w => w.length > 2)
   const name = words[0] ? words[0].charAt(0).toUpperCase() + words[0].slice(1) : 'Inconnu'
   return { name, category: 'other' }
 }
 
 // ─── PARSE PDF TEXT ────────────────────────────────────────────────────────
-// Pattern: date + amount + label on each line
-// Handles French bank statement formats
-const LINE_PATTERNS = [
-  // DD/MM/YYYY ... -XX,XX ... label
-  /(\d{2}[/\-.]\d{2}[/\-.]\d{2,4})\s+(.+?)\s+([-+]?\d+[,\.]\d{2})\s*$/,
-  // label ... -XX,XX
-  /^(.+?)\s+([-+]?\d+[,\.]\d{2})\s*$/,
-]
+// Objectif : encaisser les VRAIS formats de relevés français —
+//   « 05/01/2026 PRLV SEPA NETFLIX.COM -17,99 »
+//   « CARTE 04.01 SPOTIFY AB STOCKHOLM 10,99 EUR »
+//   « PRELEVEMENT ORANGE SA 39,99 1 234,56 » (colonne solde en fin de ligne)
+//   « 12/01 NETFLIX.COM 13.49 » (décimales à point, date sans année)
+
+const DATE_RE = /\b(\d{1,2}[\/.\-]\d{1,2}(?:[\/.\-]\d{2,4})?)\b/
+// Montant : décimales à virgule (avec séparateurs de milliers espace/point)
+// ou à point — sans jamais avaler un fragment de date (« 13.04.26 »).
+const AMOUNT_RE = /[-+]?\d{1,3}(?:[  .]\d{3})*,\d{2}(?!\d)|[-+]?\d+\.\d{2}(?![\d\/.\-])/g
+
+// Lignes de relevé qui ne sont pas des opérations
+const SKIP_RE = /^(solde|total|encours|ancien|nouveau|date|libell|cumul|frais bancaires annuels|releve|relevé)/i
 
 function parseAmount(raw: string): number {
-  return parseFloat(raw.replace(',', '.').replace(/\s/g, ''))
+  return parseFloat(raw.replace(/[  ]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'))
 }
 
 function parseDate(raw: string): string {
   const parts = raw.split(/[/\-.]/)
-  if (parts.length === 3) {
-    const [d, m, y] = parts as [string, string, string]
-    const year = y.length === 2 ? `20${y}` : y
-    return `${year}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`
+  const now = new Date()
+  if (parts.length >= 2) {
+    const [d, m, y] = parts as [string, string, string | undefined]
+    const year = !y ? String(now.getFullYear()) : y.length === 2 ? `20${y}` : y
+    return `${year}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
   }
-  return new Date().toISOString().split('T')[0] ?? ''
+  return now.toISOString().slice(0, 10)
 }
 
 export function parseTransactionsFromText(
@@ -81,32 +144,39 @@ export function parseTransactionsFromText(
   const transactions: Omit<Transaction, 'id'>[] = []
 
   for (const line of lines) {
-    for (const pattern of LINE_PATTERNS) {
-      const match = line.match(pattern)
-      if (!match) continue
+    if (SKIP_RE.test(line)) continue
 
-      const hasDate = match.length === 4
-      const rawDate   = hasDate ? (match[1] ?? '') : new Date().toISOString().split('T')[0] ?? ''
-      const rawLabel  = hasDate ? (match[2] ?? '') : (match[1] ?? '')
-      const rawAmount = hasDate ? (match[3] ?? '0') : (match[2] ?? '0')
+    const amounts = [...line.matchAll(AMOUNT_RE)]
+    if (amounts.length === 0) continue
 
-      const amount = Math.abs(parseAmount(rawAmount))
-      if (amount <= 0 || amount > 10000) continue
+    // Colonne débit avant la colonne solde : signe « - » prioritaire, sinon
+    // le premier montant de la ligne.
+    const chosen = amounts.find(m => m[0].startsWith('-')) ?? amounts[0]!
+    const amount = Math.abs(parseAmount(chosen[0]))
+    if (!(amount > 0) || amount > 10000) continue
 
-      const normalized = normalizeLabel(rawLabel)
-      const { name: merchant, category } = resolveMerchant(normalized)
+    const dateMatch = line.match(DATE_RE)
+    const date = dateMatch?.[1] ? parseDate(dateMatch[1]) : new Date().toISOString().slice(0, 10)
 
-      transactions.push({
-        upload_id:        uploadId,
-        date:             hasDate ? parseDate(rawDate) : rawDate,
-        amount,
-        label:            rawLabel,
-        normalized_label: normalized,
-        merchant,
-        category,
-      })
-      break
-    }
+    // Libellé = la ligne sans la date, sans le(s) montant(s), sans la devise
+    let label = line
+    if (dateMatch?.[1]) label = label.replace(dateMatch[1], ' ')
+    for (const m of amounts) label = label.replace(m[0], ' ')
+    label = label.replace(/\b(eur|euros?)\b/gi, ' ').replace(/€/g, ' ').replace(/\s+/g, ' ').trim()
+    if (!label) continue
+
+    const normalized = normalizeLabel(label)
+    const { name: merchant, category } = resolveMerchant(normalized)
+
+    transactions.push({
+      upload_id: uploadId,
+      date,
+      amount,
+      label,
+      normalized_label: normalized,
+      merchant,
+      category,
+    })
   }
 
   logger.info('PDF parsed', { lines: lines.length, transactions: transactions.length })

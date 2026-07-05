@@ -13,6 +13,7 @@ import {
   type ServiceType, type CommitmentFrequency, type Urgency,
 } from '@/lib/commitments/logic'
 import { unikAdviceFor } from '@/lib/unik/logic'
+import { offerLineFor } from '@/lib/offres/logic'
 
 interface Commitment {
   id: string
@@ -222,6 +223,7 @@ export default function EngagementsPage() {
           const deadline = effectiveDeadline(c)
           const monthly = monthlyEquivalent(c.amount, c.frequency)
           const advice = unikAdviceFor(c)
+          const offer = c.status === 'active' ? offerLineFor(c) : null
           return (
             <div key={c.id} className="bg-surface border border-ink/10 rounded-2xl p-5" data-testid="commitment">
               <div className="flex items-start justify-between gap-3 mb-2">
@@ -242,6 +244,11 @@ export default function EngagementsPage() {
               {advice && (
                 <p className="text-[12.5px] text-ink/70 leading-[1.55] bg-sage/7 border border-sage/15 rounded-xl px-3.5 py-2.5 mt-2" data-testid="unik-advice">
                   <span className="font-semibold text-moss">Unik · </span>{advice.text}
+                </p>
+              )}
+              {offer && (
+                <p className="text-[12.5px] text-ink/70 leading-[1.55] bg-amber/8 border border-amber/20 rounded-xl px-3.5 py-2.5 mt-2" data-testid="offer-line">
+                  <span className="font-semibold text-amber">💡 Offre · </span>{offer}
                 </p>
               )}
               <div className="flex flex-wrap gap-2 mt-3">
