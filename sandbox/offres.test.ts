@@ -5,7 +5,7 @@
  * « pas de proposition d'offre… vous payez 5,99 chez Orange, payez 2 chez Free ».
  * Lancer : npm run test:sandbox
  */
-import { parseTransactionsFromText } from '@/lib/pdf/parser'
+import { parseTransactionsFromText, parseStatement } from '@/lib/pdf/parser'
 import { scoreSubscriptions } from '@/lib/scoring/engine'
 import { buildSuggestions } from '@/lib/analyse/logic'
 import { compareToMarket, energyAdvice, offerLineFor, probablyFreeToSwitch } from '@/lib/offres/logic'
@@ -42,6 +42,14 @@ check('Parseur : Orange 5,99 malgré le solde 1 493,33 sur la ligne',
   String(txs.find(t => t.merchant === 'Orange')?.amount))
 check('Parseur : montants à séparateur de milliers non confondus',
   !txs.some(t => t.amount > 2000 && t.merchant !== 'Salaire'))
+
+// Opération coupée sur deux lignes (PDF Crédit Agricole & co)
+const deuxLignes = parseStatement('04/01 PRLV SEPA\nNETFLIX INTERNATIONAL B.V. -13,49', 'test')
+check('Parseur : opération sur 2 lignes recollée (date puis libellé+montant)',
+  deuxLignes.transactions[0]?.merchant === 'Netflix' && deuxLignes.transactions[0]?.amount === 13.49,
+  JSON.stringify(deuxLignes.transactions[0]))
+check('Parseur : ligne datée sans montant signalée comme non comprise',
+  parseStatement('07/01/2026 PRLV MYSTERIEUX SANS MONTANT\nrien', 'test').unmatchedLines.length === 1)
 
 const { subscriptions } = scoreSubscriptions(txs, 'test')
 const names = subscriptions.map(s => s.merchant)
@@ -102,10 +110,26 @@ check('Énergie : renvoie vers le comparateur public officiel (energie-info)',
   energyAdvice(edf)?.includes('energie-info') === true)
 check('Énergie : rappelle la résiliation sans frais L.224-15',
   energyAdvice(edf)?.includes('L.224-15') === true)
-check('offerLineFor : télécom → comparaison, énergie → repère, assurance → rien',
-  offerLineFor(orange599) !== null
-  && offerLineFor(edf) !== null
-  && offerLineFor({ service_type: 'insurance', amount: 42, frequency: 'monthly' }) === null)
+check('offerLineFor : télécom → comparaison, énergie → repère',
+  offerLineFor(orange599) !== null && offerLineFor(edf) !== null)
+
+// ─── 4. STREAMING / SALLE DE SPORT / ASSURANCE ──────────────────────────────
+const netflix = compareToMarket({ service_type: 'streaming', amount: 13.49, frequency: 'monthly' }, '2026-07-05')
+check('Streaming 13,49 € → formule avec pub à 5,99 € (90 €/an d\'écart)',
+  netflix?.best.monthly === 5.99 && netflix.savingAnnual === 90,
+  JSON.stringify([netflix?.best, netflix?.savingAnnual]))
+check('Streaming déjà à 5,99 € → rien à proposer',
+  compareToMarket({ service_type: 'streaming', amount: 5.99, frequency: 'monthly' }) === null)
+
+const gym = compareToMarket({ service_type: 'gym', amount: 45, frequency: 'monthly' }, '2026-07-05')
+check('Salle à 45 € → Basic-Fit ~25 € proposé', gym?.best.provider === 'Basic-Fit' && gym.savingMonthly > 19)
+
+const assurance = offerLineFor({ service_type: 'insurance', amount: 42, frequency: 'monthly' })
+check('Assurance : loi Hamon + devis à garanties égales, sans chiffre promis',
+  Boolean(assurance?.includes('Hamon') && assurance.includes('garanties égales') && !assurance.includes('€/an')))
+check('Loyer / crédit : aucune leçon donnée',
+  offerLineFor({ service_type: 'rent', amount: 650, frequency: 'monthly' }) === null
+  && offerLineFor({ service_type: 'loan', amount: 300, frequency: 'monthly' }) === null)
 
 console.log(failures === 0 ? '\n✅ TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)

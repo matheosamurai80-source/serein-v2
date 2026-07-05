@@ -204,6 +204,10 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Moteur (`scoring/engine.ts`) : repli 1 occurrence — marchand d'abonnement
   connu OU libellé récurrent (PRLV, échéance, cotisation, loyer) → suggéré
   avec confiance réduite ; la boulangerie en CB reste exclue.
+- **v2 (même jour)** : opérations coupées sur 2 lignes recollées (PDF Crédit
+  Agricole & co) + `parseStatement` remonte les « lignes non comprises »,
+  affichées sur /analyse avec bouton copier → l'utilisateur peut les envoyer
+  pour améliorer la détection.
 
 ### Offres de référence — « vous payez X, ça existe à Y » (livré 2026-07-05)
 - `src/lib/offres/logic.ts` : forfaits mobiles et box fibre d'entrée de gamme
@@ -216,6 +220,10 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Limite ORIAS : information uniquement, zéro commission, « c'est vous qui
   décidez » dans chaque message. Affiché sur les cartes /engagements
   (ligne « 💡 Offre »).
+- **v2 (même jour)** : streaming (formule avec pub ~5,99 € si l'abonnement
+  coûte plus), salle de sport (Basic-Fit ~25 €), assurance (loi Hamon +
+  « 2-3 devis à garanties égales », jamais de chiffre promis). Loyer,
+  crédit, impôts : jamais de leçon.
 
 ### Unik v1 — conseil légal par engagement (livré 2026-07-04)
 - `src/lib/unik/logic.ts` : conseil court et juste par type de service
@@ -344,8 +352,17 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   partage famille en texte (navigator.share / presse-papiers, lisible sans
   app), suggestions « à racheter ? » depuis l'inventaire scanné (≥ 2 achats).
   Service worker passé en v3 pour propager la mise à jour.
+- **Synchro famille EN DIRECT (2026-07-05, v2)** : bouton « 👨‍👩‍👧 Synchro
+  famille » → code secret 8 caractères + lien à partager ; chaque téléphone
+  qui a le lien voit et modifie la même liste (tirage toutes les 8 s,
+  fusion « la modification la plus récente gagne », pierres tombales pour
+  les suppressions). Côté Supabase : table `paniermalin_lists` VERROUILLÉE
+  (RLS sans policy) accessible uniquement via les fonctions `pm_get_list` /
+  `pm_save_list` (security definer, code exigé — impossible d'énumérer les
+  listes). Hors ligne : tout continue en local. Service worker v4.
 | 2026-07-04 | Abonopack v1 : score de vigilance explicable + économies doublons sur le dashboard | 102/102 PASS sandbox, 7/7 PASS navigateur, build vert |
 | 2026-07-04 | Analyse de relevé 100 % navigateur (`/analyse`, PDF + collage) + Unik v1 (conseil légal par engagement) | 116/116 PASS sandbox, 8/8 PASS navigateur, build vert |
 | 2026-07-05 | Corrections retours : mode invité local (ajouts qui marchent sans réglage Supabase, migration à la connexion), lettres au bon terme par catégorie, annuaire 17 prestataires + lecture de contrat PDF + expéditeur mémorisé, hub racine Serein + PanierMalin | 146/146 PASS sandbox, 18/18 PASS navigateur (Supabase bloqué), build + lint verts |
 | 2026-07-05 | Fix critique : la prod compilait avec l'ANCIEN projet Supabase (variables Vercel obsolètes) → config officielle inscrite dans le code (`supabase/config.ts`) + repli mémoire si localStorage bloqué | bundle en ligne vérifié (bon projet, ancien absent), 18/18 PASS navigateur |
 | 2026-07-05 | Détection sur relevé d'1 mois (parseur réel + repli 1 occurrence) + Offres de référence télécom/énergie (ligne 💡 sur /engagements) + PanierMalin listes (courses, récurrents, partage famille) | 183/183 PASS sandbox, 13/13 PASS navigateur, build + lint verts |
+| 2026-07-05 | a-b-c : parseur 2 lignes + « lignes non comprises » sur /analyse · offres streaming/sport/assurance · PanierMalin synchro famille en direct (code secret, fusion multi-téléphones, table verrouillée) | 197/197 PASS sandbox, 8/8 PASS navigateur (2 contextes synchronisés), build vert |
