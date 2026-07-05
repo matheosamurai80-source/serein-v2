@@ -1,7 +1,7 @@
 // PanierMalin — service worker : l'app s'ouvre même sans réseau
 // (les données produits, elles, nécessitent le réseau).
-const CACHE = 'paniermalin-v2'
-const SHELL = ['index.html', 'landing.html', 'logic.mjs', 'manifest.webmanifest', 'icon.svg']
+const CACHE = 'paniermalin-v3'
+const SHELL = ['index.html', 'landing.html', 'logic.mjs', 'listes.mjs', 'manifest.webmanifest', 'icon.svg']
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()))

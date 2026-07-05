@@ -127,8 +127,25 @@ export function scoreSubscriptions(
 
   for (const [, txs] of groups) {
     if (!txs[0]) continue
-    const rec = detectRecurrence(txs)
-    if (!rec || rec.confidence < 0.3) continue
+    let rec = detectRecurrence(txs)
+    if (!rec || rec.confidence < 0.3) {
+      // Repli « relevé d'un seul mois » : la plupart des relevés couvrent 30
+      // jours, chaque abonnement n'y apparaît qu'UNE fois. On suggère quand
+      // même si le marchand est un fournisseur d'abonnement connu, ou si le
+      // libellé est un prélèvement récurrent (PRLV, échéance, cotisation…).
+      const known = txs[0].category !== 'other'
+      const recurringHint = /prlv|prelevement|abonnement|echeance|cotisation|mensualit|loyer/
+        .test(txs[0].normalized_label)
+      if (!known && !recurringHint) continue
+      const sorted = [...txs].sort((a, b) => a.date.localeCompare(b.date))
+      rec = {
+        frequency: 'monthly',
+        avgAmount: Math.round(txs.reduce((s, t) => s + t.amount, 0) / txs.length * 100) / 100,
+        confidence: known && recurringHint ? 0.5 : 0.35,
+        firstSeen: sorted[0]?.date ?? '',
+        lastSeen: sorted[sorted.length - 1]?.date ?? '',
+      }
+    }
 
     const firstDate = new Date(rec.firstSeen)
     const ageMonths = Math.floor(daysBetween(firstDate, new Date()) / 30)

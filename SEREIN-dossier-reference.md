@@ -193,6 +193,30 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - `src/lib/analyse/logic.ts` testé en sandbox (lignes PDF, suggestions,
   dédoublonnage, stats).
 
+### Détection sur relevé d'UN mois (corrigé 2026-07-05)
+- Retour utilisateur : « la lecture du relevé ne détecte pas les abonnements ».
+  Cause : le moteur exigeait ≥ 2 occurrences espacées d'un mois — or un relevé
+  couvre un seul mois, chaque abonnement n'y figure qu'une fois → zéro détection.
+- Parseur réécrit (`src/lib/pdf/parser.ts`) : dates sans année (« 05.01 »),
+  décimales point ou virgule, séparateurs de milliers, colonne solde en fin de
+  ligne (le débit est retenu, pas le solde), lignes Solde/Total ignorées,
+  ~65 marchands FR reconnus (streaming, télécom, assurance, énergie, sport).
+- Moteur (`scoring/engine.ts`) : repli 1 occurrence — marchand d'abonnement
+  connu OU libellé récurrent (PRLV, échéance, cotisation, loyer) → suggéré
+  avec confiance réduite ; la boulangerie en CB reste exclue.
+
+### Offres de référence — « vous payez X, ça existe à Y » (livré 2026-07-05)
+- `src/lib/offres/logic.ts` : forfaits mobiles et box fibre d'entrée de gamme
+  (tarifs INDICATIFS 2026 : Free 2 €, RED/B&You 7,99 €, box ~20 €) ;
+  `compareToMarket` chiffre l'économie €/mois et €/an, détecte « probablement
+  plus engagé » (échéance passée ou inconnue) vs « vérifiez votre engagement ».
+- Énergie : pas de fausse promesse (le montant dépend de la consommation) →
+  repère ~0,20 €/kWh + renvoi vers comparateur.energie-info.fr (public,
+  neutre) + rappel L.224-15.
+- Limite ORIAS : information uniquement, zéro commission, « c'est vous qui
+  décidez » dans chaque message. Affiché sur les cartes /engagements
+  (ligne « 💡 Offre »).
+
 ### Unik v1 — conseil légal par engagement (livré 2026-07-04)
 - `src/lib/unik/logic.ts` : conseil court et juste par type de service
   (télécom → L.224-39 · énergie/eau → L.224-15 · assurance → Hamon/Chatel ·
@@ -314,7 +338,14 @@ pas déjà fait.
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+- **Listes v1 (2026-07-05)** : liste de courses (`listes.mjs`, logique pure
+  testée 15/15) — ajout dédoublonné, cocher, ⭐ récurrent, « Nouvelle
+  semaine » (les récurrents reviennent, les achats ponctuels sortent),
+  partage famille en texte (navigator.share / presse-papiers, lisible sans
+  app), suggestions « à racheter ? » depuis l'inventaire scanné (≥ 2 achats).
+  Service worker passé en v3 pour propager la mise à jour.
 | 2026-07-04 | Abonopack v1 : score de vigilance explicable + économies doublons sur le dashboard | 102/102 PASS sandbox, 7/7 PASS navigateur, build vert |
 | 2026-07-04 | Analyse de relevé 100 % navigateur (`/analyse`, PDF + collage) + Unik v1 (conseil légal par engagement) | 116/116 PASS sandbox, 8/8 PASS navigateur, build vert |
 | 2026-07-05 | Corrections retours : mode invité local (ajouts qui marchent sans réglage Supabase, migration à la connexion), lettres au bon terme par catégorie, annuaire 17 prestataires + lecture de contrat PDF + expéditeur mémorisé, hub racine Serein + PanierMalin | 146/146 PASS sandbox, 18/18 PASS navigateur (Supabase bloqué), build + lint verts |
 | 2026-07-05 | Fix critique : la prod compilait avec l'ANCIEN projet Supabase (variables Vercel obsolètes) → config officielle inscrite dans le code (`supabase/config.ts`) + repli mémoire si localStorage bloqué | bundle en ligne vérifié (bon projet, ancien absent), 18/18 PASS navigateur |
+| 2026-07-05 | Détection sur relevé d'1 mois (parseur réel + repli 1 occurrence) + Offres de référence télécom/énergie (ligne 💡 sur /engagements) + PanierMalin listes (courses, récurrents, partage famille) | 183/183 PASS sandbox, 13/13 PASS navigateur, build + lint verts |

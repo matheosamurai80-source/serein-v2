@@ -67,6 +67,23 @@
   </div>
 
   <div class="card">
+    <h2>🛒 Ma liste de courses <span class="hint" id="listCount"></span></h2>
+    <div class="row" style="margin-top:6px">
+      <input type="text" id="listInput" placeholder="Ajouter : lait, pain, piles…">
+      <button id="listAdd" class="ghost">+</button>
+    </div>
+    <div id="listSuggs" class="hint" style="margin-top:8px"></div>
+    <div id="listItems" style="margin-top:6px"><p class="empty">Votre liste est vide.</p></div>
+    <div class="row">
+      <button id="listShare" style="flex:1">📤 Partager (famille)</button>
+      <button id="listWeek" class="ghost" title="Les articles 🔁 récurrents reviennent, les achats ponctuels cochés disparaissent">🔁 Nouvelle semaine</button>
+    </div>
+    <p class="hint" style="margin-top:8px">Touchez ⭐ pour rendre un article <strong>récurrent</strong> : il revient
+    automatiquement à chaque « nouvelle semaine ». « Partager » envoie la liste par SMS/WhatsApp — lisible par
+    toute la famille, sans installer quoi que ce soit.</p>
+  </div>
+
+  <div class="card">
     <h2>Mon inventaire <span class="hint" id="count"></span></h2>
     <div id="basket"><p class="empty">Scannez vos produits : l&rsquo;app s&rsquo;en souvient.</p></div>
     <p class="hint" style="margin-top:10px">Trié du meilleur au moins bon (Nutri-Score, puis calories). Ajoutez le prix en rayon :
@@ -77,6 +94,7 @@
 
 <script type="module">
 import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate } from './logic.mjs'
+import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
 const status = (msg, err = false) => { $('status').textContent = msg; $('status').className = err ? 'err' : '' }
@@ -124,6 +142,7 @@ function render() {
     div.querySelector('.del').onclick = () => { items = items.filter(i => i.ean !== p.ean); save(); render() }
     box.appendChild(div)
   }
+  try { renderListe() } catch { /* liste pas encore initialisée au premier rendu */ }
 }
 
 // ─── AJOUT D'UN PRODUIT ─────────────────────────────────────────────────────
@@ -175,6 +194,60 @@ $('scanBtn').onclick = async () => {
     await new Promise(r => setTimeout(r, 180))
   }
 }
+
+// ─── LISTE DE COURSES (partagée famille, récurrents) ───────────────────────
+let liste = JSON.parse(localStorage.getItem('pm.liste') ?? '[]')
+const saveListe = () => localStorage.setItem('pm.liste', JSON.stringify(liste))
+
+function renderListe() {
+  const box = $('listItems')
+  const pending = pendingCount(liste)
+  $('listCount').textContent = liste.length ? `(${pending} à prendre)` : ''
+  if (!liste.length) { box.innerHTML = '<p class="empty">Votre liste est vide.</p>' }
+  else {
+    box.innerHTML = ''
+    for (const it of sortList(liste)) {
+      const div = document.createElement('div')
+      div.className = 'prod'
+      div.innerHTML = `
+        <input type="checkbox" ${it.done ? 'checked' : ''} aria-label="acheté" style="width:22px;height:22px;accent-color:var(--green)">
+        <div class="pinfo"><div class="pname" style="${it.done ? 'text-decoration:line-through;color:var(--dim)' : ''}">${it.name}${it.recurrent ? '<span class="tag tag-rec">🔁 récurrent</span>' : ''}</div></div>
+        <button class="del" aria-label="récurrent" style="color:${it.recurrent ? '#B98A00' : 'var(--dim)'};font-size:17px">${it.recurrent ? '⭐' : '☆'}</button>
+        <button class="del" aria-label="retirer">✕</button>`
+      const [star, del] = div.querySelectorAll('button')
+      div.querySelector('input').onchange = () => { liste = toggleDone(liste, it.id); saveListe(); renderListe() }
+      star.onclick = () => { liste = toggleRecurrent(liste, it.id); saveListe(); renderListe() }
+      del.onclick = () => { liste = removeItem(liste, it.id); saveListe(); renderListe() }
+      box.appendChild(div)
+    }
+  }
+  // Suggestions « à racheter ? » depuis l'inventaire scanné
+  const suggs = suggestFromInventory(items, liste).slice(0, 4)
+  const sbox = $('listSuggs')
+  sbox.innerHTML = ''
+  if (suggs.length) {
+    sbox.append('À racheter ? ')
+    for (const name of suggs) {
+      const b = document.createElement('button')
+      b.className = 'ghost'
+      b.style.cssText = 'padding:5px 10px;font-size:12.5px;margin:2px 4px 2px 0;border-radius:99px'
+      b.textContent = `+ ${name}`
+      b.onclick = () => { liste = addItem(liste, name, { recurrent: true }); saveListe(); renderListe() }
+      sbox.appendChild(b)
+    }
+  }
+}
+
+$('listAdd').onclick = () => { liste = addItem(liste, $('listInput').value); saveListe(); renderListe(); $('listInput').value = '' }
+$('listInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('listAdd').click() })
+$('listWeek').onclick = () => { liste = resetWeek(liste); saveListe(); renderListe(); status('Nouvelle semaine : les récurrents 🔁 sont de retour dans la liste.') }
+$('listShare').onclick = async () => {
+  const text = shareText(liste, 'https://serein-v2.vercel.app/paniermalin')
+  if (navigator.share) { try { await navigator.share({ text }) } catch { /* partage annulé */ } }
+  else { await navigator.clipboard.writeText(text); status('Liste copiée — collez-la dans SMS/WhatsApp.') }
+}
+
+renderListe()
 
 // ─── PWA ────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
