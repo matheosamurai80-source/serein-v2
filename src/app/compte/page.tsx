@@ -116,6 +116,24 @@ export default function ComptePage() {
               )}
             </div>
 
+            {/* Export RGPD (portabilité) — compte connecté uniquement */}
+            {email && (
+              <div className="w-full bg-surface border border-ink/10 rounded-2xl p-5">
+                <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-2">Portabilité (RGPD)</p>
+                <p className="text-sm text-ink/80 leading-[1.6] mb-3">
+                  Téléchargez vos engagements et vos services dans un fichier CSV lisible
+                  (Excel, LibreOffice…). Vos données vous appartiennent.
+                </p>
+                <a
+                  href="/api/export-csv"
+                  data-testid="export-csv"
+                  className="inline-block text-[13px] font-semibold bg-sage text-cream rounded-full px-5 py-2.5 hover:bg-sage-light transition-colors"
+                >
+                  📥 Exporter mes données (CSV)
+                </a>
+              </div>
+            )}
+
             {/* Effacement local */}
             {localData && (
               <div className="w-full bg-surface border border-ink/10 rounded-2xl p-5">
