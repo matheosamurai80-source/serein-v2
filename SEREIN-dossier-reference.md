@@ -281,6 +281,24 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Testé : `sandbox/fondation.test.ts` 13 cas + 15 cas navigateur (dont
   session simulée cookie @supabase/ssr + mocks GoTrue).
 
+### Brique 2 — Liens utiles partagés (livrée 2026-07-06)
+- Table `liens_utiles` (service_key, categorie, nom, url, description,
+  ordre_affichage ; unique service+categorie+nom) — lecture publique (RLS
+  select `true`), AUCUN droit d'écriture client (gestion manuelle SQL).
+- Logique partagée `src/lib/liens/logic.ts` : filtre service+catégories,
+  tri ordre puis nom, **https obligatoire** (javascript:/http: exclus).
+- **Choix documenté** : PanierMalin étant une app statique vanilla, un
+  composant React unique est matériellement impossible — le partage se fait
+  au niveau donnée + règles : composant React `<LiensUtiles/>` côté Serein
+  (monté sur /engagements : eau + énergie, note « l'eau est gérée par
+  commune »), rendu vanilla côté PanierMalin (« 🏷️ Bons plans & cartes de
+  fidélité ») consommant la même table avec les mêmes filtres REST.
+- Peuplé : Serein → Veolia, Suez, Saur, EDF, Engie, TotalEnergies ;
+  PanierMalin → E.Leclerc, Intermarché, Carrefour, Auchan, Super U, Lidl.
+- Cas vide géré des deux côtés : « Aucun lien disponible pour l'instant. »
+- Testé : `sandbox/liens.test.ts` 10 cas + 8 cas navigateur (table simulée
+  pleine et vide).
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -343,8 +361,7 @@ pas déjà fait.
 
 Plan de briques validé par Juju le 2026-07-05 (« prompt ultime ») :
 1. ~~Brique 0 — légal + fondation multiservice~~ ✅ livrée
-2. **Brique 2 — Liens utiles partagés** (table `liens_utiles` + composant
-   commun, distributeurs eau/énergie pour Serein, enseignes pour PanierMalin)
+2. ~~Brique 2 — Liens utiles partagés~~ ✅ livrée
 3. **Brique 1 — Factures ponctuelles** (mode A fréquence calculée / mode B
    dates manuelles, intégrées aux rappels)
 4. **Brique 4 — Détail Nutri-Score enrichi** (PanierMalin, tap sur produit)
@@ -398,3 +415,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-05 | Détection sur relevé d'1 mois (parseur réel + repli 1 occurrence) + Offres de référence télécom/énergie (ligne 💡 sur /engagements) + PanierMalin listes (courses, récurrents, partage famille) | 183/183 PASS sandbox, 13/13 PASS navigateur, build + lint verts |
 | 2026-07-05 | a-b-c : parseur 2 lignes + « lignes non comprises » sur /analyse · offres streaming/sport/assurance · PanierMalin synchro famille en direct (code secret, fusion multi-téléphones, table verrouillée) | 197/197 PASS sandbox, 8/8 PASS navigateur (2 contextes synchronisés), build vert |
 | 2026-07-05 | Brique 0 : pages légales (confidentialité/CGU/mentions), /compte + suppression RGPD (`delete_my_account`, cascade vérifiée), table `user_services`, textes PanierMalin nuancés | 210/210 PASS sandbox, 15/15 PASS navigateur, build + lint verts |
+| 2026-07-06 | Brique 2 : table `liens_utiles` publique + logique partagée (https only) ; `<LiensUtiles/>` sur /engagements (eau/énergie + note commune) ; « Bons plans & fidélité » sur /paniermalin (6 enseignes) | 220/220 PASS sandbox, 8/8 PASS navigateur (table pleine + vide), build vert |

@@ -99,6 +99,13 @@
     est stockée en Europe sous un code aléatoire, sans votre identité. Le scan n'envoie que le code-barres
     à Open Food Facts.</p>
   </div>
+  <div class="card">
+    <h2>🏷️ Bons plans &amp; cartes de fidélité</h2>
+    <div id="bonsPlans"><p class="empty">Chargement…</p></div>
+    <p class="hint" style="margin-top:8px">Liens officiels vers les promos et cartes des grandes enseignes —
+    aucun partenariat, aucune commission.</p>
+  </div>
+
   <p class="hint" style="text-align:center;padding-bottom:8px">
     <a href="/confidentialite" style="color:var(--dim)">Confidentialité</a> ·
     <a href="/cgu" style="color:var(--dim)">CGU</a> ·
@@ -333,6 +340,33 @@ $('famStop').onclick = () => {
 renderFam()
 renderListe()
 pullSync()
+
+// ─── BONS PLANS (table partagée liens_utiles, mêmes règles que Serein) ─────
+async function loadBonsPlans() {
+  const box = $('bonsPlans')
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/liens_utiles?service_key=eq.paniermalin&categorie=eq.grande_distribution&order=ordre_affichage,nom&select=nom,url,description`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    })
+    const rows = (await r.json()).filter(l => { try { return new URL(l.url).protocol === 'https:' } catch { return false } })
+    if (!rows.length) { box.innerHTML = '<p class="empty">Aucun lien disponible pour l\'instant.</p>'; return }
+    box.innerHTML = ''
+    for (const l of rows) {
+      const div = document.createElement('div')
+      div.className = 'prod'
+      div.innerHTML = `<div class="pinfo"><div class="pname"></div><div class="pmeta"></div></div><span style="color:var(--green-dark)">↗</span>`
+      const a = document.createElement('a')
+      a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer'
+      a.textContent = l.nom; a.style.color = 'var(--green-dark)'
+      div.querySelector('.pname').appendChild(a)
+      div.querySelector('.pmeta').textContent = l.description ?? ''
+      box.appendChild(div)
+    }
+  } catch {
+    box.innerHTML = '<p class="empty">Aucun lien disponible pour l\'instant.</p>'
+  }
+}
+loadBonsPlans()
 
 // ─── PWA ────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
