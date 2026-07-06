@@ -14,6 +14,7 @@ import {
 } from '@/lib/commitments/logic'
 import { unikAdviceFor } from '@/lib/unik/logic'
 import { offerLineFor } from '@/lib/offres/logic'
+import { LiensUtiles } from '@/components/liens-utiles'
 
 interface Commitment {
   id: string
@@ -274,6 +275,15 @@ export default function EngagementsPage() {
             {' '}{cancelled.map(c => c.name).join(', ')}
           </p>
         )}
+      </div>
+
+      <div className="w-full mt-6">
+        <LiensUtiles
+          serviceKey="serein"
+          categories={['eau', 'energie']}
+          titre="Liens utiles — eau & énergie"
+          note="L'eau est gérée par commune en France : vérifiez votre facture pour connaître votre distributeur local."
+        />
       </div>
 
       <Toast message={toast.message} visible={toast.visible} onHide={toast.hide} />
