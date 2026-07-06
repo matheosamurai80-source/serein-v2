@@ -78,6 +78,65 @@ export function offProductUrl(ean) {
   return `https://fr.openfoodfacts.org/produit/${encodeURIComponent(String(ean ?? ''))}`
 }
 
+// ─── LECTURE DE TICKET DE CAISSE (Brique 3) ─────────────────────────────────
+// L'OCR (Tesseract.js) tourne dans le navigateur ; ici, la partie PURE et
+// testable : transformer le texte brut d'un ticket en lignes (nom, prix),
+// en écartant totaux, TVA, moyens de paiement, n° de ticket, remises…
+// L'association automatique à une fiche Open Food Facts est HORS SCOPE
+// (volontairement) : c'est l'utilisateur qui valide chaque ligne.
+
+const TICKET_EXCLUDE = new RegExp(
+  [
+    'total', 'montant', 'tva', 't\\.v\\.a', '\\bh\\.?t\\b', '\\bttc\\b',
+    '\\bcb\\b', 'carte', 'espece', 'cheque', 'rendu', 'monnaie', 'paiement',
+    'ticket', 'caisse', 'merci', 'bienvenue', 'siret', 'siren', '\\btel\\b',
+    'www', 'http', 'client', 'fidelit', 'remise', 'reduction', 'solde',
+    'prix au', '€/', 'e/kg', 'e/l\\b', 'articles?\\b.*\\d$', 'n[°o]\\s*\\d',
+  ].join('|'),
+  'i'
+)
+
+/**
+ * Texte OCR d'un ticket → lignes candidates { label, price }.
+ * Rien n'est enregistré ici : chaque ligne devra être validée à la main.
+ */
+export function parseTicketText(text) {
+  const out = []
+  for (const raw of String(text ?? '').split('\n')) {
+    const line = raw.trim().replace(/\s+/g, ' ')
+    if (line.length < 4) continue
+    // prix en fin de ligne : « 1,89 », « 2.35 € », jamais négatif (remises)
+    const m = line.match(/(-?\d{1,3}[.,]\d{2})\s*(?:€|eur)?\s*$/i)
+    if (!m) continue
+    const price = parseFloat(m[1].replace(',', '.'))
+    if (!(price >= 0.05 && price <= 500)) continue
+    if (TICKET_EXCLUDE.test(line)) continue
+    let label = line.slice(0, m.index).trim().replace(/[.·…_\-*]+$/, '').trim()
+    label = label.replace(/^\d+\s*[xX*]\s*/, '').trim() // « 2 X YAOURT » → « YAOURT »
+    // un vrai nom de produit contient au moins 3 lettres
+    if ((label.match(/[a-zA-ZÀ-ÿ]/g) ?? []).length < 3) continue
+    out.push({ label, price })
+  }
+  return out
+}
+
+/**
+ * Propose le produit de l'inventaire le plus proche d'une ligne de ticket
+ * (mots du libellé retrouvés dans le nom) — simple aide, jamais automatique.
+ */
+export function suggestMatch(inventory, label) {
+  const words = String(label ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .split(/[^a-z0-9]+/).filter(w => w.length >= 3)
+  if (!words.length) return null
+  let best = null
+  for (const p of inventory ?? []) {
+    const name = String(p.name ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const hits = words.filter(w => name.includes(w)).length
+    if (hits > 0 && (!best || hits > best.hits)) best = { ean: p.ean, hits }
+  }
+  return best ? best.ean : null
+}
+
 // ─── COMPARAISON DU PANIER ──────────────────────────────────────────────────
 // Tri : meilleur Nutri-Score d'abord ; à égalité, le moins calorique.
 const rank = p => (p.nutriscore ? 'abcde'.indexOf(p.nutriscore) : 5)
