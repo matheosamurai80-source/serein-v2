@@ -44,5 +44,19 @@ check('isSafeUrl : https ✓, http ✗, javascript ✗, charabia ✗',
 // ─── 3. AFFICHAGE ───────────────────────────────────────────────────────────
 check('displayHost : www retiré', displayHost('https://www.carrefour.fr/promos') === 'carrefour.fr')
 
+// ─── 4. SÉLECTEUR « MA BANQUE » (même table, catégorie banque) ─────────────
+const banques: LienUtile[] = [
+  { service_key: 'serein', categorie: 'banque', nom: 'BoursoBank (Boursorama)', url: 'https://www.boursobank.com', description: 'Espace particuliers', ordre_affichage: 10 },
+  { service_key: 'serein', categorie: 'banque', nom: 'Crédit Agricole', url: 'https://www.credit-agricole.fr', description: 'Espace particuliers', ordre_affichage: 1 },
+  { service_key: 'paniermalin', categorie: 'banque', nom: 'Crédit Agricole', url: 'https://www.credit-agricole.fr', description: 'Espace particuliers', ordre_affichage: 1 },
+]
+const banquesSerein = filterLiens(banques, 'serein', ['banque'])
+check('Banques : filtrées par service, triées par ordre (Crédit Agricole avant Boursorama)',
+  banquesSerein.length === 2 && banquesSerein[0]?.nom === 'Crédit Agricole')
+check('Banques : disponibles aussi côté PanierMalin (mêmes données)',
+  filterLiens(banques, 'paniermalin', ['banque']).length === 1)
+check('Banques : ne polluent pas les catégories eau/énergie',
+  !filterLiens([...rows, ...banques], 'serein', ['eau', 'energie']).some(l => l.categorie === 'banque'))
+
 console.log(failures === 0 ? '\n✅ TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)

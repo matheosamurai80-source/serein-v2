@@ -322,6 +322,21 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Testé : `sandbox/liens.test.ts` 10 cas + 8 cas navigateur (table simulée
   pleine et vide).
 
+### Navigation croisée + sélecteur « Ma banque » (livré 2026-07-06)
+- **Nav Serein** (toutes pages) : bouton « 🧺 PanierMalin » ; **PanierMalin** :
+  bouton « 🛡️ Retour Serein » en tête de page (+ lien pied de page).
+- **Menu déroulant « 🏦 Ma banque… »** dans les DEUX applis : 14 banques FR
+  (Crédit Agricole, BNP, SG, Banque Postale, Caisse d'Épargne, Crédit
+  Mutuel, LCL, Banque Populaire, CIC, BoursoBank, Fortuneo, Hello bank!,
+  N26, Revolut) → lien direct vers l'espace particuliers en nouvel onglet
+  (pratique pour télécharger le relevé à analyser). Données dans la table
+  partagée `liens_utiles` (catégorie `banque`, semée pour les 2 services) ;
+  hors ligne, le sélecteur se masque proprement.
+- Composant `src/components/banque-select.tsx` (Serein) + rendu vanilla
+  PanierMalin (mêmes données, même filtre https).
+- Testé : +3 cas sandbox (liens.test.ts) + 9 cas navigateur (popup vérifiée,
+  hors-ligne). Service worker v8.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -468,3 +483,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-06 | Brique 1 : factures ponctuelles — table dédiée + `facture_id` sur reminders, mode A calculé (ancre = échéance stockée) / mode B figé, rappels réutilisés, section /engagements + suggestions /rappels | 244/244 PASS sandbox, 10/10 PASS navigateur, build vert |
 | 2026-07-06 | Brique 4 : détail Nutri-Score enrichi PanierMalin (tap → sucres/sel/gras/fibres/protéines/additifs, explications, lien OFF, zéro appel réseau en plus, vieux produits gérés) | 254/254 PASS sandbox, 9/9 PASS navigateur, build vert |
 | 2026-07-06 | Brique 3 : lecteur de ticket OCR local (Tesseract.js fra), parseur tickets FR (totaux/TVA/CB exclus), validation humaine ligne par ligne (ignorer/libre/associer + suggestion), jamais d'auto-import | 267/267 PASS sandbox, 10/10 PASS navigateur (OCR simulé), build vert |
+| 2026-07-06 | Navigation croisée (🧺 PanierMalin dans la nav Serein, 🛡️ Retour Serein en tête de PanierMalin) + menu « 🏦 Ma banque » (14 banques FR, lien direct, table partagée, masqué hors ligne) | 270/270 PASS sandbox, 9/9 PASS navigateur, build vert |
