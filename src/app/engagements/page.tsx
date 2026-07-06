@@ -6,7 +6,12 @@ import { useToast, Toast } from '@/components/ui/toast'
 import {
   listCommitments, addCommitments, updateCommitment, deleteCommitment,
   listLetterCommitmentIds, isGuest,
+  listFactures, addFacture, updateFacture, deleteFacture, type FactureRow,
 } from '@/lib/data/store'
+import {
+  nextDueDate, refreshedDueDate, factureUrgency, validateFacture,
+  addMonthsClamped, type FactureMode,
+} from '@/lib/factures/logic'
 import {
   monthlyEquivalent, effectiveDeadline, urgencyOf, sortCommitments,
   totalMonthly, serviceTypeToCategory,
@@ -77,20 +82,94 @@ export default function EngagementsPage() {
   const [anniversary, setAnniversary] = useState('')
   const [noticeDays, setNoticeDays] = useState('')
   const [guest, setGuest] = useState(false)
+  const [factures, setFactures] = useState<FactureRow[]>([])
+  const [fName, setFName] = useState('')
+  const [fAmount, setFAmount] = useState('')
+  const [fMode, setFMode] = useState<FactureMode>('interval')
+  const [fStart, setFStart] = useState('')
+  const [fInterval, setFInterval] = useState('6')
+  const [fDue, setFDue] = useState('')
+  const [fNotice, setFNotice] = useState('14')
+  const [fSaving, setFSaving] = useState(false)
 
   useEffect(() => {
     void (async () => {
       try {
-        const [data, letterIds, g] = await Promise.all([
-          listCommitments(), listLetterCommitmentIds(), isGuest(),
+        const [data, letterIds, g, facts] = await Promise.all([
+          listCommitments(), listLetterCommitmentIds(), isGuest(), listFactures(),
         ])
         setItems(data as Commitment[])
         setLetteredIds(new Set(letterIds))
         setGuest(g)
+        // Mode A : les échéances passées avancent automatiquement (et on persiste)
+        const refreshed = await Promise.all(facts.map(async f => {
+          const due = refreshedDueDate(f)
+          if (f.mode === 'interval' && due && due !== f.next_due_date) {
+            try { await updateFacture(f.id, { next_due_date: due }) } catch { /* réessaiera */ }
+            return { ...f, next_due_date: due }
+          }
+          return f
+        }))
+        setFactures(refreshed)
       } catch { /* stockage indisponible : la page reste consultable */ }
       setLoaded(true)
     })()
   }, [])
+
+  const addFactureSubmit = async () => {
+    if (fSaving) return
+    const parsedAmount = parseFloat(fAmount.replace(',', '.'))
+    const input = {
+      name: fName.trim(),
+      amount: parsedAmount > 0 ? parsedAmount : null,
+      mode: fMode,
+      start_date: fMode === 'interval' ? (fStart || null) : null,
+      interval_months: fMode === 'interval' ? (parseInt(fInterval, 10) || null) : null,
+      next_due_date: fMode === 'manual' ? (fDue || null) : null,
+      notice_days: Number.isInteger(parseInt(fNotice, 10)) ? parseInt(fNotice, 10) : 14,
+    }
+    const err = validateFacture(input)
+    if (err) { toast.show(err); return }
+    setFSaving(true)
+    try {
+      const withDue = { ...input, next_due_date: nextDueDate({ ...input, status: 'active' } as FactureRow) }
+      const row = await addFacture(withDue)
+      setFactures(prev => [...prev, row])
+      setFName(''); setFAmount(''); setFStart(''); setFDue('')
+      toast.show('Facture ajoutée ✓ — rappel visible dans Rappels')
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : 'Ajout impossible.')
+    } finally {
+      setFSaving(false)
+    }
+  }
+
+  const markFacturePaid = async (f: FactureRow) => {
+    if (f.mode !== 'interval' || !f.next_due_date || !f.interval_months) return
+    try {
+      // payée = on passe à l'échéance suivante (échéance courante + intervalle)
+      const bumped = addMonthsClamped(f.next_due_date, f.interval_months)
+      await updateFacture(f.id, { next_due_date: bumped })
+      setFactures(prev => prev.map(x => x.id === f.id ? { ...x, next_due_date: bumped } : x))
+      toast.show(`${f.name} payée ✓ — prochaine échéance ${frDate(bumped)}`)
+    } catch (e) { toast.show(e instanceof Error ? e.message : 'Mise à jour impossible.') }
+  }
+
+  const setFactureDate = async (f: FactureRow, date: string) => {
+    if (!date) return
+    try {
+      await updateFacture(f.id, { next_due_date: date })
+      setFactures(prev => prev.map(x => x.id === f.id ? { ...x, next_due_date: date } : x))
+      toast.show('Échéance mise à jour ✓')
+    } catch (e) { toast.show(e instanceof Error ? e.message : 'Mise à jour impossible.') }
+  }
+
+  const removeFacture = async (f: FactureRow) => {
+    try {
+      await deleteFacture(f.id)
+      setFactures(prev => prev.filter(x => x.id !== f.id))
+    } catch (e) { toast.show(e instanceof Error ? e.message : 'Suppression impossible.') }
+  }
 
   const addCommitment = async () => {
     if (!name || saving) return
@@ -275,6 +354,130 @@ export default function EngagementsPage() {
             {' '}{cancelled.map(c => c.name).join(', ')}
           </p>
         )}
+      </div>
+
+      {/* ── FACTURES PONCTUELLES — séparées des abonnements récurrents ── */}
+      <div className="w-full mt-8" data-testid="factures-section">
+        <p className="font-mono text-[11px] tracking-[.17em] uppercase text-moss mb-3 flex items-center gap-2.5">
+          <span className="w-6 h-px bg-moss" />Factures ponctuelles<span className="w-6 h-px bg-moss" />
+        </p>
+        <p className="text-[13px] text-ink/60 leading-[1.6] mb-4 text-center">
+          Eau, taxe foncière, assurance annuelle… les factures qui tombent 1 à 2 fois par an.
+          Serein calcule (ou retient) l&apos;échéance et vous prévient avant.
+        </p>
+
+        <div className="w-full bg-surface border border-ink/10 rounded-2xl p-6 flex flex-col gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className={labelCls} htmlFor="fname">Nom de la facture *</label>
+              <input id="fname" className={inputCls} placeholder="Ex. Facture d'eau Veolia"
+                value={fName} onChange={e => setFName(e.target.value)} />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="famount">Montant (€)</label>
+              <input id="famount" className={inputCls} inputMode="decimal" placeholder="85"
+                value={fAmount} onChange={e => setFAmount(e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <label className={labelCls}>Mode de rappel</label>
+            <div className="flex gap-2" data-testid="facture-mode">
+              <button type="button" onClick={() => setFMode('interval')}
+                className={`flex-1 text-[13px] font-semibold rounded-xl px-3 py-2.5 border transition-colors ${fMode === 'interval' ? 'bg-sage/12 text-moss border-sage/40' : 'bg-surface text-ink/55 border-ink/12'}`}>
+                A · Fréquence calculée
+              </button>
+              <button type="button" onClick={() => setFMode('manual')}
+                className={`flex-1 text-[13px] font-semibold rounded-xl px-3 py-2.5 border transition-colors ${fMode === 'manual' ? 'bg-sage/12 text-moss border-sage/40' : 'bg-surface text-ink/55 border-ink/12'}`}>
+                B · Dates fixes manuelles
+              </button>
+            </div>
+            <p className="text-[11.5px] text-ink/50 mt-1.5 leading-[1.5]">
+              {fMode === 'interval'
+                ? 'La prochaine échéance est calculée automatiquement et se relance après chaque passage.'
+                : 'Vous saisissez chaque date vous-même — rien n\'est recalculé sans vous.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {fMode === 'interval' ? (
+              <>
+                <div>
+                  <label className={labelCls} htmlFor="fstart">1re échéance *</label>
+                  <input id="fstart" type="date" className={inputCls}
+                    value={fStart} onChange={e => setFStart(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls} htmlFor="finterval">Tous les (mois) *</label>
+                  <input id="finterval" className={inputCls} inputMode="numeric" placeholder="6"
+                    value={fInterval} onChange={e => setFInterval(e.target.value)} />
+                </div>
+              </>
+            ) : (
+              <div className="col-span-2">
+                <label className={labelCls} htmlFor="fdue">Prochaine échéance *</label>
+                <input id="fdue" type="date" className={inputCls}
+                  value={fDue} onChange={e => setFDue(e.target.value)} />
+              </div>
+            )}
+            <div>
+              <label className={labelCls} htmlFor="fnotice">Préavis (jours)</label>
+              <input id="fnotice" className={inputCls} inputMode="numeric" placeholder="14"
+                value={fNotice} onChange={e => setFNotice(e.target.value)} />
+            </div>
+          </div>
+
+          <Button onClick={addFactureSubmit} disabled={!fName.trim()} loading={fSaving}
+            className={!fName.trim() ? 'opacity-40 cursor-not-allowed' : ''} data-testid="add-facture">
+            Ajouter cette facture
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          {factures.filter(f => f.status === 'active').map(f => {
+            const u = factureUrgency(f)
+            const due = refreshedDueDate(f)
+            return (
+              <div key={f.id} className="bg-surface border border-ink/10 rounded-2xl p-5" data-testid="facture">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="min-w-0">
+                    <p className="font-serif text-lg text-ink truncate">{f.name}</p>
+                    <p className="font-mono text-[11px] text-ink/50 tracking-wider">
+                      {f.mode === 'interval' ? `tous les ${f.interval_months} mois` : 'dates manuelles'}
+                      {f.amount ? <> · {f.amount.toLocaleString('fr-FR')} €</> : null}
+                      {due && <> · échéance le {frDate(due)}</>}
+                      {' '}· rappel {f.notice_days ?? 14} j avant
+                    </p>
+                  </div>
+                  {u && (
+                    <span className={`flex-shrink-0 text-[11px] font-semibold border rounded-full px-3 py-1 ${URGENCY_UI[u].cls}`}>
+                      {u === 'critique' ? 'À régler sous 7 j' : u === 'bientot' ? 'Échéance dans 30 j' : URGENCY_UI[u].label}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {f.mode === 'interval' ? (
+                    <button onClick={() => markFacturePaid(f)}
+                      className="text-[13px] text-moss border border-sage/30 rounded-full px-4 py-2 hover:bg-sage/8 transition-colors">
+                      Payée ✓ (passe à la suivante)
+                    </button>
+                  ) : (
+                    <label className="text-[13px] text-ink/70 flex items-center gap-2">
+                      Nouvelle date :
+                      <input type="date" className="bg-surface border border-ink/12 rounded-lg px-2 py-1.5 text-[13px]"
+                        defaultValue={f.next_due_date ?? ''}
+                        onChange={e => setFactureDate(f, e.target.value)} />
+                    </label>
+                  )}
+                  <button onClick={() => removeFacture(f)}
+                    className="text-[13px] text-ink/50 rounded-full px-3 py-2 hover:text-crimson transition-colors">
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       <div className="w-full mt-6">

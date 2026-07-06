@@ -14,6 +14,7 @@ export const LOCAL_KEYS = {
   commitments: 'serein.local.commitments',
   reminders: 'serein.local.reminders',
   letters: 'serein.local.letters',
+  factures: 'serein.local.factures',
 } as const
 
 type Row = { id: string }

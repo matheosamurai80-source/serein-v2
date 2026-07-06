@@ -5,7 +5,9 @@ import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
 import {
   listCommitments, listReminders, addReminder, updateReminder, deleteReminder,
+  listFactures, type FactureRow,
 } from '@/lib/data/store'
+import { factureReminderDraft, refreshedDueDate } from '@/lib/factures/logic'
 import { effectiveDeadline, type ServiceType, type CommitmentFrequency } from '@/lib/commitments/logic'
 import {
   buildReminderForCommitment, reminderTiming, daysUntil, isDue, sortReminders,
@@ -26,7 +28,8 @@ interface Commitment {
 
 interface Reminder {
   id: string
-  commitment_id: string
+  commitment_id: string | null
+  facture_id?: string | null
   kind: string
   scheduled_for: string
   channel: string
@@ -47,6 +50,7 @@ function timingLabel(scheduled: string): string {
 export default function RappelsPage() {
   const toast = useToast()
   const [commitments, setCommitments] = useState<Commitment[]>([])
+  const [factures, setFactures] = useState<FactureRow[]>([])
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -54,9 +58,10 @@ export default function RappelsPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const [c, r] = await Promise.all([listCommitments(), listReminders()])
+        const [c, r, f] = await Promise.all([listCommitments(), listReminders(), listFactures()])
         setCommitments(c as Commitment[])
         setReminders(r as Reminder[])
+        setFactures(f)
       } catch { /* stockage indisponible : la page reste consultable */ }
       setLoaded(true)
     })()
@@ -69,15 +74,38 @@ export default function RappelsPage() {
     && !reminders.some(r => r.commitment_id === c.id && r.status === 'pending')
   )
 
+  // Factures actives avec échéance, sans rappel en attente → mêmes suggestions
+  const factureSuggestions = factures.filter(f =>
+    f.status === 'active'
+    && refreshedDueDate(f)
+    && !reminders.some(r => r.facture_id === f.id && r.status === 'pending')
+  )
+
   const createReminder = async (c: Commitment) => {
     if (busy) return
     setBusy(c.id)
     try {
       const draft = buildReminderForCommitment(c)
       if (!draft) return
-      const data = await addReminder(c.id, draft)
+      const data = await addReminder({ commitmentId: c.id }, draft)
       setReminders(prev => [...prev, data as Reminder])
       toast.show('Rappel programmé ✓')
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : 'Impossible de créer le rappel.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const createFactureReminder = async (f: FactureRow) => {
+    if (busy) return
+    setBusy(f.id)
+    try {
+      const draft = factureReminderDraft(f)
+      if (!draft) return
+      const data = await addReminder({ factureId: f.id }, draft)
+      setReminders(prev => [...prev, data as Reminder])
+      toast.show('Rappel de facture programmé ✓')
     } catch (e) {
       toast.show(e instanceof Error ? e.message : 'Impossible de créer le rappel.')
     } finally {
@@ -100,7 +128,10 @@ export default function RappelsPage() {
     } catch (e) { toast.show(e instanceof Error ? e.message : 'Suppression impossible.') }
   }
 
-  const nameOf = (id: string) => commitments.find(c => c.id === id)?.name ?? 'Engagement'
+  const nameOf = (r: { commitment_id: string | null; facture_id?: string | null }) =>
+    (r.commitment_id ? commitments.find(c => c.id === r.commitment_id)?.name : null)
+    ?? (r.facture_id ? factures.find(f => f.id === r.facture_id)?.name : null)
+    ?? 'Engagement'
   const sorted = sortReminders(reminders.filter(r => r.status !== 'cancelled'))
   const dueCount = reminders.filter(r => isDue(r)).length
 
@@ -119,6 +150,30 @@ export default function RappelsPage() {
           Serein alerte, c&apos;est vous qui agissez.
           {dueCount > 0 && <><br /><span className="text-amber font-semibold">{dueCount} rappel{dueCount > 1 ? 's' : ''} à traiter maintenant.</span></>}
         </p>
+
+        {/* Suggestions depuis les factures ponctuelles (même mécanisme) */}
+        {factureSuggestions.length > 0 && (
+          <div className="w-full mb-6">
+            <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-3">
+              Factures à programmer ({factureSuggestions.length})
+            </p>
+            <div className="flex flex-col gap-3">
+              {factureSuggestions.map(f => (
+                <div key={f.id} className="bg-amber/8 border border-amber/20 rounded-2xl p-4 flex items-center justify-between gap-3" data-testid="facture-suggestion">
+                  <div className="min-w-0">
+                    <p className="font-serif text-base text-ink truncate">{f.name}</p>
+                    <p className="font-mono text-[11px] text-ink/50 tracking-wider">
+                      facture à régler vers le {frDateTime(refreshedDueDate(f)!)} · rappel {f.notice_days ?? 14} j avant
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={() => createFactureReminder(f)} loading={busy === f.id}>
+                    Me rappeler
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Suggestions depuis les engagements */}
         {suggestions.length > 0 && (
@@ -164,7 +219,7 @@ export default function RappelsPage() {
                 <div key={r.id} data-testid="reminder"
                   className={`rounded-2xl p-5 border ${due ? 'bg-amber/10 border-amber/25' : read ? 'bg-surface border-ink/10' : 'bg-surface border-ink/10'}`}>
                   <div className="flex items-start justify-between gap-3 mb-1.5">
-                    <p className={`font-serif text-lg ${read ? 'text-ink/45 line-through' : 'text-ink'} truncate`}>{nameOf(r.commitment_id)}</p>
+                    <p className={`font-serif text-lg ${read ? 'text-ink/45 line-through' : 'text-ink'} truncate`}>{nameOf(r)}</p>
                     <span className={`flex-shrink-0 text-[11px] font-semibold border rounded-full px-3 py-1 ${
                       due ? 'bg-amber/15 text-amber border-amber/30' : 'bg-sage/12 text-moss border-sage/25'}`}>
                       {read ? 'Lu' : timingLabel(r.scheduled_for)}
@@ -178,10 +233,12 @@ export default function RappelsPage() {
                         Marquer comme lu
                       </button>
                     )}
-                    <a href={`/resiliation?service=${encodeURIComponent(nameOf(r.commitment_id))}`}
-                      className="text-[13px] font-semibold bg-sage text-cream rounded-full px-4 py-2 hover:bg-sage-light transition-colors">
-                      Générer la lettre →
-                    </a>
+                    {r.commitment_id && (
+                      <a href={`/resiliation?service=${encodeURIComponent(nameOf(r))}`}
+                        className="text-[13px] font-semibold bg-sage text-cream rounded-full px-4 py-2 hover:bg-sage-light transition-colors">
+                        Générer la lettre →
+                      </a>
+                    )}
                     <button onClick={() => remove(r)}
                       className="text-[13px] text-ink/50 rounded-full px-3 py-2 hover:text-crimson transition-colors">
                       Supprimer

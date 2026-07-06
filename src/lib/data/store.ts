@@ -36,11 +36,24 @@ export interface NewCommitment {
 
 export interface ReminderRow {
   id: string
-  commitment_id: string
+  commitment_id: string | null
+  facture_id?: string | null
   kind: string
   scheduled_for: string
   channel: string
   message: string | null
+  status: string
+}
+
+export interface FactureRow {
+  id: string
+  name: string
+  amount: number | null
+  mode: 'interval' | 'manual'
+  start_date: string | null
+  interval_months: number | null
+  next_due_date: string | null
+  notice_days: number | null
   status: string
 }
 
@@ -51,7 +64,8 @@ export interface LetterListItem {
 }
 
 const COMMITMENT_COLS = 'id, name, provider, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status'
-const REMINDER_COLS = 'id, commitment_id, kind, scheduled_for, channel, message, status'
+const REMINDER_COLS = 'id, commitment_id, facture_id, kind, scheduled_for, channel, message, status'
+const FACTURE_COLS = 'id, name, amount, mode, start_date, interval_months, next_due_date, notice_days, status'
 
 type Supabase = ReturnType<typeof createSupabaseBrowserClient>
 type Backend =
@@ -163,11 +177,16 @@ export async function listReminders(): Promise<ReminderRow[]> {
 }
 
 export async function addReminder(
-  commitmentId: string,
+  target: { commitmentId?: string; factureId?: string },
   draft: { kind: string; scheduled_for: string; channel: string; message: string | null; status?: string }
 ): Promise<ReminderRow> {
   const b = await backend()
-  const row = { commitment_id: commitmentId, ...draft, status: draft.status ?? 'pending' }
+  const row = {
+    commitment_id: target.commitmentId ?? null,
+    facture_id: target.factureId ?? null,
+    ...draft,
+    status: draft.status ?? 'pending',
+  }
   if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.reminders, [row])[0]
   const { data, error } = await b.supabase
     .from('reminders')
@@ -192,6 +211,51 @@ export async function deleteReminder(id: string): Promise<void> {
   const b = await backend()
   if (b.kind === 'local') { deleteRow(b.kv, LOCAL_KEYS.reminders, id); return }
   const { error } = await b.supabase.from('reminders').delete().eq('id', id)
+  if (error) fail(error.message)
+}
+
+// ─── FACTURES PONCTUELLES ───────────────────────────────────────────────────
+
+export async function listFactures(): Promise<FactureRow[]> {
+  const b = await backend()
+  if (b.kind === 'local') return readRows<FactureRow>(b.kv, LOCAL_KEYS.factures)
+  const { data, error } = await b.supabase.from('factures_ponctuelles').select(FACTURE_COLS)
+  if (error) fail(error.message)
+  return (data ?? []) as FactureRow[]
+}
+
+export async function addFacture(input: Omit<FactureRow, 'id' | 'status'>): Promise<FactureRow> {
+  const b = await backend()
+  const row = { ...input, status: 'active' }
+  if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.factures, [row])[0] as FactureRow
+  const { data, error } = await b.supabase
+    .from('factures_ponctuelles')
+    .insert({ ...row, user_id: b.userId })
+    .select(FACTURE_COLS)
+    .single()
+  if (error || !data) fail(error?.message ?? 'Ajout de la facture impossible.')
+  return data as FactureRow
+}
+
+export async function updateFacture(id: string, patch: Partial<FactureRow>): Promise<void> {
+  const b = await backend()
+  if (b.kind === 'local') {
+    if (!updateRow(b.kv, LOCAL_KEYS.factures, id, patch)) fail('Facture introuvable.')
+    return
+  }
+  const { error } = await b.supabase.from('factures_ponctuelles').update(patch).eq('id', id)
+  if (error) fail(error.message)
+}
+
+export async function deleteFacture(id: string): Promise<void> {
+  const b = await backend()
+  if (b.kind === 'local') {
+    deleteRow(b.kv, LOCAL_KEYS.factures, id)
+    for (const r of readRows<ReminderRow>(b.kv, LOCAL_KEYS.reminders))
+      if (r.facture_id === id) deleteRow(b.kv, LOCAL_KEYS.reminders, r.id)
+    return
+  }
+  const { error } = await b.supabase.from('factures_ponctuelles').delete().eq('id', id)
   if (error) fail(error.message)
 }
 
@@ -285,6 +349,23 @@ export async function migrateGuestData(): Promise<number> {
         status: c.status,
       })))
       if (error) fail(`Migration des engagements impossible : ${error.message}`)
+      migrated += toPush.length
+    }
+  }
+
+  const localFactures = readRows<FactureRow>(kv, LOCAL_KEYS.factures)
+  if (localFactures.length) {
+    const { data: existing } = await b.supabase.from('factures_ponctuelles').select('name')
+    const toPush = rowsToMigrate(localFactures, (existing ?? []).map(e => e.name))
+    if (toPush.length) {
+      const { error } = await b.supabase.from('factures_ponctuelles').insert(toPush.map(f => ({
+        user_id: b.userId,
+        name: f.name, amount: f.amount, mode: f.mode,
+        start_date: f.start_date, interval_months: f.interval_months,
+        next_due_date: f.next_due_date, notice_days: f.notice_days ?? 14,
+        status: f.status,
+      })))
+      if (error) fail(`Migration des factures impossible : ${error.message}`)
       migrated += toPush.length
     }
   }
