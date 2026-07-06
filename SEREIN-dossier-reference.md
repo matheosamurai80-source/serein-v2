@@ -281,6 +281,29 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Testé : `sandbox/fondation.test.ts` 13 cas + 15 cas navigateur (dont
   session simulée cookie @supabase/ssr + mocks GoTrue).
 
+### Brique 1 — Factures ponctuelles (livrée 2026-07-06)
+- **Choix de schéma (justifié)** : table dédiée `factures_ponctuelles`
+  (les fréquences irrégulières violeraient la contrainte `frequency` v5) ;
+  rappels SANS duplication via colonne `facture_id` facultative sur
+  `reminders` (FK cascade) — même page, même tri, mêmes statuts.
+- **Deux modes par facture** (`src/lib/factures/logic.ts`) :
+  - A « interval » : départ + intervalle en mois → échéance calculée,
+    ancrée sur l'échéance stockée (« Payée ✓ » avance d'un intervalle,
+    jamais ramenée en arrière), auto-relance après passage, bornage fin de
+    mois (31/01 + 1 mois = 28-29/02).
+  - B « manual » : date saisie, FIGÉE tant que l'utilisateur ne la change
+    pas (champ « Nouvelle date » sur la carte).
+- Rappels : `factureReminderDraft` RÉUTILISE `buildReminderForCommitment`
+  (préavis choisi par facture, jamais dans le passé, 9 h) ; suggestions
+  « Factures à programmer » sur /rappels ; pas de bouton lettre sur un
+  rappel de facture. Urgence sur la même échelle que les abonnements.
+- UI : section « Factures ponctuelles » clairement séparée sur /engagements
+  (formulaire A/B, liste avec badge, Payée ✓ / nouvelle date / suppression).
+  Mode invité localStorage (`serein.local.factures`) + migration au compte.
+- Testé : `sandbox/factures.test.ts` 24 cas (dont l'exemple du cahier des
+  charges 1er janv/6 mois → 1er juil → 1er janv, et le bug d'ancre trouvé
+  par le test navigateur) + 10 cas navigateur.
+
 ### Brique 2 — Liens utiles partagés (livrée 2026-07-06)
 - Table `liens_utiles` (service_key, categorie, nom, url, description,
   ordre_affichage ; unique service+categorie+nom) — lecture publique (RLS
@@ -362,8 +385,7 @@ pas déjà fait.
 Plan de briques validé par Juju le 2026-07-05 (« prompt ultime ») :
 1. ~~Brique 0 — légal + fondation multiservice~~ ✅ livrée
 2. ~~Brique 2 — Liens utiles partagés~~ ✅ livrée
-3. **Brique 1 — Factures ponctuelles** (mode A fréquence calculée / mode B
-   dates manuelles, intégrées aux rappels)
+3. ~~Brique 1 — Factures ponctuelles~~ ✅ livrée
 4. **Brique 4 — Détail Nutri-Score enrichi** (PanierMalin, tap sur produit)
 5. **Brique 3 — OCR ticket de caisse** (Tesseract.js local, validation
    humaine ligne par ligne)
@@ -416,3 +438,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-05 | a-b-c : parseur 2 lignes + « lignes non comprises » sur /analyse · offres streaming/sport/assurance · PanierMalin synchro famille en direct (code secret, fusion multi-téléphones, table verrouillée) | 197/197 PASS sandbox, 8/8 PASS navigateur (2 contextes synchronisés), build vert |
 | 2026-07-05 | Brique 0 : pages légales (confidentialité/CGU/mentions), /compte + suppression RGPD (`delete_my_account`, cascade vérifiée), table `user_services`, textes PanierMalin nuancés | 210/210 PASS sandbox, 15/15 PASS navigateur, build + lint verts |
 | 2026-07-06 | Brique 2 : table `liens_utiles` publique + logique partagée (https only) ; `<LiensUtiles/>` sur /engagements (eau/énergie + note commune) ; « Bons plans & fidélité » sur /paniermalin (6 enseignes) | 220/220 PASS sandbox, 8/8 PASS navigateur (table pleine + vide), build vert |
+| 2026-07-06 | Brique 1 : factures ponctuelles — table dédiée + `facture_id` sur reminders, mode A calculé (ancre = échéance stockée) / mode B figé, rappels réutilisés, section /engagements + suggestions /rappels | 244/244 PASS sandbox, 10/10 PASS navigateur, build vert |
