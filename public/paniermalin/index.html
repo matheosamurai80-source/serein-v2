@@ -72,6 +72,24 @@
   </div>
 
   <div class="card">
+    <h2>🧾 Lire un ticket de caisse</h2>
+    <label for="ticketFile" style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--green);border-radius:12px;padding:12px;color:var(--green-dark);font-weight:700;cursor:pointer;margin-top:6px">
+      📸 Photographier / importer un ticket
+    </label>
+    <input id="ticketFile" type="file" accept="image/*" capture="environment" style="display:none">
+    <div id="ticketStatus" class="hint" style="margin-top:8px;min-height:16px"></div>
+    <div id="ticketLines" style="margin-top:4px"></div>
+    <div class="row" id="ticketActions" style="display:none">
+      <button id="ticketApply" style="flex:1">Valider la sélection</button>
+      <button id="ticketCancel" class="ghost">Annuler</button>
+    </div>
+    <p class="hint" style="margin-top:8px">La photo est lue <strong>sur votre téléphone</strong> (Tesseract, module
+    téléchargé au premier usage) — elle n'est envoyée nulle part. L'OCR n'étant jamais parfait à 100 %,
+    <strong>rien n'est enregistré sans votre validation</strong> : pour chaque ligne, choisissez « ignorer »,
+    « entrée libre » ou l'association à un produit déjà scanné (son prix sera mis à jour).</p>
+  </div>
+
+  <div class="card">
     <h2>🛒 Ma liste de courses <span class="hint" id="listCount"></span></h2>
     <div class="row" style="margin-top:6px">
       <input type="text" id="listInput" placeholder="Ajouter : lait, pain, piles…">
@@ -121,7 +139,7 @@
 </main>
 
 <script type="module">
-import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN } from './logic.mjs'
+import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -386,6 +404,93 @@ $('famStop').onclick = () => {
 renderFam()
 renderListe()
 pullSync()
+
+// ─── LECTURE DE TICKET (Brique 3 : OCR local, validation ligne par ligne) ──
+let ticketLines = []
+
+async function ocrImage(file) {
+  if (window.__pmOcr) return window.__pmOcr(file) // point d'injection des tests
+  const T = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js')
+  const worker = await T.createWorker('fra')
+  try {
+    const { data } = await worker.recognize(file)
+    return data.text
+  } finally {
+    await worker.terminate()
+  }
+}
+
+$('ticketFile').onchange = async e => {
+  const f = e.target.files?.[0]
+  if (!f) return
+  $('ticketStatus').textContent = 'Lecture du ticket sur votre téléphone… (jusqu\'à 30 s au premier usage)'
+  try {
+    const text = await ocrImage(f)
+    ticketLines = parseTicketText(text)
+    renderTicket()
+    $('ticketStatus').textContent = ticketLines.length
+      ? `${ticketLines.length} ligne${ticketLines.length > 1 ? 's' : ''} reconnue${ticketLines.length > 1 ? 's' : ''} — choisissez quoi en faire, puis validez.`
+      : 'Aucune ligne produit reconnue — réessayez avec une photo plus nette et bien éclairée.'
+  } catch {
+    $('ticketStatus').textContent = 'Lecture impossible (le module OCR se télécharge au premier usage : vérifiez le réseau).'
+  }
+  e.target.value = ''
+}
+
+function renderTicket() {
+  const box = $('ticketLines')
+  box.innerHTML = ''
+  $('ticketActions').style.display = ticketLines.length ? '' : 'none'
+  ticketLines.forEach((l, i) => {
+    const div = document.createElement('div')
+    div.className = 'prod'
+    const info = document.createElement('div')
+    info.className = 'pinfo'
+    info.innerHTML = `<div class="pname"></div><div class="pmeta"></div>`
+    info.querySelector('.pname').textContent = l.label
+    info.querySelector('.pmeta').textContent = `${l.price.toLocaleString('fr-FR')} €`
+    const sel = document.createElement('select')
+    sel.dataset.ticketLine = String(i)
+    sel.style.cssText = 'border:1.5px solid var(--line);border-radius:10px;padding:8px;font-size:13px;max-width:46%'
+    sel.append(new Option('Ignorer', 'ignore'), new Option('Ajouter en entrée libre', 'libre'))
+    for (const p of items) sel.append(new Option(`→ ${p.name}`, p.ean))
+    const suggestion = suggestMatch(items, l.label)
+    sel.value = suggestion ?? 'ignore'
+    if (suggestion) sel.style.borderColor = 'var(--green)'
+    div.append(info, sel)
+    box.appendChild(div)
+  })
+}
+
+$('ticketCancel').onclick = () => { ticketLines = []; renderTicket(); $('ticketStatus').textContent = 'Ticket ignoré — rien n\'a été enregistré.' }
+
+$('ticketApply').onclick = () => {
+  let added = 0, updated = 0
+  document.querySelectorAll('[data-ticket-line]').forEach(sel => {
+    const line = ticketLines[Number(sel.dataset.ticketLine)]
+    if (!line || sel.value === 'ignore') return
+    if (sel.value === 'libre') {
+      items.push({
+        ean: `libre-${Date.now()}-${added}`, name: line.label, brand: '', quantity: '',
+        nutriscore: null, nova: null, kcal: null, price: line.price,
+        purchases: recordPurchase([], { date: today(), price: line.price }),
+      })
+      added++
+    } else {
+      const it = items.find(p => p.ean === sel.value)
+      if (it) {
+        it.price = line.price
+        it.purchases = recordPurchase(it.purchases, { date: today(), price: line.price })
+        updated++
+      }
+    }
+  })
+  save(); render()
+  ticketLines = []; renderTicket()
+  $('ticketStatus').textContent = added + updated
+    ? `✓ ${added} entrée${added > 1 ? 's' : ''} libre${added > 1 ? 's' : ''} ajoutée${added > 1 ? 's' : ''}, ${updated} prix mis à jour. Le reste a été ignoré.`
+    : 'Rien à enregistrer — toutes les lignes étaient sur « ignorer ».'
+}
 
 // ─── BONS PLANS (table partagée liens_utiles, mêmes règles que Serein) ─────
 async function loadBonsPlans() {

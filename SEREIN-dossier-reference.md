@@ -387,10 +387,13 @@ Plan de briques validé par Juju le 2026-07-05 (« prompt ultime ») :
 2. ~~Brique 2 — Liens utiles partagés~~ ✅ livrée
 3. ~~Brique 1 — Factures ponctuelles~~ ✅ livrée
 4. ~~Brique 4 — Détail Nutri-Score enrichi~~ ✅ livrée
-5. **Brique 3 — OCR ticket de caisse** (Tesseract.js local, validation
-   humaine ligne par ligne) — l'association automatique ticket→fiche Open
-   Food Facts est HORS SCOPE de cette brique (trop peu fiable), à
-   réévaluer plus tard si le besoin se confirme.
+5. ~~Brique 3 — OCR ticket de caisse~~ ✅ livrée (l'association automatique
+   ticket→fiche Open Food Facts reste hors scope, à réévaluer si besoin).
+
+**Plan « prompt ultime » terminé (5/5).** Prochaines candidates à
+prioriser avec Juju : chatbot assistant (guidé gratuit ou IA générative =
+clé API payante), rappels e-mail, admin des liens utiles, facturation
+`user_services`.
 
 Garées (hors briques, à re-prioriser ensuite) : chatbot assistant (guidé
 gratuit ou IA générative = clé API payante à décider), rappels e-mail,
@@ -424,6 +427,19 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   partage famille en texte (navigator.share / presse-papiers, lisible sans
   app), suggestions « à racheter ? » depuis l'inventaire scanné (≥ 2 achats).
   Service worker passé en v3 pour propager la mise à jour.
+- **Lecteur de ticket de caisse (Brique 3, 2026-07-06)** : photo → OCR
+  **100 % sur l'appareil** (Tesseract.js `fra`, module chargé du CDN au
+  premier usage — l'image ne part jamais). Parseur pur `parseTicketText`
+  (prix fin de ligne, virgule/point, « 2 X » nettoyé, totaux/TVA/CB/
+  n° ticket/remises/prix-au-kg exclus, bornes 0,05-500 €). Chaque ligne :
+  Ignorer (défaut) / Entrée libre / Association à un produit scanné
+  (suggestion par mots communs, pré-sélectionnée mais JAMAIS d'auto-import :
+  bouton « Valider la sélection » obligatoire). Association → met à jour le
+  prix + historique comme le champ prix. **HORS SCOPE documenté** :
+  correspondance automatique ticket→fiche Open Food Facts (trop peu fiable
+  en une brique). Point d'injection `window.__pmOcr` pour les tests.
+  Testé : `sandbox/paniermalin-ticket.test.ts` 13 cas + 10 cas navigateur
+  (OCR simulé). Service worker v7.
 - **Détail Nutri-Score enrichi (Brique 4, 2026-07-06)** : tap sur un produit
   → fiche dépliable (sucres, sel, matières grasses dont saturées, fibres,
   protéines /100 g, additifs E…), explications statiques Nutri-Score/NOVA,
@@ -451,3 +467,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-06 | Brique 2 : table `liens_utiles` publique + logique partagée (https only) ; `<LiensUtiles/>` sur /engagements (eau/énergie + note commune) ; « Bons plans & fidélité » sur /paniermalin (6 enseignes) | 220/220 PASS sandbox, 8/8 PASS navigateur (table pleine + vide), build vert |
 | 2026-07-06 | Brique 1 : factures ponctuelles — table dédiée + `facture_id` sur reminders, mode A calculé (ancre = échéance stockée) / mode B figé, rappels réutilisés, section /engagements + suggestions /rappels | 244/244 PASS sandbox, 10/10 PASS navigateur, build vert |
 | 2026-07-06 | Brique 4 : détail Nutri-Score enrichi PanierMalin (tap → sucres/sel/gras/fibres/protéines/additifs, explications, lien OFF, zéro appel réseau en plus, vieux produits gérés) | 254/254 PASS sandbox, 9/9 PASS navigateur, build vert |
+| 2026-07-06 | Brique 3 : lecteur de ticket OCR local (Tesseract.js fra), parseur tickets FR (totaux/TVA/CB exclus), validation humaine ligne par ligne (ignorer/libre/associer + suggestion), jamais d'auto-import | 267/267 PASS sandbox, 10/10 PASS navigateur (OCR simulé), build vert |
