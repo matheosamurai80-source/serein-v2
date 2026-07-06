@@ -354,6 +354,23 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   (invitation). Logique de mise en forme pure `src/lib/admin/logic.ts`.
 - Testé : `sandbox/admin.test.ts` 13 cas + 10 cas navigateur (3 profils).
 
+### Export CSV — portabilité RGPD (livré 2026-07-06)
+- Bouton « 📥 Exporter mes données (CSV) » sur /compte (connecté uniquement)
+  → GET `/api/export-csv` : client Supabase anon + cookies de session, donc
+  **RLS appliqué** (SELECT sous l'identité de l'utilisateur) + refiltre
+  `onlyMine` en ceinture. Lecture seule, aucune écriture, aucune table.
+- Un fichier, deux sections titrées : engagements (16 colonnes, schéma réel
+  lu en base) et services (4 colonnes). En-têtes ET valeurs en français
+  (types, fréquences, statuts traduits ; montants à virgule ; dates FR).
+- Format Excel FR : **UTF-8 + BOM**, séparateur `;`, CRLF, échappement
+  RFC 4180, injection de formule neutralisée (= + - @ → apostrophe).
+- Sans session → 401 message FR ; invité local → pas de bouton (ses données
+  sont déjà sur son appareil).
+- Testé : `sandbox/export-csv.test.ts` 20 cas (comptage, octets BOM/UTF-8,
+  étanchéité entre utilisateurs, échappements) + 4 cas navigateur.
+- Extension notée, NON implémentée : export JSON complet (lettres, rappels,
+  factures) pour une portabilité totale — à décider comme brique future.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -502,3 +519,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-06 | Brique 3 : lecteur de ticket OCR local (Tesseract.js fra), parseur tickets FR (totaux/TVA/CB exclus), validation humaine ligne par ligne (ignorer/libre/associer + suggestion), jamais d'auto-import | 267/267 PASS sandbox, 10/10 PASS navigateur (OCR simulé), build vert |
 | 2026-07-06 | Navigation croisée (🧺 PanierMalin dans la nav Serein, 🛡️ Retour Serein en tête de PanierMalin) + menu « 🏦 Ma banque » (14 banques FR, lien direct, table partagée, masqué hors ligne) | 270/270 PASS sandbox, 9/9 PASS navigateur, build vert |
 | 2026-07-06 | Dashboard administrateur /admin : RPC `admin_stats()` réservée à l'éditeur (vérifiée en base), chiffres agrégés (comptes, engagements, lettres, rappels, factures, listes famille) + répartitions, 3 états d'accès | 283/283 PASS sandbox, 10/10 PASS navigateur, build vert |
+| 2026-07-06 | Export CSV RGPD : /api/export-csv (RLS via session + refiltre onlyMine, lecture seule), UTF-8+BOM `;` Excel FR, colonnes et valeurs en français, anti-injection formule, bouton sur /compte | 303/303 PASS sandbox, 4/4 PASS navigateur, build vert |
