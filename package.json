@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:sandbox": "tsx sandbox/business-logic.test.ts && tsx sandbox/letters.test.ts && tsx sandbox/commitments.test.ts && tsx sandbox/reminders.test.ts && tsx sandbox/auth.test.ts && tsx sandbox/dashboard.test.ts && tsx sandbox/abonopack.test.ts && tsx sandbox/analyse.test.ts && tsx sandbox/localstore.test.ts && tsx sandbox/providers.test.ts && tsx sandbox/offres.test.ts && tsx sandbox/paniermalin-listes.test.ts && tsx sandbox/fondation.test.ts && tsx sandbox/liens.test.ts && tsx sandbox/factures.test.ts"
+    "test:sandbox": "tsx sandbox/business-logic.test.ts && tsx sandbox/letters.test.ts && tsx sandbox/commitments.test.ts && tsx sandbox/reminders.test.ts && tsx sandbox/auth.test.ts && tsx sandbox/dashboard.test.ts && tsx sandbox/abonopack.test.ts && tsx sandbox/analyse.test.ts && tsx sandbox/localstore.test.ts && tsx sandbox/providers.test.ts && tsx sandbox/offres.test.ts && tsx sandbox/paniermalin-listes.test.ts && tsx sandbox/fondation.test.ts && tsx sandbox/liens.test.ts && tsx sandbox/factures.test.ts && tsx sandbox/paniermalin-detail.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
