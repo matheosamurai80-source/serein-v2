@@ -337,6 +337,23 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Testé : +3 cas sandbox (liens.test.ts) + 9 cas navigateur (popup vérifiée,
   hors-ligne). Service worker v8.
 
+### Dashboard administrateur — `/admin` (livré 2026-07-06)
+- **Sécurité côté serveur** : RPC `admin_stats()` (security definer) vérifie
+  que le compte connecté est julienpeltier60@gmail.com ; sinon « accès
+  refusé » (vérifié en base : appel sans auth → rejeté). La page ne
+  contient aucun secret.
+- **Chiffres agrégés uniquement, aucune donnée individuelle** : comptes
+  (total + 7 derniers jours), engagements (total/actifs/détectés auto +
+  répartition par type), lettres (total + par régime), rappels (total/en
+  attente), factures ponctuelles, listes famille PanierMalin.
+- Rappel honnête affiché : les utilisateurs en mode sans compte (local)
+  sont invisibles par conception.
+- Accès : URL /admin + lien discret sur /compte (visible pour l'admin
+  seulement — cosmétique, la barrière réelle est la fonction SQL).
+- 3 états gérés : admin (stats), compte non autorisé (🔒), non connecté
+  (invitation). Logique de mise en forme pure `src/lib/admin/logic.ts`.
+- Testé : `sandbox/admin.test.ts` 13 cas + 10 cas navigateur (3 profils).
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -484,3 +501,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-06 | Brique 4 : détail Nutri-Score enrichi PanierMalin (tap → sucres/sel/gras/fibres/protéines/additifs, explications, lien OFF, zéro appel réseau en plus, vieux produits gérés) | 254/254 PASS sandbox, 9/9 PASS navigateur, build vert |
 | 2026-07-06 | Brique 3 : lecteur de ticket OCR local (Tesseract.js fra), parseur tickets FR (totaux/TVA/CB exclus), validation humaine ligne par ligne (ignorer/libre/associer + suggestion), jamais d'auto-import | 267/267 PASS sandbox, 10/10 PASS navigateur (OCR simulé), build vert |
 | 2026-07-06 | Navigation croisée (🧺 PanierMalin dans la nav Serein, 🛡️ Retour Serein en tête de PanierMalin) + menu « 🏦 Ma banque » (14 banques FR, lien direct, table partagée, masqué hors ligne) | 270/270 PASS sandbox, 9/9 PASS navigateur, build vert |
+| 2026-07-06 | Dashboard administrateur /admin : RPC `admin_stats()` réservée à l'éditeur (vérifiée en base), chiffres agrégés (comptes, engagements, lettres, rappels, factures, listes famille) + répartitions, 3 états d'accès | 283/283 PASS sandbox, 10/10 PASS navigateur, build vert |

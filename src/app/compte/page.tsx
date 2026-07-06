@@ -87,6 +87,9 @@ export default function ComptePage() {
                   Connecté : <strong className="text-ink">{email}</strong>.<br />
                   Vos engagements, rappels et lettres sont stockés chez Supabase (UE) et
                   accessibles uniquement par votre compte.
+                  {email === 'julienpeltier60@gmail.com' && (
+                    <> <a href="/admin" className="text-moss underline" data-testid="lien-admin">Dashboard administrateur →</a></>
+                  )}
                 </p>
               ) : (
                 <p className="text-sm text-ink/80 leading-[1.6]">
