@@ -386,9 +386,11 @@ Plan de briques validé par Juju le 2026-07-05 (« prompt ultime ») :
 1. ~~Brique 0 — légal + fondation multiservice~~ ✅ livrée
 2. ~~Brique 2 — Liens utiles partagés~~ ✅ livrée
 3. ~~Brique 1 — Factures ponctuelles~~ ✅ livrée
-4. **Brique 4 — Détail Nutri-Score enrichi** (PanierMalin, tap sur produit)
+4. ~~Brique 4 — Détail Nutri-Score enrichi~~ ✅ livrée
 5. **Brique 3 — OCR ticket de caisse** (Tesseract.js local, validation
-   humaine ligne par ligne)
+   humaine ligne par ligne) — l'association automatique ticket→fiche Open
+   Food Facts est HORS SCOPE de cette brique (trop peu fiable), à
+   réévaluer plus tard si le besoin se confirme.
 
 Garées (hors briques, à re-prioriser ensuite) : chatbot assistant (guidé
 gratuit ou IA générative = clé API payante à décider), rappels e-mail,
@@ -422,6 +424,15 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   partage famille en texte (navigator.share / presse-papiers, lisible sans
   app), suggestions « à racheter ? » depuis l'inventaire scanné (≥ 2 achats).
   Service worker passé en v3 pour propager la mise à jour.
+- **Détail Nutri-Score enrichi (Brique 4, 2026-07-06)** : tap sur un produit
+  → fiche dépliable (sucres, sel, matières grasses dont saturées, fibres,
+  protéines /100 g, additifs E…), explications statiques Nutri-Score/NOVA,
+  lien « fiche complète sur Open Food Facts ». AUCUN appel réseau
+  supplémentaire : tout vient de la réponse OFF déjà stockée (champ
+  `additives_tags` ajouté au fetch). Produits scannés avant la mise à jour →
+  message doux « détails non disponibles, rescannez-le » (pas de re-fetch
+  automatique en masse). Testé : `sandbox/paniermalin-detail.test.ts`
+  10 cas + 9 cas navigateur. Service worker v6.
 - **Synchro famille EN DIRECT (2026-07-05, v2)** : bouton « 👨‍👩‍👧 Synchro
   famille » → code secret 8 caractères + lien à partager ; chaque téléphone
   qui a le lien voit et modifie la même liste (tirage toutes les 8 s,
@@ -439,3 +450,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-05 | Brique 0 : pages légales (confidentialité/CGU/mentions), /compte + suppression RGPD (`delete_my_account`, cascade vérifiée), table `user_services`, textes PanierMalin nuancés | 210/210 PASS sandbox, 15/15 PASS navigateur, build + lint verts |
 | 2026-07-06 | Brique 2 : table `liens_utiles` publique + logique partagée (https only) ; `<LiensUtiles/>` sur /engagements (eau/énergie + note commune) ; « Bons plans & fidélité » sur /paniermalin (6 enseignes) | 220/220 PASS sandbox, 8/8 PASS navigateur (table pleine + vide), build vert |
 | 2026-07-06 | Brique 1 : factures ponctuelles — table dédiée + `facture_id` sur reminders, mode A calculé (ancre = échéance stockée) / mode B figé, rappels réutilisés, section /engagements + suggestions /rappels | 244/244 PASS sandbox, 10/10 PASS navigateur, build vert |
+| 2026-07-06 | Brique 4 : détail Nutri-Score enrichi PanierMalin (tap → sucres/sel/gras/fibres/protéines/additifs, explications, lien OFF, zéro appel réseau en plus, vieux produits gérés) | 254/254 PASS sandbox, 9/9 PASS navigateur, build vert |

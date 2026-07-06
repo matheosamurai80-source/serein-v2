@@ -31,9 +31,51 @@ export function normalizeProduct(ean, off) {
     kcal: num(n['energy-kcal_100g']),
     sugars: num(n.sugars_100g),
     salt: num(n.salt_100g),
+    fat: num(n.fat_100g),
     satFat: num(n['saturated-fat_100g']),
+    fiber: num(n.fiber_100g),
+    proteins: num(n.proteins_100g),
+    additives: Array.isArray(p.additives_tags)
+      ? p.additives_tags.map(t => String(t).replace(/^[a-z]{2}:/, '').toUpperCase()).filter(Boolean)
+      : [],
     price: null, // saisi à la main par l'utilisateur (optionnel)
   }
+}
+
+// ─── DÉTAIL PRODUIT (Brique 4) ──────────────────────────────────────────────
+// Fiche enrichie sur demande (tap), sans appel réseau supplémentaire : tout
+// vient de la réponse Open Food Facts déjà stockée. Les produits scannés
+// avant cette version n'ont pas ces champs → message doux, pas de re-fetch
+// automatique en masse.
+
+export const NUTRI_EXPLAIN =
+  'Nutri-Score : note globale de qualité nutritionnelle pour 100 g, de A (meilleure) à E. '
+  + 'Elle pénalise calories, sucres, sel et graisses saturées, et valorise fibres et protéines.'
+
+export const NOVA_EXPLAIN =
+  'NOVA : degré de transformation, de 1 (aliment brut) à 4 (ultra-transformé — '
+  + 'additifs et procédés industriels).'
+
+/**
+ * Lignes de détail affichables pour un produit (uniquement les champs
+ * réellement présents). hasAny=false → « détails non disponibles ».
+ */
+export function productDetail(p) {
+  const rows = []
+  const push = (label, value, unit) => { if (typeof value === 'number' && Number.isFinite(value)) rows.push({ label, value, unit }) }
+  push('Sucres', p?.sugars, 'g/100g')
+  push('Sel', p?.salt, 'g/100g')
+  push('Matières grasses', p?.fat, 'g/100g')
+  push('… dont saturées', p?.satFat, 'g/100g')
+  push('Fibres', p?.fiber, 'g/100g')
+  push('Protéines', p?.proteins, 'g/100g')
+  const additives = Array.isArray(p?.additives) ? p.additives : []
+  return { rows, additives, hasAny: rows.length > 0 || additives.length > 0 }
+}
+
+/** Fiche complète officielle Open Food Facts. */
+export function offProductUrl(ean) {
+  return `https://fr.openfoodfacts.org/produit/${encodeURIComponent(String(ean ?? ''))}`
 }
 
 // ─── COMPARAISON DU PANIER ──────────────────────────────────────────────────
