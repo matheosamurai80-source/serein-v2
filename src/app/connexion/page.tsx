@@ -6,6 +6,7 @@ import { useToast, Toast } from '@/components/ui/toast'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { validateCredentials, friendlyAuthError } from '@/lib/auth/logic'
 import { migrateGuestData } from '@/lib/data/store'
+import { LegalFooter } from '@/components/legal'
 
 type Mode = 'signin' | 'signup'
 
@@ -119,6 +120,7 @@ export default function ConnexionPage() {
           Vous pouvez aussi utiliser Serein sans compte —{' '}
           <a href="/engagements" className="text-moss underline">continuer sans connexion</a>.
         </p>
+        <LegalFooter />
 
         <Toast message={toast.message} visible={toast.visible} onHide={toast.hide} />
       </main>

@@ -257,6 +257,30 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   PanierMalin (https://serein-v2.vercel.app/paniermalin/).
 - PanierMalin aussi en accès rapide sur le dashboard.
 
+### Brique 0 — Fondation légale + multiservice (livrée 2026-07-05)
+- **Pages légales** `/confidentialite`, `/cgu`, `/mentions-legales` : rédigées
+  d'après le comportement RÉEL du code (analyse 100 % locale, mode invité
+  localStorage, compte Supabase UE base légale contrat, synchro famille par
+  code aléatoire sans identité, Open Food Facts = code-barres seul,
+  sous-traitants Supabase/Vercel, droits RGPD + CNIL). Gabarit commun
+  `src/components/legal.tsx` + `LegalFooter` sur le hub, /connexion, /compte.
+  ⚠️ À COMPLÉTER par Juju : SIREN/SIRET + adresse pro dans mentions légales.
+- **`/compte`** : statut (compte ou appareil), services actifs, « Effacer les
+  données de cet appareil » (invité), « Supprimer mon compte et mes données »
+  (garde-fou : taper SUPPRIMER) → RPC `delete_my_account()`.
+- **Constat en base** : `profiles` n'a PAS de FK vers `auth.users` → la
+  fonction supprime explicitement le profil (cascade : engagements, rappels,
+  lettres, uploads…) PUIS le compte auth. Cascade vérifiée avec un
+  utilisateur synthétique (0 ligne restante).
+- **Table `user_services`** (user_id, service_key ∈ serein/paniermalin/apres/
+  jarvis, status, activated_at, deactivated_at), RLS propriétaire, PK
+  (user_id, service_key). Pas de facturation dans cette brique.
+  Logique `activeServiceKeys(rows)` pure (`src/lib/services/logic.ts`).
+- PanierMalin : texte « vos données restent sur ce téléphone » nuancé
+  (exception synchro famille) + liens légaux + lien retour 🛡️ Serein.
+- Testé : `sandbox/fondation.test.ts` 13 cas + 15 cas navigateur (dont
+  session simulée cookie @supabase/ssr + mocks GoTrue).
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -317,12 +341,19 @@ pas déjà fait.
 
 ## 4. Prochaines briques (dans l'ordre)
 
-1. Rappels e-mail (canal `email` déjà prévu au schéma) — nécessite un
-   service d'envoi ; à cadrer avant de construire.
-2. Étendre l'annuaire des prestataires (mutuelles, presse, SaaS) et
-   vérifier/actualiser les adresses de résiliation.
-3. Landing publique + partage (le hub racine en tient lieu pour l'instant).
-~~Activer « Anonymous sign-ins »~~ → plus nécessaire : mode invité local.
+Plan de briques validé par Juju le 2026-07-05 (« prompt ultime ») :
+1. ~~Brique 0 — légal + fondation multiservice~~ ✅ livrée
+2. **Brique 2 — Liens utiles partagés** (table `liens_utiles` + composant
+   commun, distributeurs eau/énergie pour Serein, enseignes pour PanierMalin)
+3. **Brique 1 — Factures ponctuelles** (mode A fréquence calculée / mode B
+   dates manuelles, intégrées aux rappels)
+4. **Brique 4 — Détail Nutri-Score enrichi** (PanierMalin, tap sur produit)
+5. **Brique 3 — OCR ticket de caisse** (Tesseract.js local, validation
+   humaine ligne par ligne)
+
+Garées (hors briques, à re-prioriser ensuite) : chatbot assistant (guidé
+gratuit ou IA générative = clé API payante à décider), rappels e-mail,
+extension annuaire résiliation.
 
 ## 5. Historique des briques
 
@@ -366,3 +397,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-05 | Fix critique : la prod compilait avec l'ANCIEN projet Supabase (variables Vercel obsolètes) → config officielle inscrite dans le code (`supabase/config.ts`) + repli mémoire si localStorage bloqué | bundle en ligne vérifié (bon projet, ancien absent), 18/18 PASS navigateur |
 | 2026-07-05 | Détection sur relevé d'1 mois (parseur réel + repli 1 occurrence) + Offres de référence télécom/énergie (ligne 💡 sur /engagements) + PanierMalin listes (courses, récurrents, partage famille) | 183/183 PASS sandbox, 13/13 PASS navigateur, build + lint verts |
 | 2026-07-05 | a-b-c : parseur 2 lignes + « lignes non comprises » sur /analyse · offres streaming/sport/assurance · PanierMalin synchro famille en direct (code secret, fusion multi-téléphones, table verrouillée) | 197/197 PASS sandbox, 8/8 PASS navigateur (2 contextes synchronisés), build vert |
+| 2026-07-05 | Brique 0 : pages légales (confidentialité/CGU/mentions), /compte + suppression RGPD (`delete_my_account`, cascade vérifiée), table `user_services`, textes PanierMalin nuancés | 210/210 PASS sandbox, 15/15 PASS navigateur, build + lint verts |
