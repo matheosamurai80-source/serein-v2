@@ -58,6 +58,14 @@
   <p>Scannez, comparez, choisissez le meilleur.</p>
 </header>
 <main>
+  <div class="row" style="margin:0 0 14px">
+    <a href="/" id="backSerein" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:11px;color:var(--green-dark);font-weight:700;text-decoration:none">
+      🛡️ Retour Serein
+    </a>
+    <select id="banqueSelect" aria-label="Ouvrir le site de ma banque" style="flex:1;border:1.5px solid var(--line);border-radius:12px;padding:11px;font-size:14px;font-weight:700;color:var(--green-dark);background:var(--card)">
+      <option value="">🏦 Ma banque…</option>
+    </select>
+  </div>
   <div class="card">
     <video id="cam" playsinline muted></video>
     <div class="row">
@@ -518,6 +526,24 @@ async function loadBonsPlans() {
   }
 }
 loadBonsPlans()
+
+// ─── MA BANQUE (menu déroulant, lien direct — mêmes données que Serein) ────
+async function loadBanques() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/liens_utiles?service_key=eq.paniermalin&categorie=eq.banque&order=ordre_affichage,nom&select=nom,url`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    })
+    const rows = (await r.json()).filter(b => { try { return new URL(b.url).protocol === 'https:' } catch { return false } })
+    const sel = $('banqueSelect')
+    for (const b of rows) sel.append(new Option(b.nom, b.url))
+    if (!rows.length) sel.style.display = 'none'
+  } catch { $('banqueSelect').style.display = 'none' }
+}
+$('banqueSelect').onchange = e => {
+  if (e.target.value) window.open(e.target.value, '_blank', 'noopener,noreferrer')
+  e.target.value = ''
+}
+loadBanques()
 
 // ─── PWA ────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')

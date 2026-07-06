@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { BanqueSelect } from '@/components/banque-select'
 
 const LINKS = [
   { href: '/dashboard',   label: 'Accueil' },
@@ -57,6 +58,14 @@ export function SereinNav() {
           </a>
         )
       })}
+
+      {/* Navigation croisée : PanierMalin à un tap, et retour pareil là-bas */}
+      <a href="/paniermalin" data-testid="nav-paniermalin"
+        className="font-mono text-[11px] tracking-[.13em] uppercase rounded-full px-4 py-2 transition-colors bg-[#2F7A4D]/10 text-[#245E3B] border border-[#2F7A4D]/25 hover:bg-[#2F7A4D]/18">
+        🧺 PanierMalin
+      </a>
+
+      <BanqueSelect />
 
       {ready && (email ? (
         <button data-testid="signout" onClick={signOut}
