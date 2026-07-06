@@ -1,3 +1,5 @@
+import { LegalFooter } from '@/components/legal'
+
 // ─── HUB D'ACCUEIL ──────────────────────────────────────────────────────────
 // Une seule adresse pour tout : Serein (finances récurrentes) et PanierMalin
 // (courses). Les nouveaux venus passent par l'onboarding, les autres entrent
@@ -9,7 +11,7 @@ const SEREIN_LINKS = [
   { href: '/engagements', emoji: '📋', title: 'Engagements', desc: 'Suivre abonnements et contrats' },
   { href: '/rappels',     emoji: '🔔', title: 'Rappels', desc: 'Prévenu avant chaque fenêtre' },
   { href: '/resiliation', emoji: '✉️', title: 'Lettre de résiliation', desc: 'La loi de votre côté, prête à envoyer' },
-  { href: '/connexion',   emoji: '🔑', title: 'Mon compte', desc: 'Retrouver ses données partout' },
+  { href: '/compte',      emoji: '🔑', title: 'Mon compte', desc: 'Vos données, vos services, vos droits' },
 ]
 
 export default function RootPage() {
@@ -65,6 +67,7 @@ export default function RootPage() {
       <p className="font-mono text-[11px] text-ink/45 tracking-wider text-center mt-9 leading-[1.7]">
         Serein arme, alerte et prépare — c&apos;est toujours vous qui décidez.
       </p>
+      <LegalFooter />
     </main>
   )
 }
