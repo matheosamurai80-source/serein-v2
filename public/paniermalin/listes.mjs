@@ -128,3 +128,32 @@ export function sameLists(a, b) {
   const ser = l => JSON.stringify([...(l ?? [])].sort((x, y) => x.id.localeCompare(y.id)))
   return ser(a) === ser(b)
 }
+
+// ─── RÉCURRENTS & PROPOSITIONS PROMO ────────────────────────────────────────
+
+/** Les articles récurrents de la liste (cochés compris), triés. */
+export function recurrentItems(list) {
+  return sortList(list).filter(i => i.recurrent)
+}
+
+/**
+ * Propositions d'achat : produits de l'inventaire dont le DERNIER prix connu
+ * est une promo par rapport à VOTRE historique (priceSignal), achetés au
+ * moins 2 fois (habitude), et pas déjà à prendre sur la liste.
+ * priceSignal est injecté (vient de logic.mjs) pour rester testable pur.
+ */
+export function promoSuggestions(inventory, list, priceSignal) {
+  const aPrendre = new Set(visible(list).filter(i => !i.done).map(i => i.id))
+  const out = []
+  for (const p of inventory ?? []) {
+    const name = norm(p.name)
+    if (!name || aPrendre.has(keyOf(name))) continue
+    const prices = (p.purchases ?? []).filter(a => a.price > 0)
+    if (prices.length < 2) continue // pas d'habitude → pas de comparaison honnête
+    const last = prices[prices.length - 1]
+    if (priceSignal(prices.slice(0, -1), last.price) === 'promo') {
+      out.push({ name, price: last.price })
+    }
+  }
+  return out
+}

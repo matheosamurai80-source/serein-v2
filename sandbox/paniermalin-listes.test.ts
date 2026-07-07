@@ -9,7 +9,10 @@ import {
   addItem, toggleDone, toggleRecurrent, removeItem, resetWeek,
   pendingCount, sortList, shareText, suggestFromInventory, visible,
   genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists,
+  recurrentItems, promoSuggestions,
 } from '../public/paniermalin/listes.mjs'
+// @ts-expect-error module ESM sans types (app statique)
+import { priceSignal } from '../public/paniermalin/logic.mjs'
 
 let failures = 0
 function check(name: string, cond: boolean, detail = '') {
@@ -95,6 +98,38 @@ const fusionUnion = mergeLists(addItem([], 'Pain', { now: 10 }), addItem([], 'Œ
 check('Fusion : articles ajoutés des deux côtés réunis', fusionUnion.length === 2)
 check('sameLists : détecte l\'égalité indépendamment de l\'ordre',
   sameLists(fusionUnion, [...fusionUnion].reverse()) && !sameLists(fusionUnion, telA))
+
+// ─── 8. ACCÈS AUX RÉCURRENTS ────────────────────────────────────────────────
+let rec = addItem(addItem(addItem([], 'Lait'), 'Pain'), 'Piles')
+rec = toggleRecurrent(rec, 'lait')
+rec = toggleRecurrent(rec, 'pain')
+rec = toggleDone(rec, 'pain') // un récurrent coché reste visible dans l'accès dédié
+check('Récurrents : les 2 marqués ⭐ (dont 1 coché), sans les ponctuels',
+  recurrentItems(rec).length === 2 && !recurrentItems(rec).some((i: { id: string }) => i.id === 'piles'))
+check('Récurrents : suppression → sort aussi de l\'accès dédié',
+  recurrentItems(removeItem(rec, 'lait')).length === 1)
+
+// ─── 9. PROPOSITIONS D'ACHAT : RÉCURRENT EN PROMO ──────────────────────────
+const inv = [
+  // Nutella : payé 4,50 puis 4,60, dernier passage à 3,90 → PROMO
+  { name: 'Nutella 400g', purchases: [
+    { date: '2026-05-01', price: 4.5 }, { date: '2026-06-01', price: 4.6 }, { date: '2026-07-01', price: 3.9 }] },
+  // Lait : prix stable → pas de promo
+  { name: 'Lait demi-écrémé', purchases: [
+    { date: '2026-06-01', price: 1.05 }, { date: '2026-07-01', price: 1.06 }] },
+  // Chips : 1 seul prix connu → pas d'habitude, pas de proposition
+  { name: 'Chips paprika', purchases: [{ date: '2026-07-01', price: 2.1 }] },
+]
+const props = promoSuggestions(inv, [], priceSignal)
+check('Promo : Nutella proposé (3,90 € vs ~4,55 € d\'habitude), les autres non',
+  props.length === 1 && props[0].name === 'Nutella 400g' && props[0].price === 3.9,
+  JSON.stringify(props))
+check('Promo : déjà sur la liste à prendre → pas re-proposé',
+  promoSuggestions(inv, addItem([], 'Nutella 400g'), priceSignal).length === 0)
+check('Promo : article de la liste déjà coché → re-proposé quand même (à racheter en promo)',
+  promoSuggestions(inv, toggleDone(addItem([], 'Nutella 400g'), 'nutella 400g'), priceSignal).length === 1)
+check('Promo : inventaire vide / null → rien, pas de crash',
+  promoSuggestions([], [], priceSignal).length === 0 && promoSuggestions(null, null, priceSignal).length === 0)
 
 console.log(failures === 0 ? '\n✅ TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)
