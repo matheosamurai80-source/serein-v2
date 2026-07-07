@@ -457,10 +457,28 @@ let ticketLines = []
 
 async function ocrImage(file) {
   if (window.__pmOcr) return window.__pmOcr(file) // point d'injection des tests
+  // Prétraitement AVANT l'OCR : redimensionnement + noir/blanc franc (Otsu).
+  // C'est ce qui fait passer une photo de ticket de « mal lue » à « lisible ».
+  const bmp = await createImageBitmap(file)
+  const largeurCible = Math.max(1400, Math.min(2000, bmp.width))
+  const echelle = largeurCible / bmp.width
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bmp.width * echelle)
+  canvas.height = Math.round(bmp.height * echelle)
+  const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height)
+  try {
+    const { pretraiterRgba } = await import('/shared/pretraitement.mjs')
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    pretraiterRgba(img.data)
+    ctx.putImageData(img, 0, 0)
+  } catch { /* prétraitement indisponible : OCR sur l'image brute */ }
   const T = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js')
   const worker = await T.createWorker('fra')
   try {
-    const { data } = await worker.recognize(file)
+    const { data } = await worker.recognize(canvas)
     return data.text
   } finally {
     await worker.terminate()

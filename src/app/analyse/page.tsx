@@ -59,9 +59,11 @@ export default function AnalysePage() {
     if (file.size > 15 * 1024 * 1024) { toast.show('⚠️ Fichier trop lourd (max 15 Mo)'); return }
     setBusy(true)
     try {
-      const text = await extractPdfText(file)
+      const text = await extractPdfText(file, phase => {
+        if (phase === 'ocr') toast.show('PDF scanné détecté — lecture optique sur votre appareil (jusqu\'à 30 s)…')
+      })
       if (text.trim().length < 40) {
-        toast.show('PDF sans texte lisible (scan ?) — collez plutôt le texte du relevé ci-dessous.')
+        toast.show('Rien de lisible, même en lecture optique — collez plutôt le texte du relevé ci-dessous.')
         return
       }
       runAnalysis(text)
