@@ -489,6 +489,18 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   en une brique). Point d'injection `window.__pmOcr` pour les tests.
   Testé : `sandbox/paniermalin-ticket.test.ts` 13 cas + 10 cas navigateur
   (OCR simulé). Service worker v7.
+- **Retours utilisateur (2026-07-07)** :
+  (1) **BUG import ticket corrigé** — l'attribut `capture` sur l'unique
+  input forçait l'appareil photo sur mobile et empêchait de choisir une
+  image de la galerie. Désormais DEUX entrées : « 📸 Prendre une photo »
+  (capture) et « 🖼️ Importer une image » (sans capture), même traitement.
+  (2) **Propositions d'achat promo** : `promoSuggestions` — produits achetés
+  ≥ 2 fois dont le dernier prix est une promo vs VOS prix (priceSignal
+  injecté) et pas déjà à prendre → boutons « + Nutella · 3,90 € » dans la
+  carte liste, ajout en un tap.
+  (3) **Accès dédié aux récurrents** : bouton « 🔁 Récurrents (n) » qui
+  filtre la liste (cochés compris) / retour « Toute la liste ».
+  Service worker v9.
 - **Détail Nutri-Score enrichi (Brique 4, 2026-07-06)** : tap sur un produit
   → fiche dépliable (sucres, sel, matières grasses dont saturées, fibres,
   protéines /100 g, additifs E…), explications statiques Nutri-Score/NOVA,
@@ -520,3 +532,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-06 | Navigation croisée (🧺 PanierMalin dans la nav Serein, 🛡️ Retour Serein en tête de PanierMalin) + menu « 🏦 Ma banque » (14 banques FR, lien direct, table partagée, masqué hors ligne) | 270/270 PASS sandbox, 9/9 PASS navigateur, build vert |
 | 2026-07-06 | Dashboard administrateur /admin : RPC `admin_stats()` réservée à l'éditeur (vérifiée en base), chiffres agrégés (comptes, engagements, lettres, rappels, factures, listes famille) + répartitions, 3 états d'accès | 283/283 PASS sandbox, 10/10 PASS navigateur, build vert |
 | 2026-07-06 | Export CSV RGPD : /api/export-csv (RLS via session + refiltre onlyMine, lecture seule), UTF-8+BOM `;` Excel FR, colonnes et valeurs en français, anti-injection formule, bouton sur /compte | 303/303 PASS sandbox, 4/4 PASS navigateur, build vert |
+| 2026-07-07 | PanierMalin retours : bug import ticket corrigé (capture forçait l'appareil photo → 2 entrées photo/galerie), propositions d'achat promo (vs prix habituels perso), accès dédié « 🔁 Récurrents » | 309/309 PASS sandbox, 12/12 PASS navigateur, sw v9 |

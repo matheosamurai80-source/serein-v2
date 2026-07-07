@@ -81,10 +81,18 @@
 
   <div class="card">
     <h2>🧾 Lire un ticket de caisse</h2>
-    <label for="ticketFile" style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--green);border-radius:12px;padding:12px;color:var(--green-dark);font-weight:700;cursor:pointer;margin-top:6px">
-      📸 Photographier / importer un ticket
-    </label>
-    <input id="ticketFile" type="file" accept="image/*" capture="environment" style="display:none">
+    <div class="row" style="margin-top:6px">
+      <label for="ticketCam" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--green);border-radius:12px;padding:12px;color:var(--green-dark);font-weight:700;cursor:pointer">
+        📸 Prendre une photo
+      </label>
+      <label for="ticketFile" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--green);border-radius:12px;padding:12px;color:var(--green-dark);font-weight:700;cursor:pointer">
+        🖼️ Importer une image
+      </label>
+    </div>
+    <!-- Deux entrées distinctes : « capture » force l'appareil photo sur mobile
+         et EMPÊCHE de choisir un fichier — d'où le bug d'import corrigé ici. -->
+    <input id="ticketCam" type="file" accept="image/*" capture="environment" style="display:none">
+    <input id="ticketFile" type="file" accept="image/*" style="display:none">
     <div id="ticketStatus" class="hint" style="margin-top:8px;min-height:16px"></div>
     <div id="ticketLines" style="margin-top:4px"></div>
     <div class="row" id="ticketActions" style="display:none">
@@ -98,11 +106,15 @@
   </div>
 
   <div class="card">
-    <h2>🛒 Ma liste de courses <span class="hint" id="listCount"></span></h2>
+    <h2 style="display:flex;align-items:center;justify-content:space-between">
+      <span>🛒 Ma liste de courses <span class="hint" id="listCount"></span></span>
+      <button id="recFilter" class="ghost" style="padding:6px 12px;font-size:12px;border-radius:99px"></button>
+    </h2>
     <div class="row" style="margin-top:6px">
       <input type="text" id="listInput" placeholder="Ajouter : lait, pain, piles…">
       <button id="listAdd" class="ghost">+</button>
     </div>
+    <div id="promoSuggs" style="margin-top:8px"></div>
     <div id="listSuggs" class="hint" style="margin-top:8px"></div>
     <div id="listItems" style="margin-top:6px"><p class="empty">Votre liste est vide.</p></div>
     <div class="row">
@@ -148,7 +160,7 @@
 
 <script type="module">
 import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
-import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists } from './listes.mjs'
+import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
 const status = (msg, err = false) => { $('status').textContent = msg; $('status').className = err ? 'err' : '' }
@@ -293,14 +305,22 @@ $('scanBtn').onclick = async () => {
 let liste = JSON.parse(localStorage.getItem('pm.liste') ?? '[]')
 const saveListe = () => { localStorage.setItem('pm.liste', JSON.stringify(liste)); schedulePush() }
 
+let recSeulement = false // accès dédié aux récurrents (filtre d'affichage)
+
 function renderListe() {
   const box = $('listItems')
   const pending = pendingCount(liste)
   $('listCount').textContent = liste.length ? `(${pending} à prendre)` : ''
-  if (!liste.length) { box.innerHTML = '<p class="empty">Votre liste est vide.</p>' }
+  const recs = recurrentItems(liste)
+  $('recFilter').textContent = recSeulement ? '← Toute la liste' : `🔁 Récurrents (${recs.length})`
+  $('recFilter').style.display = recs.length || recSeulement ? '' : 'none'
+  const affiches = recSeulement ? recs : sortList(liste)
+  if (!affiches.length) {
+    box.innerHTML = `<p class="empty">${recSeulement ? 'Aucun article récurrent — touchez ⭐ sur un article pour le rendre récurrent.' : 'Votre liste est vide.'}</p>`
+  }
   else {
     box.innerHTML = ''
-    for (const it of sortList(liste)) {
+    for (const it of affiches) {
       const div = document.createElement('div')
       div.className = 'prod'
       div.innerHTML = `
@@ -315,6 +335,24 @@ function renderListe() {
       box.appendChild(div)
     }
   }
+  // Propositions d'achat : vos habitudes actuellement en promo (vs VOS prix)
+  const promos = promoSuggestions(items, liste, priceSignal).slice(0, 4)
+  const pbox = $('promoSuggs')
+  pbox.innerHTML = ''
+  if (promos.length) {
+    const titre = document.createElement('p')
+    titre.className = 'hint'
+    titre.innerHTML = '<strong style="color:#8A6100">💰 En promo par rapport à vos prix habituels :</strong>'
+    pbox.appendChild(titre)
+    for (const pr of promos) {
+      const b = document.createElement('button')
+      b.style.cssText = 'padding:6px 12px;font-size:12.5px;margin:4px 4px 0 0;border-radius:99px;background:#FFF3D6;color:#8A6100'
+      b.textContent = `+ ${pr.name} · ${pr.price.toLocaleString('fr-FR')} €`
+      b.onclick = () => { liste = addItem(liste, pr.name); saveListe(); renderListe(); status(`${pr.name} ajouté à la liste (repéré en promo 🎉)`) }
+      pbox.appendChild(b)
+    }
+  }
+
   // Suggestions « à racheter ? » depuis l'inventaire scanné
   const suggs = suggestFromInventory(items, liste).slice(0, 4)
   const sbox = $('listSuggs')
@@ -332,6 +370,7 @@ function renderListe() {
   }
 }
 
+$('recFilter').onclick = () => { recSeulement = !recSeulement; renderListe() }
 $('listAdd').onclick = () => { liste = addItem(liste, $('listInput').value); saveListe(); renderListe(); $('listInput').value = '' }
 $('listInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('listAdd').click() })
 $('listWeek').onclick = () => { liste = resetWeek(liste); saveListe(); renderListe(); status('Nouvelle semaine : les récurrents 🔁 sont de retour dans la liste.') }
@@ -428,7 +467,7 @@ async function ocrImage(file) {
   }
 }
 
-$('ticketFile').onchange = async e => {
+async function handleTicketInput(e) {
   const f = e.target.files?.[0]
   if (!f) return
   $('ticketStatus').textContent = 'Lecture du ticket sur votre téléphone… (jusqu\'à 30 s au premier usage)'
@@ -444,6 +483,8 @@ $('ticketFile').onchange = async e => {
   }
   e.target.value = ''
 }
+$('ticketCam').onchange = handleTicketInput
+$('ticketFile').onchange = handleTicketInput
 
 function renderTicket() {
   const box = $('ticketLines')
