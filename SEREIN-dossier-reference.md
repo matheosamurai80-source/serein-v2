@@ -371,6 +371,25 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Extension notée, NON implémentée : export JSON complet (lettres, rappels,
   factures) pour une portabilité totale — à décider comme brique future.
 
+### Lecture de documents robuste — OCR + prétraitement (livré 2026-07-07)
+- Retour : « les importations doc ou photo ne se lisent pas ou mal, Serein
+  comme PanierMalin ». Deux causes réelles traitées :
+- **Serein** : beaucoup de relevés/contrats PDF sont des SCANS (images) →
+  l'extraction de texte native ne trouve rien. `extractPdfText` détecte ce
+  cas (`texteIllisible` : < 40 car. ou aucun chiffre) et bascule sur un
+  **secours OCR local** (rendu page → prétraitement N/B → Tesseract fra,
+  3 premières pages max). Callback `onPhase('ocr')` → toast « PDF scanné
+  détecté, lecture optique… ». Le fichier ne quitte jamais l'appareil.
+- **PanierMalin** : les photos partaient brutes dans l'OCR. Ajout d'un
+  **prétraitement** avant reconnaissance (redimensionnement ~1400-2000 px +
+  niveaux de gris + binarisation Otsu) — le levier n°1 de qualité OCR.
+- **Module partagé** `public/shared/pretraitement.mjs` (Otsu, binarisation,
+  décision OCR) : logique pure, UNE implémentation pour les deux apps.
+  Testé `sandbox/pretraitement.test.ts` 10 cas + 7 cas navigateur (module
+  servi et correct côté Serein ET PanierMalin, décision, non-régression
+  collage). Note : le rendu PDF→canvas→worker Tesseract ne s'exerce que sur
+  un vrai appareil (worker pdf.js/canvas non fiables en headless). SW v10.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -533,3 +552,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-06 | Dashboard administrateur /admin : RPC `admin_stats()` réservée à l'éditeur (vérifiée en base), chiffres agrégés (comptes, engagements, lettres, rappels, factures, listes famille) + répartitions, 3 états d'accès | 283/283 PASS sandbox, 10/10 PASS navigateur, build vert |
 | 2026-07-06 | Export CSV RGPD : /api/export-csv (RLS via session + refiltre onlyMine, lecture seule), UTF-8+BOM `;` Excel FR, colonnes et valeurs en français, anti-injection formule, bouton sur /compte | 303/303 PASS sandbox, 4/4 PASS navigateur, build vert |
 | 2026-07-07 | PanierMalin retours : bug import ticket corrigé (capture forçait l'appareil photo → 2 entrées photo/galerie), propositions d'achat promo (vs prix habituels perso), accès dédié « 🔁 Récurrents » | 309/309 PASS sandbox, 12/12 PASS navigateur, sw v9 |
+| 2026-07-07 | Lecture de documents robuste : secours OCR local pour PDF scannés (Serein) + prétraitement image N/B Otsu avant OCR (PanierMalin), module partagé public/shared/pretraitement.mjs | 319/319 PASS sandbox, 7/7 PASS navigateur, build vert, sw v10 |

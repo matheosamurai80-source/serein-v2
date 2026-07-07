@@ -101,7 +101,9 @@ export default function ResiliationPage() {
     if (file.type !== 'application/pdf') { toast.show('⚠️ Fichier PDF uniquement'); return }
     setReadingPdf(true)
     try {
-      const text = await extractPdfText(file)
+      const text = await extractPdfText(file, phase => {
+        if (phase === 'ocr') toast.show('Contrat scanné détecté — lecture optique sur votre appareil (jusqu\'à 30 s)…')
+      })
       const info = extractContractInfo(text)
       if (info.provider) applyProvider(info.provider.id)
       if (info.contractRef) setContractRef(info.contractRef)
