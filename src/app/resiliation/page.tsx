@@ -102,7 +102,7 @@ export default function ResiliationPage() {
     setReadingPdf(true)
     try {
       const text = await extractPdfText(file, phase => {
-        if (phase === 'ocr') toast.show('Contrat scanné détecté — lecture optique sur votre appareil (jusqu\'à 30 s)…')
+        if (phase === 'ocr') toast.show('Contrat scanné détecté — analyse en cours (jusqu\'à 30 s)…')
       })
       const info = extractContractInfo(text)
       if (info.provider) applyProvider(info.provider.id)
@@ -203,7 +203,7 @@ export default function ResiliationPage() {
             <label className={labelCls} htmlFor="contract-pdf">…ou chargez votre contrat (PDF)</label>
             <label htmlFor="contract-pdf"
               className="w-full flex items-center justify-center gap-2 bg-surface border border-dashed border-sage/45 rounded-xl px-4 py-3 text-sm text-moss cursor-pointer hover:border-sage transition-colors">
-              📄 {readingPdf ? 'Lecture…' : 'Lire mon contrat (reste sur l’appareil)'}
+              📄 {readingPdf ? 'Lecture…' : 'Lire mon contrat (PDF)'}
             </label>
             <input id="contract-pdf" data-testid="contract-pdf" type="file" accept=".pdf,application/pdf" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) void loadContract(f) }} />

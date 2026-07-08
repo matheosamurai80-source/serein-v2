@@ -87,7 +87,7 @@ export function ScreenConversion() {
           <div className="w-11 h-11 rounded-xl bg-amber/12 flex items-center justify-center text-xl flex-shrink-0">📄</div>
           <div className="flex-1">
             <p className="text-sm font-semibold text-ink mb-0.5">Analyser un relevé PDF</p>
-            <p className="text-xs text-ink/50 leading-[1.5]">100 % dans votre navigateur — le fichier ne quitte jamais votre appareil</p>
+            <p className="text-xs text-ink/50 leading-[1.5]">Détection de vos abonnements — vous choisissez lesquels suivre</p>
           </div>
           <span className="font-mono text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full bg-sage/15 text-moss flex-shrink-0">
             Nouveau

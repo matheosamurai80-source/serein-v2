@@ -18,6 +18,7 @@ export function LegalPage({ title, updated, children }: {
         {children}
       </div>
       <p className="font-mono text-[11px] text-ink/45 tracking-wider mt-10 flex gap-4 flex-wrap">
+        <a href="/positionnement" className="underline">Positionnement</a>
         <a href="/confidentialite" className="underline">Confidentialité</a>
         <a href="/cgu" className="underline">CGU</a>
         <a href="/mentions-legales" className="underline">Mentions légales</a>
@@ -30,6 +31,7 @@ export function LegalPage({ title, updated, children }: {
 export function LegalFooter() {
   return (
     <p className="w-full font-mono text-[11px] text-ink/45 tracking-wider text-center mt-8 flex gap-4 justify-center flex-wrap">
+      <a href="/positionnement" className="underline hover:text-moss">Positionnement</a>
       <a href="/confidentialite" className="underline hover:text-moss">Confidentialité</a>
       <a href="/cgu" className="underline hover:text-moss">CGU</a>
       <a href="/mentions-legales" className="underline hover:text-moss">Mentions légales</a>

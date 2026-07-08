@@ -390,6 +390,32 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   collage). Note : le rendu PDF→canvas→worker Tesseract ne s'exerce que sur
   un vrai appareil (worker pdf.js/canvas non fiables en headless). SW v10.
 
+### Pages légales + repositionnement landing (livré 2026-07-07)
+- **`/positionnement`** (nouveau) : la différence de fond « j'arme le client,
+  je n'agis pas à sa place » face aux services de résiliation par mandat
+  (Papernest, Ideel cités factuellement). Ce que Serein fait / ne fait pas.
+- **`/confidentialite`** (réécrit) : ⚠️ **le traitement des documents
+  (relevés, contrats) est décrit comme transmis à Mistral (OCR/analyse, UE)**,
+  par instruction produit. Interdit « 100 % local / ne quitte jamais ».
+  TODO `[À COMPLÉTER]` visibles : localisation/DPA Mistral, responsable de
+  traitement, DPO.
+- **`/mentions-legales`** : Mistral ajouté aux hébergeurs ; `[À COMPLÉTER]`
+  SIREN/SIRET + adresse conservés.
+- **Landing (`/`)** : hero « Serein veille. Vous décidez. Vous envoyez. » +
+  différenciation « à votre place » vs « vous arme », aucun mandat, zéro
+  commission ; lien vers /positionnement. Positionnement ajouté au footer
+  légal et à la navigation inter-documents.
+- **⚠️ INCOHÉRENCE CODE À RÉSOUDRE (hors ce ticket, = logique métier)** :
+  le code d'analyse actuellement déployé fait de l'OCR LOCAL (pdf.js +
+  Tesseract, PR #25), pas Mistral. Les affirmations « 100 % local / ne
+  quitte jamais l'appareil » ont été retirées de /analyse, onboarding,
+  /resiliation et de la landing pour éviter la contradiction, mais **la
+  page confidentialité décrit une architecture Mistral pas encore
+  branchée**. Prochaine brique à cadrer : migrer l'analyse documentaire
+  Serein vers l'API Mistral OCR (serveur/UE) pour aligner le code sur le
+  texte. (PanierMalin : l'OCR ticket reste local — distinct, décrit tel quel.)
+- Aucune logique métier modifiée : 319/319 sandbox intacts, 24 cas navigateur.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -553,3 +579,4 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-06 | Export CSV RGPD : /api/export-csv (RLS via session + refiltre onlyMine, lecture seule), UTF-8+BOM `;` Excel FR, colonnes et valeurs en français, anti-injection formule, bouton sur /compte | 303/303 PASS sandbox, 4/4 PASS navigateur, build vert |
 | 2026-07-07 | PanierMalin retours : bug import ticket corrigé (capture forçait l'appareil photo → 2 entrées photo/galerie), propositions d'achat promo (vs prix habituels perso), accès dédié « 🔁 Récurrents » | 309/309 PASS sandbox, 12/12 PASS navigateur, sw v9 |
 | 2026-07-07 | Lecture de documents robuste : secours OCR local pour PDF scannés (Serein) + prétraitement image N/B Otsu avant OCR (PanierMalin), module partagé public/shared/pretraitement.mjs | 319/319 PASS sandbox, 7/7 PASS navigateur, build vert, sw v10 |
+| 2026-07-07 | Pages légales : /positionnement (arme vs mandat, face Papernest/Ideel) + /confidentialite réécrite (documents → Mistral UE, TODO À COMPLÉTER) + Mentions Mistral + landing repositionnée ; retrait des affirmations « 100 % local » contradictoires. Aucune logique métier | 319/319 sandbox intacts, 24/24 navigateur, build + lint verts |
