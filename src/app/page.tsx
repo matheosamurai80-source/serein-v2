@@ -7,7 +7,7 @@ import { LegalFooter } from '@/components/legal'
 
 const SEREIN_LINKS = [
   { href: '/dashboard',   emoji: '🏠', title: 'Tableau de bord', desc: 'Vue d’ensemble et score de vigilance' },
-  { href: '/analyse',     emoji: '📄', title: 'Analyse de relevé', desc: 'Détection 100 % dans votre navigateur' },
+  { href: '/analyse',     emoji: '📄', title: 'Analyse de relevé', desc: 'Détecte vos abonnements — vous choisissez' },
   { href: '/engagements', emoji: '📋', title: 'Engagements', desc: 'Suivre abonnements et contrats' },
   { href: '/rappels',     emoji: '🔔', title: 'Rappels', desc: 'Prévenu avant chaque fenêtre' },
   { href: '/resiliation', emoji: '✉️', title: 'Lettre de résiliation', desc: 'La loi de votre côté, prête à envoyer' },
@@ -21,12 +21,18 @@ export default function RootPage() {
         <span className="w-6 h-px bg-moss" />Vos applications<span className="w-6 h-px bg-moss" />
       </p>
       <h1 className="font-serif text-[clamp(28px,6vw,48px)] tracking-[-0.025em] leading-[1.12] text-ink mb-3 text-center">
-        Tout est là. <em className="text-moss">Vous gardez la main.</em>
+        Serein veille. <em className="text-moss">Vous décidez. Vous envoyez.</em>
       </h1>
-      <p className="text-sm text-ink/70 leading-[1.6] mb-8 text-center max-w-[460px]">
-        Serein veille sur vos abonnements et contrats. PanierMalin optimise vos courses.
-        Deux outils, une seule adresse.
+      <p className="text-sm text-ink/70 leading-[1.6] mb-5 text-center max-w-[480px]">
+        Serein détecte vos abonnements, vous prévient avant chaque échéance et prépare
+        votre lettre de résiliation. D&apos;autres services résilient <em>à votre place</em> ;
+        Serein vous <strong className="text-ink">arme</strong> et vous laisse la main —
+        aucun mandat, aucune commission fournisseur.
       </p>
+      <a href="/positionnement" data-testid="cta-positionnement"
+        className="font-mono text-[11px] tracking-[.13em] uppercase text-moss underline mb-8">
+        Notre positionnement →
+      </a>
 
       {/* Serein */}
       <div className="w-full mb-8">
@@ -57,7 +63,7 @@ export default function RootPage() {
           <span className="flex-1">
             <span className="block font-serif text-lg text-ink">Ouvrir PanierMalin</span>
             <span className="block text-[13px] text-ink/60 mt-0.5 leading-[1.55]">
-              Scan de produits, prix au kilo, Nutri-Score et meilleure alternative — dans le même navigateur.
+              Scan de produits, prix au kilo, Nutri-Score et meilleure alternative.
             </span>
           </span>
           <span className="text-lg text-moss flex-shrink-0">→</span>

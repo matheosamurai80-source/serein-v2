@@ -9,8 +9,8 @@ import { scoreSubscriptions } from '@/lib/scoring/engine'
 import { buildSuggestions, analyseStats, type CommitmentSuggestion } from '@/lib/analyse/logic'
 import { extractPdfText } from '@/lib/pdf/browser'
 
-// Analyse de relevé 100 % dans le navigateur : le fichier ne quitte jamais
-// l'appareil. Serein détecte et suggère ; le client choisit ce qu'il ajoute.
+// Analyse de relevé : Serein détecte et suggère ; le client choisit ce qu'il
+// ajoute. Le traitement du document est décrit dans /confidentialite.
 
 const RISK_UI: Record<string, string> = {
   high:   'bg-crimson/15 text-crimson border-crimson/30',
@@ -60,7 +60,7 @@ export default function AnalysePage() {
     setBusy(true)
     try {
       const text = await extractPdfText(file, phase => {
-        if (phase === 'ocr') toast.show('PDF scanné détecté — lecture optique sur votre appareil (jusqu\'à 30 s)…')
+        if (phase === 'ocr') toast.show('Document scanné détecté — analyse en cours (jusqu\'à 30 s)…')
       })
       if (text.trim().length < 40) {
         toast.show('Rien de lisible, même en lecture optique — collez plutôt le texte du relevé ci-dessous.')
@@ -109,12 +109,12 @@ export default function AnalysePage() {
           <span className="w-6 h-px bg-moss" />Analyse de relevé<span className="w-6 h-px bg-moss" />
         </p>
         <h1 className="font-serif text-[clamp(26px,5.5vw,44px)] tracking-[-0.025em] leading-[1.15] text-ink mb-3 text-center">
-          Votre relevé ne quitte <em className="text-moss">jamais votre appareil.</em>
+          Votre relevé, <em className="text-moss">vos abonnements révélés.</em>
         </h1>
         <p className="text-sm text-ink/70 leading-[1.6] mb-8 text-center max-w-[460px]">
-          L&apos;analyse tourne entièrement dans votre navigateur — rien n&apos;est envoyé sur
-          un serveur. Serein détecte vos abonnements récurrents ; vous choisissez
-          lesquels suivre.
+          Serein détecte vos abonnements récurrents à partir de votre relevé ; vous
+          choisissez lesquels suivre. Le traitement du document est décrit dans notre{' '}
+          <a href="/confidentialite" className="text-moss underline">politique de confidentialité</a>.
         </p>
 
         {/* Zone PDF */}
@@ -128,7 +128,7 @@ export default function AnalysePage() {
             <span className="text-[28px]">📄</span>
             <span className="text-sm text-ink leading-[1.6]">
               {busy ? 'Analyse en cours…' : <>Déposez votre relevé PDF ici<br />
-              <small className="text-xs text-ink/45 font-mono">ou cliquez · max 15 Mo · lu localement, jamais envoyé</small></>}
+              <small className="text-xs text-ink/45 font-mono">ou cliquez · max 15 Mo</small></>}
             </span>
             <input id="pdf" ref={fileRef} type="file" accept=".pdf,application/pdf" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) void handleFile(f) }} />
