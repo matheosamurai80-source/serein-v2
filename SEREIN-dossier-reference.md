@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-01 (brique « remise en état du dépôt »)
+> Dernière mise à jour : 2026-07-09 (Brique 1 — Socle API, plan de fusion)
 
 ## 1. Le produit
 
@@ -416,6 +416,43 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   texte. (PanierMalin : l'OCR ticket reste local — distinct, décrit tel quel.)
 - Aucune logique métier modifiée : 319/319 sandbox intacts, 24 cas navigateur.
 
+### Brique 1 — Socle API (livré 2026-07-09, plan de fusion « New project »)
+Première brique du plan de fusion : serein-v2 est LE projet définitif. Objectif
+= un contrat d'API unique et durci pour les modules `subscriptions` et
+`reminders`, sans changer aucun comportement visible.
+- **`src/lib/api/response.ts`** : enveloppe standard. Succès `{ ok:true, data }`,
+  erreur `{ ok:false, error:{ code, message, details? } }`. 10 codes normalisés
+  (UNAUTHORIZED 401, EMAIL_NOT_VERIFIED 403, FORBIDDEN 403, VALIDATION_ERROR 422,
+  NOT_FOUND 404, RATE_LIMITED 429, PREMIUM_REQUIRED 402, AI_PROVIDER_ERROR 502,
+  STORAGE_ERROR 502, INTERNAL_ERROR 500). `handle()` mappe les `ApiError` et
+  masque toute exception inconnue en INTERNAL_ERROR (zéro fuite de détail).
+- **`src/lib/validation/`** (l'ancien `validation.ts` devient un dossier, import
+  `@/lib/validation` inchangé) : schémas Zod alignés sur les **colonnes réelles
+  des tables live** (lues en base le 2026-07-09, pas sur les docs de l'ancien
+  projet). subscriptions, reminders, uploads, cancellation_letters + leads
+  hérité. `user_id` n'est JAMAIS accepté du payload → il vient de la session.
+- **`src/lib/services/{subscriptions,reminders}.ts`** + `session.ts` :
+  create/list/update/delete. `requireUser()` vérifie la session (401 sinon) ;
+  la RLS + `.eq('id')` bornent à l'utilisateur (introuvable → NOT_FOUND). Toute
+  la logique d'accès vit là, **aucune logique dans les routes**.
+- **Routes canoniques** `/api/subscriptions(/[id])` et `/api/reminders(/[id])`
+  (GET/POST/PATCH/DELETE) : route → Zod → auth → service → réponse standard.
+- ⚠️ **Pas de « migration » à faire** : contrairement à ce que supposait le
+  prompt, il n'existait aucune route subscriptions/reminders à migrer. L'app est
+  client-side Supabase (`src/lib/data/store.ts`, RLS). Le socle est donc une
+  couche serveur **additive et non-branchée** ; aucune page ne la consomme
+  encore → comportement visible strictement inchangé.
+- ⚠️ **Tension DB notée (hors scope)** : `reminders.commitment_id` est NOT NULL
+  en base, or `store.ts` insère `null` pour les rappels de factures. Le schéma
+  Zod reflète la base (commitment_id requis). Bug du store à traiter à part.
+- Vérifs : sandbox **30/30 PASS** (`sandbox/validation.test.ts`), suite complète
+  verte, lint 0 erreur, `tsc` src propre, `npm run build` vert (les 8 routes
+  API listées, dont les 4 nouvelles). Aucun secret `NEXT_PUBLIC_`.
+
+**Prochaine brique annoncée : Brique 2 — durcissement uploads / Storage**
+(bucket privé, URL signées courtes, suppression Storage + base, limites
+taille/MIME).
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -484,10 +521,17 @@ Plan de briques validé par Juju le 2026-07-05 (« prompt ultime ») :
 5. ~~Brique 3 — OCR ticket de caisse~~ ✅ livrée (l'association automatique
    ticket→fiche Open Food Facts reste hors scope, à réévaluer si besoin).
 
-**Plan « prompt ultime » terminé (5/5).** Prochaines candidates à
-prioriser avec Juju : chatbot assistant (guidé gratuit ou IA générative =
-clé API payante), rappels e-mail, admin des liens utiles, facturation
-`user_services`.
+**Plan « prompt ultime » terminé (5/5).**
+
+**Plan de fusion « New project → serein-v2 » (validé Juju le 2026-07-09)** —
+serein-v2 est LE projet définitif, l'ancien « New project » est abandonné
+(seule sa doc est récupérée). Briques dans l'ordre :
+1. ~~Brique 1 — Socle API (réponse standard, Zod, services)~~ ✅ livrée 2026-07-09
+2. Brique 2 — durcissement uploads / Storage (bucket privé, URL signées
+   courtes, suppression Storage + base, limites taille/MIME) ← **prochaine**
+3. Brique 3 — (à préciser depuis le plan de fusion)
+4. Brique 4 — (à préciser depuis le plan de fusion)
+5. Brique 5 — (à préciser depuis le plan de fusion)
 
 Garées (hors briques, à re-prioriser ensuite) : chatbot assistant (guidé
 gratuit ou IA générative = clé API payante à décider), rappels e-mail,
@@ -509,6 +553,7 @@ extension annuaire résiliation.
 | 2026-07-03 | Bascule thème clair (crème/vert forêt/ambre) sur toute l'app | build vert, 3 pages vérifiées en capture, contraste OK |
 | 2026-07-03 | Connexion (`/connexion`) : vrais comptes e-mail/mot de passe, nav connectée | 81/81 sandbox PASS, 7/7 navigateur PASS, build vert |
 | 2026-07-03 | Tableau de bord (`/dashboard`) : résumé + atterrissage après connexion | 90/90 sandbox PASS, 9/9 navigateur PASS, build vert |
+| 2026-07-09 | Brique 1 — Socle API : réponse standard 10 codes, validation Zod alignée base, services subscriptions/reminders, routes canoniques (couche additive) | 30/30 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
