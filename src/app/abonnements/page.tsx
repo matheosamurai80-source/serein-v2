@@ -111,9 +111,13 @@ export default function AbonnementsPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
+                <a href={`/resiliation?service=${encodeURIComponent(s.name)}`} data-testid="sub-resiliation"
+                  className="text-[13px] font-semibold bg-sage text-cream rounded-full px-4 py-2 hover:bg-sage-light transition-colors">
+                  Résilier — générer la lettre →
+                </a>
                 <button onClick={() => follow(s)} disabled={busy === s.id}
-                  className="text-[13px] font-semibold bg-sage text-cream rounded-full px-4 py-2 hover:bg-sage-light transition-colors disabled:opacity-50">
-                  Suivre dans mes engagements →
+                  className="text-[13px] text-moss border border-sage/30 rounded-full px-4 py-2 hover:bg-sage/8 transition-colors disabled:opacity-50">
+                  Suivre
                 </button>
                 <button onClick={() => dismiss(s)} disabled={busy === s.id}
                   className="text-[13px] text-ink/50 rounded-full px-3 py-2 hover:text-crimson transition-colors disabled:opacity-50" aria-label="ignorer">

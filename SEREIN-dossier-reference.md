@@ -608,8 +608,11 @@ page pour les suivre ou les ignorer. Réponse à « la garder ET la construire �
   engagements » existant. Un lien renvoie vers les détectés.
 - **`/abonnements`** (nouvelle page + entrée de nav « Détectés ») : liste les
   abonnements détectés (montant, fréquence, fiabilité %, badge **Dormant**),
-  bandeau « N dormants », actions **Suivre** (→ crée un engagement) et
-  **Ignorer** (supprime).
+  bandeau « N dormants », actions **Résilier — générer la lettre →** (lien vers
+  `/resiliation?service=…`, pré-remplit le formulaire = le moat détection→
+  annulation), **Suivre** (→ engagement) et **Ignorer**. (Lien résiliation
+  ajouté le 2026-07-09 suite au retour de Juju : « pas de lien résiliation pour
+  les souscriptions en ligne ».)
 - **Vérifs faites ici** : sandbox **433 PASS** (dont 22 sur la conversion) ;
   lint 0, `tsc` src propre, build vert ; **E2E Playwright invité 6/6** (analyse
   d'un relevé collé → persistance → page détectés → Suivre → présent dans
