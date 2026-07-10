@@ -64,9 +64,8 @@ export interface LetterListItem {
   generated_at: string
 }
 
-// Les engagements passent désormais par le socle API (colonnes gérées côté
-// serveur) ; seuls les rappels et factures gardent une sélection directe.
-const REMINDER_COLS = 'id, commitment_id, facture_id, kind, scheduled_for, channel, message, status'
+// Engagements et rappels passent désormais par le socle API (colonnes gérées
+// côté serveur) ; seules les factures ponctuelles gardent une sélection directe.
 const FACTURE_COLS = 'id, name, amount, mode, start_date, interval_months, next_due_date, notice_days, status'
 
 type Supabase = ReturnType<typeof createSupabaseBrowserClient>
@@ -181,9 +180,7 @@ export async function deleteCommitment(id: string): Promise<void> {
 export async function listReminders(): Promise<ReminderRow[]> {
   const b = await backend()
   if (b.kind === 'local') return readRows<ReminderRow>(b.kv, LOCAL_KEYS.reminders)
-  const { data, error } = await b.supabase.from('reminders').select(REMINDER_COLS)
-  if (error) fail(error.message)
-  return data ?? []
+  return apiGet<ReminderRow[]>('/api/reminders')
 }
 
 export async function addReminder(
@@ -198,13 +195,9 @@ export async function addReminder(
     status: draft.status ?? 'pending',
   }
   if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.reminders, [row])[0]
-  const { data, error } = await b.supabase
-    .from('reminders')
-    .insert({ ...row, user_id: b.userId })
-    .select(REMINDER_COLS)
-    .single()
-  if (error || !data) fail(error?.message ?? 'Création du rappel impossible.')
-  return data
+  // Un rappel de facture (commitment_id null, facture_id posé) est désormais
+  // accepté côté serveur (dette Brique 3 corrigée : CHECK « au moins une cible »).
+  return apiPost<ReminderRow>('/api/reminders', row)
 }
 
 export async function updateReminder(id: string, patch: { status: string }): Promise<void> {
@@ -213,15 +206,13 @@ export async function updateReminder(id: string, patch: { status: string }): Pro
     if (!updateRow(b.kv, LOCAL_KEYS.reminders, id, patch)) fail('Rappel introuvable.')
     return
   }
-  const { error } = await b.supabase.from('reminders').update(patch).eq('id', id)
-  if (error) fail(error.message)
+  await apiPatch(`/api/reminders/${id}`, patch)
 }
 
 export async function deleteReminder(id: string): Promise<void> {
   const b = await backend()
   if (b.kind === 'local') { deleteRow(b.kv, LOCAL_KEYS.reminders, id); return }
-  const { error } = await b.supabase.from('reminders').delete().eq('id', id)
-  if (error) fail(error.message)
+  await apiDelete(`/api/reminders/${id}`)
 }
 
 // ─── FACTURES PONCTUELLES ───────────────────────────────────────────────────

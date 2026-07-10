@@ -80,7 +80,9 @@ async function main() {
   check('Reminder valide : commitment_id + scheduled_for', rOk.success)
   check('Reminder : défauts kind/channel/status',
     rOk.success && rOk.data.kind === 'cancellation_window' && rOk.data.channel === 'in_app' && rOk.data.status === 'pending')
-  check('Reminder : commitment_id requis (NOT NULL en base)',
+  check('Reminder valide : facture_id seul (rappel de facture)',
+    CreateReminderSchema.safeParse({ facture_id: '22222222-2222-2222-2222-222222222222', scheduled_for: '2026-09-01T08:00:00Z' }).success)
+  check('Reminder : sans cible (ni engagement ni facture) rejeté',
     !CreateReminderSchema.safeParse({ scheduled_for: '2026-09-01T08:00:00Z' }).success)
   check('Reminder : commitment_id non-uuid rejeté',
     !CreateReminderSchema.safeParse({ commitment_id: 'nope', scheduled_for: '2026-09-01T08:00:00Z' }).success)

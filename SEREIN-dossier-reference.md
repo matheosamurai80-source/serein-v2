@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-09 (Brique 4 — Engagements sur le socle)
+> Dernière mise à jour : 2026-07-09 (Brique 5 — Rappels sur le socle)
 
 ## 1. Le produit
 
@@ -509,10 +509,10 @@ ici) :**
 1. **Doublon de modèle** : `subscriptions` (orpheline) vs `commitments` (le vrai
    cœur). Décider de supprimer/fusionner `subscriptions` — son socle Brique 1
    restera inutilisé tant que la table n'est pas branchée à un écran.
-2. **`reminders.commitment_id` NOT NULL** en base alors que `store.ts` insère
-   `null` pour les rappels de factures ponctuelles : les rappels de facture ne
-   peuvent donc pas être sauvegardés côté cloud tels quels. À corriger avant de
-   brancher les rappels sur `/api/reminders`.
+2. ~~**`reminders.commitment_id` NOT NULL** en base alors que `store.ts` insère
+   `null` pour les rappels de factures ponctuelles.~~ ✅ **Corrigé en Brique 5**
+   (colonne rendue nullable + CHECK « au moins une cible : engagement OU
+   facture »).
 
 ### Brique 4 — Engagements branchés sur le socle (livré 2026-07-09)
 Première **mise en service** du socle : pour les comptes connectés, la façade de
@@ -543,9 +543,32 @@ donc **aucune page réécrite**.
   Checklist preview : se connecter → /engagements → ajouter, marquer résilié,
   supprimer un engagement ; vérifier qu'il réapparaît après rechargement.
 
-**Prochaine brique candidate : Brique 5** — soit corriger la dette
-`reminders.commitment_id` puis brancher les Rappels sur `/api/reminders`, soit
-trancher le doublon `subscriptions`/`commitments`. À décider avec Juju.
+### Brique 5 — Dette rappels corrigée + Rappels branchés sur le socle (livré 2026-07-09)
+Correction de la dette n°2 de la Brique 3, puis mise en service des Rappels.
+- **Migration DB `reminders_allow_facture_target`** (table vide, 0 ligne → sans
+  risque) : `commitment_id` passe **nullable** + nouveau CHECK
+  `reminders_target_present_check` = `commitment_id IS NOT NULL OR facture_id IS
+  NOT NULL`. Un rappel peut donc cibler un engagement **ou** une facture
+  ponctuelle — ce que le code faisait déjà mais que la base refusait côté cloud.
+- **`src/lib/validation/reminders.ts`** : schéma revu — `commitment_id` et
+  `facture_id` optionnels, `.refine` « au moins une cible ». Base réutilisable
+  pour la mise à jour partielle (`ReminderShape.partial()`).
+- **`src/lib/data/store.ts`** : branche cloud de `listReminders` / `addReminder`
+  (factures incluses) / `updateReminder` / `deleteReminder` → `/api/reminders`.
+  Branche invité inchangée. `REMINDER_COLS` retiré.
+- **Vérifs faites ici** : suite sandbox **395 PASS** (dont schéma rappels revu :
+  facture seule acceptée, sans cible rejetée) ; lint 0, `tsc` src propre, build
+  vert ; **E2E Playwright Rappels mode invité 6/6** (engagement→suggestion→
+  programmer→lu→persistance→suppression) ; smoke `/api/reminders` non
+  authentifié → **401** standard.
+- ⚠️ Même limite qu'en Brique 4 : le chemin **connecté** n'est pas exécutable
+  ici (pas d'accès Supabase). Sûr par construction ; à valider sur la preview.
+  Checklist : connecté → /rappels → programmer un rappel (engagement ET
+  facture), marquer lu, supprimer.
+
+**Prochaine brique candidate : Brique 6** — trancher le doublon
+`subscriptions`/`commitments` (nettoyage de fond), ou brancher les Factures
+ponctuelles sur un socle `/api/factures`. À cadrer avec Juju.
 
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
@@ -626,8 +649,10 @@ serein-v2 est LE projet définitif, l'ancien « New project » est abandonné
 3. ~~Brique 3 — socle API pour `commitments` (le vrai cœur)~~ ✅ livrée 2026-07-09
 4. ~~Brique 4 — Engagements branchés sur `/api/commitments` (connectés), mode
    invité gardé en local~~ ✅ livrée 2026-07-09 (1ʳᵉ mise en service du socle)
-5. Brique 5 — dette `reminders.commitment_id` + Rappels sur `/api/reminders`,
-   ou consolidation `subscriptions`/`commitments` ← **prochaine** (à cadrer)
+5. ~~Brique 5 — dette `reminders.commitment_id` corrigée + Rappels branchés sur
+   `/api/reminders`~~ ✅ livrée 2026-07-09
+6. Brique 6 — consolidation `subscriptions`/`commitments`, ou Factures sur un
+   socle `/api/factures` ← **prochaine** (à cadrer)
 4. Brique 4 — (à préciser depuis le plan de fusion)
 5. Brique 5 — (à préciser depuis le plan de fusion)
 
@@ -655,6 +680,7 @@ extension annuaire résiliation.
 | 2026-07-09 | Brique 2 — Socle Storage durci : bucket privé `bank-statements`, helpers MIME/taille/chemin per-user testés, service uploads (URL signées courtes, suppression Storage+base), routes `/api/uploads*` ; suppression des routes mortes upload/analyze | 17/17 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 | 2026-07-09 | Brique 3 — Socle API `commitments` (le vrai cœur) : validation Zod alignée base (service_type/frequency/status/importance), service + routes `/api/commitments*` ; doublon subscriptions/commitments et dette reminders.commitment_id documentés | 19/19 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 | 2026-07-09 | Brique 4 — Engagements branchés sur le socle : façade `store.ts` (cloud) → `/api/commitments`, client typé `data/api.ts`, mode invité intact | Suite sandbox 394 PASS, E2E Playwright invité 6/6, smoke serveur 401/422 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
+| 2026-07-09 | Brique 5 — dette rappels corrigée (migration : `commitment_id` nullable + CHECK cible présente) + Rappels branchés sur `/api/reminders` (factures incluses) | Sandbox 395 PASS, E2E Playwright Rappels invité 6/6, smoke `/api/reminders` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
