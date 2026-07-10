@@ -67,6 +67,11 @@ export default function AnalysePage() {
     setChecked(new Set(sugg.filter(s => !s.alreadyTracked).map(s => s.name)))
     setSavedCount(0)
     void persistDetected(subscriptions)
+    // Retour positif explicite (le succès ne doit pas être silencieux).
+    const n = subscriptions.length
+    toast.show(n > 0
+      ? `✓ Relevé analysé — ${txs.length} opérations lues, ${n} abonnement${n > 1 ? 's' : ''} détecté${n > 1 ? 's' : ''}`
+      : `✓ Relevé analysé — ${txs.length} opérations lues, aucun abonnement récurrent repéré`)
   }
 
   const handleFile = async (file: File) => {
