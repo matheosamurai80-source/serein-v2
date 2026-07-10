@@ -1,4 +1,5 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { apiGet, apiPost, apiPatch, apiDelete } from './api'
 import { buildLetterRow, mapRegimeToLetterType } from '@/lib/letters/db'
 import type { RegimeResult } from '@/lib/letters/legal'
 import {
@@ -63,7 +64,8 @@ export interface LetterListItem {
   generated_at: string
 }
 
-const COMMITMENT_COLS = 'id, name, provider, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status'
+// Les engagements passent désormais par le socle API (colonnes gérées côté
+// serveur) ; seuls les rappels et factures gardent une sélection directe.
 const REMINDER_COLS = 'id, commitment_id, facture_id, kind, scheduled_for, channel, message, status'
 const FACTURE_COLS = 'id, name, amount, mode, start_date, interval_months, next_due_date, notice_days, status'
 
@@ -112,12 +114,14 @@ function fail(message: string): never { throw new Error(message) }
 
 // ─── ENGAGEMENTS ────────────────────────────────────────────────────────────
 
+// Compte connecté → socle API durci (`/api/commitments`, validation + RLS
+// côté serveur). Invité → localStorage. La session voyage par cookie, donc les
+// appels serveur sont authentifiés sans réglage supplémentaire.
+
 export async function listCommitments(): Promise<CommitmentRow[]> {
   const b = await backend()
   if (b.kind === 'local') return readRows<CommitmentRow>(b.kv, LOCAL_KEYS.commitments)
-  const { data, error } = await b.supabase.from('commitments').select(COMMITMENT_COLS)
-  if (error) fail(error.message)
-  return data ?? []
+  return apiGet<CommitmentRow[]>('/api/commitments')
 }
 
 export async function addCommitments(inputs: NewCommitment[]): Promise<CommitmentRow[]> {
@@ -135,12 +139,17 @@ export async function addCommitments(inputs: NewCommitment[]): Promise<Commitmen
     ...(i.detected_automatically ? { detected_automatically: true } : {}),
   }))
   if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.commitments, rows) as CommitmentRow[]
-  const { data, error } = await b.supabase
-    .from('commitments')
-    .insert(rows.map(r => ({ ...r, user_id: b.userId })))
-    .select(COMMITMENT_COLS)
-  if (error) fail(error.message)
-  return data ?? []
+  // Un POST par engagement (le lot détecté reste petit) : validation Zod + RLS
+  // s'appliquent à chacun côté serveur.
+  return Promise.all(inputs.map(i => apiPost<CommitmentRow>('/api/commitments', {
+    name: i.name,
+    service_type: i.service_type,
+    amount: i.amount,
+    frequency: i.frequency,
+    anniversary_date: i.anniversary_date ?? null,
+    cancellation_notice_days: i.cancellation_notice_days ?? null,
+    ...(i.detected_automatically ? { detected_automatically: true } : {}),
+  })))
 }
 
 export async function updateCommitment(id: string, patch: Partial<CommitmentRow>): Promise<void> {
@@ -149,8 +158,10 @@ export async function updateCommitment(id: string, patch: Partial<CommitmentRow>
     if (!updateRow(b.kv, LOCAL_KEYS.commitments, id, patch)) fail('Engagement introuvable.')
     return
   }
-  const { error } = await b.supabase.from('commitments').update(patch).eq('id', id)
-  if (error) fail(error.message)
+  // `id` n'est pas un champ modifiable : on ne l'envoie pas au serveur.
+  const { id: _omit, ...body } = patch
+  void _omit
+  await apiPatch(`/api/commitments/${id}`, body)
 }
 
 export async function deleteCommitment(id: string): Promise<void> {
@@ -162,8 +173,7 @@ export async function deleteCommitment(id: string): Promise<void> {
       if (r.commitment_id === id) deleteRow(b.kv, LOCAL_KEYS.reminders, r.id)
     return
   }
-  const { error } = await b.supabase.from('commitments').delete().eq('id', id)
-  if (error) fail(error.message)
+  await apiDelete(`/api/commitments/${id}`)
 }
 
 // ─── RAPPELS ────────────────────────────────────────────────────────────────

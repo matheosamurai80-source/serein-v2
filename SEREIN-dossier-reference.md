@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-09 (Brique 3 — Socle API commitments)
+> Dernière mise à jour : 2026-07-09 (Brique 4 — Engagements sur le socle)
 
 ## 1. Le produit
 
@@ -514,9 +514,38 @@ ici) :**
    peuvent donc pas être sauvegardés côté cloud tels quels. À corriger avant de
    brancher les rappels sur `/api/reminders`.
 
-**Prochaine brique candidate : Brique 4 — brancher la page Engagements sur
-`/api/commitments`** pour les utilisateurs connectés (garder le mode invité en
-local), première vraie mise en service visible du socle.
+### Brique 4 — Engagements branchés sur le socle (livré 2026-07-09)
+Première **mise en service** du socle : pour les comptes connectés, la façade de
+données `store.ts` parle désormais à `/api/commitments` (validation Zod + auth +
+RLS côté serveur) au lieu d'attaquer Supabase en direct. Le **mode invité reste
+100 % local** (aucun changement). Branchement fait au bon endroit — la façade —
+donc **aucune page réécrite**.
+- **`src/lib/data/api.ts`** : client typé du socle. `unwrap()` déballe
+  l'enveloppe standard (pur, testé), `apiGet/Post/Patch/Delete` en
+  `credentials: same-origin` — la session voyage par cookie (@supabase/ssr),
+  donc l'appel serveur est authentifié sans réglage.
+- **`src/lib/data/store.ts`** : branche cloud de `listCommitments`,
+  `addCommitments` (un POST par engagement), `updateCommitment`,
+  `deleteCommitment` → socle API. Branche invité inchangée. `COMMITMENT_COLS`
+  retiré (les colonnes sont gérées côté serveur).
+- **Vérifs faites ici** : sandbox client `data-api.test.ts` (pur) + suite
+  complète **394 PASS** ; lint 0, `tsc` src propre, build vert ; E2E Playwright
+  Engagements **mode invité 6/6** (ajout / total / persistance / résilié /
+  suppression — la branche locale n'a pas régressé) ; smoke serveur non
+  authentifié → `/api/commitments` répond **401 UNAUTHORIZED** et un id invalide
+  **422 VALIDATION_ERROR** (enveloppe standard).
+- ⚠️ **Limite de vérification (environnement)** : ce bac à sable **ne peut pas
+  atteindre Supabase** (egress bloqué — les tests navigateur historiques
+  coupent `supabase.co`). Le chemin **connecté** (add/modif/suppression en étant
+  loggué) n'est donc pas exécutable ici. Il est sûr par construction (mêmes
+  insert/RLS qu'avant, derrière un client typé + pont cookie confirmé) et part
+  sur la **preview Vercel** de la branche — à valider là avant merge en prod.
+  Checklist preview : se connecter → /engagements → ajouter, marquer résilié,
+  supprimer un engagement ; vérifier qu'il réapparaît après rechargement.
+
+**Prochaine brique candidate : Brique 5** — soit corriger la dette
+`reminders.commitment_id` puis brancher les Rappels sur `/api/reminders`, soit
+trancher le doublon `subscriptions`/`commitments`. À décider avec Juju.
 
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
@@ -595,8 +624,10 @@ serein-v2 est LE projet définitif, l'ancien « New project » est abandonné
 2. ~~Brique 2 — durcissement uploads / Storage (bucket privé, URL signées
    courtes, suppression Storage + base, limites taille/MIME)~~ ✅ livrée 2026-07-09
 3. ~~Brique 3 — socle API pour `commitments` (le vrai cœur)~~ ✅ livrée 2026-07-09
-4. Brique 4 — brancher la page Engagements sur `/api/commitments` (connectés),
-   mode invité gardé en local ← **prochaine** (première mise en service visible)
+4. ~~Brique 4 — Engagements branchés sur `/api/commitments` (connectés), mode
+   invité gardé en local~~ ✅ livrée 2026-07-09 (1ʳᵉ mise en service du socle)
+5. Brique 5 — dette `reminders.commitment_id` + Rappels sur `/api/reminders`,
+   ou consolidation `subscriptions`/`commitments` ← **prochaine** (à cadrer)
 4. Brique 4 — (à préciser depuis le plan de fusion)
 5. Brique 5 — (à préciser depuis le plan de fusion)
 
@@ -623,6 +654,7 @@ extension annuaire résiliation.
 | 2026-07-09 | Brique 1 — Socle API : réponse standard 10 codes, validation Zod alignée base, services subscriptions/reminders, routes canoniques (couche additive) | 30/30 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 | 2026-07-09 | Brique 2 — Socle Storage durci : bucket privé `bank-statements`, helpers MIME/taille/chemin per-user testés, service uploads (URL signées courtes, suppression Storage+base), routes `/api/uploads*` ; suppression des routes mortes upload/analyze | 17/17 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 | 2026-07-09 | Brique 3 — Socle API `commitments` (le vrai cœur) : validation Zod alignée base (service_type/frequency/status/importance), service + routes `/api/commitments*` ; doublon subscriptions/commitments et dette reminders.commitment_id documentés | 19/19 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
+| 2026-07-09 | Brique 4 — Engagements branchés sur le socle : façade `store.ts` (cloud) → `/api/commitments`, client typé `data/api.ts`, mode invité intact | Suite sandbox 394 PASS, E2E Playwright invité 6/6, smoke serveur 401/422 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
