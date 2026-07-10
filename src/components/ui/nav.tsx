@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/dashboard',   label: 'Accueil' },
   { href: '/engagements', label: 'Engagements' },
   { href: '/analyse',     label: 'Analyse' },
+  { href: '/abonnements', label: 'Détectés' },
   { href: '/rappels',     label: 'Rappels' },
   { href: '/resiliation', label: 'Lettre' },
 ]

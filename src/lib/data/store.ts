@@ -1,5 +1,6 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { apiGet, apiPost, apiPatch, apiDelete } from './api'
+import type { DetectedSubscriptionRow } from '@/lib/subscriptions/detect'
 import { buildLetterRow, mapRegimeToLetterType } from '@/lib/letters/db'
 import type { RegimeResult } from '@/lib/letters/legal'
 import {
@@ -251,6 +252,46 @@ export async function deleteFacture(id: string): Promise<void> {
   }
   // Les rappels liés partent en cascade côté base (FK ON DELETE CASCADE).
   await apiDelete(`/api/factures/${id}`)
+}
+
+// ─── ABONNEMENTS DÉTECTÉS ───────────────────────────────────────────────────
+// Mémoire de la détection : ce que Serein a repéré dans les relevés (y compris
+// les « dormants »). Distinct des engagements suivis (`commitments`).
+
+export interface SubscriptionRow {
+  id: string
+  name: string
+  amount: number
+  frequency: string
+  status: string
+  source: string | null
+  occurrences: number | null
+  last_seen: string | null
+  confidence: number | null
+  dormant: boolean
+}
+
+export async function listSubscriptions(): Promise<SubscriptionRow[]> {
+  const b = await backend()
+  if (b.kind === 'local') return readRows<SubscriptionRow>(b.kv, LOCAL_KEYS.subscriptions)
+  return apiGet<SubscriptionRow[]>('/api/subscriptions')
+}
+
+/** Enregistre un lot d'abonnements détectés (déjà dédoublonné par l'appelant). */
+export async function saveDetectedSubscriptions(rows: DetectedSubscriptionRow[]): Promise<SubscriptionRow[]> {
+  if (rows.length === 0) return []
+  const b = await backend()
+  if (b.kind === 'local') {
+    const withStatus = rows.map(r => ({ ...r, status: 'active' }))
+    return insertRows(b.kv, LOCAL_KEYS.subscriptions, withStatus) as SubscriptionRow[]
+  }
+  return Promise.all(rows.map(r => apiPost<SubscriptionRow>('/api/subscriptions', r)))
+}
+
+export async function deleteSubscription(id: string): Promise<void> {
+  const b = await backend()
+  if (b.kind === 'local') { deleteRow(b.kv, LOCAL_KEYS.subscriptions, id); return }
+  await apiDelete(`/api/subscriptions/${id}`)
 }
 
 // ─── LETTRES ────────────────────────────────────────────────────────────────

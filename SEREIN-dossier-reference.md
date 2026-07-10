@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-09 (Brique 6 — Factures sur le socle)
+> Dernière mise à jour : 2026-07-09 (Brique 7 — Détection d'abonnements)
 
 ## 1. Le produit
 
@@ -506,9 +506,10 @@ la page Engagements dessus.
 
 **⚠️ Deux dettes honnêtes mises au jour (à traiter dans une brique dédiée, PAS
 ici) :**
-1. **Doublon de modèle** : `subscriptions` (orpheline) vs `commitments` (le vrai
-   cœur). Décider de supprimer/fusionner `subscriptions` — son socle Brique 1
-   restera inutilisé tant que la table n'est pas branchée à un écran.
+1. ~~**Doublon de modèle** : `subscriptions` (orpheline) vs `commitments`.~~
+   ✅ **Résolu en Brique 7** : ce n'était pas un doublon mais la table de
+   **détection** (abonnements repérés dans les relevés). Elle est maintenant
+   branchée et utilisée (page `/abonnements`).
 2. ~~**`reminders.commitment_id` NOT NULL** en base alors que `store.ts` insère
    `null` pour les rappels de factures ponctuelles.~~ ✅ **Corrigé en Brique 5**
    (colonne rendue nullable + CHECK « au moins une cible : engagement OU
@@ -591,9 +592,37 @@ comptes connectés. Mode invité inchangé.
 passent tous par l'API durcie (connectés) ; seul le mode invité reste 100 %
 local. Reste la dette n°1 : la table orpheline `subscriptions`.
 
-**Prochaine brique candidate : Brique 7** — trancher le doublon
-`subscriptions`/`commitments` (supprimer/fusionner la table orpheline), seul
-reliquat du plan de fusion encore ouvert.
+### Brique 7 — Détection d'abonnements branchée sur `subscriptions` (livré 2026-07-09)
+Le cœur de Serein enfin persisté : les abonnements repérés dans un relevé sont
+**mémorisés** (table `subscriptions`, pas jetés), avec les « dormants », et une
+page pour les suivre ou les ignorer. Réponse à « la garder ET la construire ».
+- **`src/lib/subscriptions/detect.ts`** (logique pure, testée) : conversion
+  détection → ligne `subscriptions`. `annual → yearly`, montant réel reconstruit
+  (l'annuel ×12), `isDormant` (plus vu depuis > 60 j), dédoublonnage par nom
+  (interne + contre l'existant). Dates mal formées → `last_seen` null (robuste).
+- **`src/lib/data/store.ts`** : façade `subscriptions` — `listSubscriptions`,
+  `saveDetectedSubscriptions` (cloud → `/api/subscriptions` de la Brique 1 ;
+  invité → local), `deleteSubscription`.
+- **`/analyse`** : après le scoring, la détection est **enregistrée**
+  (best-effort, non bloquant) — sans casser le flux « suivre dans mes
+  engagements » existant. Un lien renvoie vers les détectés.
+- **`/abonnements`** (nouvelle page + entrée de nav « Détectés ») : liste les
+  abonnements détectés (montant, fréquence, fiabilité %, badge **Dormant**),
+  bandeau « N dormants », actions **Suivre** (→ crée un engagement) et
+  **Ignorer** (supprime).
+- **Vérifs faites ici** : sandbox **433 PASS** (dont 22 sur la conversion) ;
+  lint 0, `tsc` src propre, build vert ; **E2E Playwright invité 6/6** (analyse
+  d'un relevé collé → persistance → page détectés → Suivre → présent dans
+  Engagements → Ignorer) ; smoke `/api/subscriptions` non authentifié → **401**.
+- ⚠️ Même limite : chemin **connecté** non exécutable ici → à valider sur preview
+  (analyser un relevé en étant connecté, puis /abonnements).
+- Slice suivante possible : marquer « suivi » plutôt que supprimer, filtrer les
+  dormants, badge de compteur dans la nav.
+
+**🎉 Plan de fusion « New project → serein-v2 » : TERMINÉ (7 briques).** Le socle
+durci (réponse standard, validation, services, Storage) couvre les 4 modules
+métier — engagements, rappels, factures, abonnements détectés — pour les comptes
+connectés, mode invité préservé.
 
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
@@ -678,8 +707,13 @@ serein-v2 est LE projet définitif, l'ancien « New project » est abandonné
    `/api/reminders`~~ ✅ livrée 2026-07-09
 6. ~~Brique 6 — Factures ponctuelles branchées sur `/api/factures`~~ ✅ livrée
    2026-07-09 (socle terminé pour les 3 modules métier)
-7. Brique 7 — consolidation `subscriptions`/`commitments` (table orpheline)
-   ← **prochaine** (dernier reliquat du plan de fusion)
+7. ~~Brique 7 — détection d'abonnements branchée sur `subscriptions`
+   (page `/abonnements`, dormants, suivre/ignorer)~~ ✅ livrée 2026-07-09
+
+**Plan de fusion terminé (7/7).** Pistes ensuite (à cadrer) : slice 2 de la
+détection (statut « suivi », filtres, compteur nav) ; refonte de l'analyse vers
+Mistral OCR (aligne le code sur la page Confidentialité — nécessite une clé API
+payante + accord d'envoi à un tiers).
 4. Brique 4 — (à préciser depuis le plan de fusion)
 5. Brique 5 — (à préciser depuis le plan de fusion)
 
@@ -709,6 +743,7 @@ extension annuaire résiliation.
 | 2026-07-09 | Brique 4 — Engagements branchés sur le socle : façade `store.ts` (cloud) → `/api/commitments`, client typé `data/api.ts`, mode invité intact | Suite sandbox 394 PASS, E2E Playwright invité 6/6, smoke serveur 401/422 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 | 2026-07-09 | Brique 5 — dette rappels corrigée (migration : `commitment_id` nullable + CHECK cible présente) + Rappels branchés sur `/api/reminders` (factures incluses) | Sandbox 395 PASS, E2E Playwright Rappels invité 6/6, smoke `/api/reminders` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 | 2026-07-09 | Brique 6 — Factures ponctuelles branchées sur le socle : validation Zod (mode/status + règles conditionnelles), service + routes `/api/factures*`, façade cloud rebranchée | Sandbox 412 PASS, E2E Playwright Factures invité 6/6, smoke `/api/factures` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
+| 2026-07-09 | Brique 7 — détection d'abonnements persistée : logique de conversion testée, façade `subscriptions`, `/analyse` enregistre, page `/abonnements` (dormants, suivre/ignorer) | Sandbox 433 PASS (dont 22 conversion), E2E Playwright détection invité 6/6, smoke `/api/subscriptions` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
