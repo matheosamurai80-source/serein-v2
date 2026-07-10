@@ -12,18 +12,9 @@ export const SIM_TABLE = {
   9: { unused: 3, hikesCost: 16, monthlyLoss: 51,  annualLoss: 612,  label: '7+'  },
 } as const
 
-// ─── UPLOAD CONSTRAINTS ────────────────────────────────────────────────────
-export const UPLOAD_CONFIG = {
-  maxSizeBytes: 10 * 1024 * 1024, // 10MB
-  allowedTypes: ['application/pdf'] as const,
-  bucket: 'pdfs',
-} as const
-
 // ─── RATE LIMITING ─────────────────────────────────────────────────────────
 export const RATE_LIMIT = {
   leads:    { requests: 5,  windowMs: 60_000 },
-  upload:   { requests: 3,  windowMs: 60_000 },
-  analyze:  { requests: 10, windowMs: 60_000 },
 } as const
 
 // ─── SCORING ───────────────────────────────────────────────────────────────

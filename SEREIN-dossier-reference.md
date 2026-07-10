@@ -66,12 +66,15 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
    (Serein arme, n'agit pas). URL en ligne : https://serein-v2.vercel.app
 
 ### Pipeline d'analyse
-- `POST /api/leads` — crée un lead (validation Zod, rate-limit)
-- `POST /api/upload` — reçoit un relevé PDF (max 10 Mo, bucket Supabase `pdfs`)
-- `POST /api/analyze` — extrait le texte (`pdf-parse`), parse les transactions
-  (`src/lib/pdf/parser.ts`, formats bancaires français), détecte les
-  récurrences et score l'inutilité (`src/lib/scoring/engine.ts`), écrit
-  transactions/subscriptions/insights en base.
+- `POST /api/leads` — crée un lead (validation Zod, rate-limit).
+- **Analyse du relevé : côté navigateur** (`/analyse`, OCR local pdf.js +
+  Tesseract, PR #25) — le parseur (`src/lib/pdf/parser.ts`, formats bancaires
+  français) et le scoring (`src/lib/scoring/engine.ts`) tournent dans la page.
+- ⚠️ Les anciennes routes `POST /api/upload` et `POST /api/analyze` ont été
+  **supprimées à la Brique 2** : elles visaient un bucket fantôme `pdfs`, un
+  schéma mort (`file_path`, `lead_id`…) et tournaient en **service-role
+  (contournait la RLS)**. Remplacées par le socle Storage `/api/uploads` (voir
+  plus bas).
 
 ### Moteur de scoring (logique métier centrale)
 - Récurrence : ≥ 2 occurrences, montants similaires (tolérance 15 %),
@@ -449,9 +452,38 @@ Première brique du plan de fusion : serein-v2 est LE projet définitif. Objecti
   verte, lint 0 erreur, `tsc` src propre, `npm run build` vert (les 8 routes
   API listées, dont les 4 nouvelles). Aucun secret `NEXT_PUBLIC_`.
 
-**Prochaine brique annoncée : Brique 2 — durcissement uploads / Storage**
-(bucket privé, URL signées courtes, suppression Storage + base, limites
-taille/MIME).
+### Brique 2 — Socle Storage / uploads durci (livré 2026-07-09)
+Deuxième brique du plan de fusion. Objectif : un accès aux documents (relevés)
+correct et durci, sur le socle Brique 1. **Aucun changement DB** — le bucket
+privé et les policies existaient déjà en base (vérifié le 2026-07-09).
+- **`src/lib/storage/documents.ts`** (logique pure, testée) : bucket privé
+  unique `bank-statements`, MIME = PDF seul, taille ≤ 10 Mo, TTL des URL signées
+  court (60 s). `validateDocumentFile()`, `objectPathFor(userId, id)` (un
+  document vit toujours sous `${userId}/…`), `isOwnedPath()` (garde anti-fuite,
+  bloque la traversée `../autre-user`).
+- **`src/lib/services/uploads.ts`** (session + RLS) : `createUpload` (valide →
+  ligne `uploads` → objet Storage, **rollback de la ligne si l'upload échoue**),
+  `listUploads`, `createDownloadUrl` (URL signée courte), `deleteUpload`
+  (**suppression coordonnée objet Storage + ligne base**). NOT_FOUND si le
+  document n'est pas celui de l'utilisateur.
+- **Routes** `/api/uploads` (GET/POST multipart), `/api/uploads/[id]` (DELETE),
+  `/api/uploads/[id]/download` (GET → URL signée). Route → validation → auth →
+  service → réponse standard.
+- **Sécurité en base (déjà présente, vérifiée)** : bucket `bank-statements`
+  privé (10 Mo, PDF) ; policies Storage per-utilisateur
+  (`foldername[1] = auth.uid()`) INSERT/SELECT/DELETE ; table `uploads` en RLS
+  `owner_all`. Le code s'appuie dessus + double la garde côté serveur.
+- **Nettoyage** : suppression des routes mortes `/api/upload` et `/api/analyze`
+  (bucket fantôme + service-role + schéma mort) et de la config morte
+  (`UPLOAD_CONFIG`, `RATE_LIMIT.upload/analyze`). Surface d'attaque réduite.
+- ⚠️ Comme la Brique 1, ce socle est **prêt mais non branché** dans l'UI :
+  l'analyse Serein reste client-side (OCR local). Ces routes sont la porte
+  serveur durcie pour quand un flux d'upload sera branché (ou pour la refonte
+  de l'analyse). Comportement visible inchangé.
+- Vérifs : sandbox **17/17 PASS** (`sandbox/storage.test.ts`), suite complète
+  verte, lint 0 erreur, `tsc` src propre, build vert (3 routes `/api/uploads*`).
+
+**Prochaine brique annoncée : Brique 3** (à préciser depuis le plan de fusion).
 
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
@@ -527,9 +559,9 @@ Plan de briques validé par Juju le 2026-07-05 (« prompt ultime ») :
 serein-v2 est LE projet définitif, l'ancien « New project » est abandonné
 (seule sa doc est récupérée). Briques dans l'ordre :
 1. ~~Brique 1 — Socle API (réponse standard, Zod, services)~~ ✅ livrée 2026-07-09
-2. Brique 2 — durcissement uploads / Storage (bucket privé, URL signées
-   courtes, suppression Storage + base, limites taille/MIME) ← **prochaine**
-3. Brique 3 — (à préciser depuis le plan de fusion)
+2. ~~Brique 2 — durcissement uploads / Storage (bucket privé, URL signées
+   courtes, suppression Storage + base, limites taille/MIME)~~ ✅ livrée 2026-07-09
+3. Brique 3 — (à préciser depuis le plan de fusion) ← **prochaine**
 4. Brique 4 — (à préciser depuis le plan de fusion)
 5. Brique 5 — (à préciser depuis le plan de fusion)
 
@@ -554,6 +586,7 @@ extension annuaire résiliation.
 | 2026-07-03 | Connexion (`/connexion`) : vrais comptes e-mail/mot de passe, nav connectée | 81/81 sandbox PASS, 7/7 navigateur PASS, build vert |
 | 2026-07-03 | Tableau de bord (`/dashboard`) : résumé + atterrissage après connexion | 90/90 sandbox PASS, 9/9 navigateur PASS, build vert |
 | 2026-07-09 | Brique 1 — Socle API : réponse standard 10 codes, validation Zod alignée base, services subscriptions/reminders, routes canoniques (couche additive) | 30/30 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
+| 2026-07-09 | Brique 2 — Socle Storage durci : bucket privé `bank-statements`, helpers MIME/taille/chemin per-user testés, service uploads (URL signées courtes, suppression Storage+base), routes `/api/uploads*` ; suppression des routes mortes upload/analyze | 17/17 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
