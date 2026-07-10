@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-09 (Brique 1 — Socle API, plan de fusion)
+> Dernière mise à jour : 2026-07-09 (Brique 3 — Socle API commitments)
 
 ## 1. Le produit
 
@@ -483,7 +483,40 @@ privé et les policies existaient déjà en base (vérifié le 2026-07-09).
 - Vérifs : sandbox **17/17 PASS** (`sandbox/storage.test.ts`), suite complète
   verte, lint 0 erreur, `tsc` src propre, build vert (3 routes `/api/uploads*`).
 
-**Prochaine brique annoncée : Brique 3** (à préciser depuis le plan de fusion).
+### Brique 3 — Socle API pour `commitments`, le vrai cœur (livré 2026-07-09)
+Troisième brique. Constat qui l'a motivée : la Brique 1 avait bâti le socle sur
+`subscriptions`, mais **toute l'app tourne sur `commitments`** (dashboard,
+rappels, engagements, analyse, export) — `subscriptions` est **orpheline**
+(elle n'était remplie que par l'ancienne `/api/analyze`, supprimée en Brique 2).
+On donne donc un socle durci à la vraie table, préalable pour brancher plus tard
+la page Engagements dessus.
+- **`src/lib/validation/commitments.ts`** : schéma Zod aligné sur les colonnes et
+  CHECK réels (vérifiés le 2026-07-09). service_type (10 valeurs), frequency
+  (dont `one_time`), status (dont `expired`), importance (low→critical) ;
+  `amount` nullable ; dates au format AAAA-MM-JJ ; `user_id` jamais du payload.
+- **`src/lib/services/commitments.ts`** : list/create/update/delete, session +
+  RLS + `.eq` → NOT_FOUND. Colonnes = celles de `store.ts` + `importance`/`notes`.
+- **Routes** `/api/commitments` (GET/POST) et `/api/commitments/[id]`
+  (PATCH/DELETE). Route → Zod → auth → service → réponse standard.
+- Vérifs : sandbox **19/19 PASS** (`sandbox/commitments-validation.test.ts`),
+  suite complète verte, lint 0 erreur, `tsc` src propre, build vert.
+- ⚠️ Comme Brique 1/2 : socle **additif, pas encore branché** dans l'UI (les
+  pages passent encore par `store.ts` en direct, mode invité compris).
+  Comportement visible inchangé.
+
+**⚠️ Deux dettes honnêtes mises au jour (à traiter dans une brique dédiée, PAS
+ici) :**
+1. **Doublon de modèle** : `subscriptions` (orpheline) vs `commitments` (le vrai
+   cœur). Décider de supprimer/fusionner `subscriptions` — son socle Brique 1
+   restera inutilisé tant que la table n'est pas branchée à un écran.
+2. **`reminders.commitment_id` NOT NULL** en base alors que `store.ts` insère
+   `null` pour les rappels de factures ponctuelles : les rappels de facture ne
+   peuvent donc pas être sauvegardés côté cloud tels quels. À corriger avant de
+   brancher les rappels sur `/api/reminders`.
+
+**Prochaine brique candidate : Brique 4 — brancher la page Engagements sur
+`/api/commitments`** pour les utilisateurs connectés (garder le mode invité en
+local), première vraie mise en service visible du socle.
 
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
@@ -561,7 +594,9 @@ serein-v2 est LE projet définitif, l'ancien « New project » est abandonné
 1. ~~Brique 1 — Socle API (réponse standard, Zod, services)~~ ✅ livrée 2026-07-09
 2. ~~Brique 2 — durcissement uploads / Storage (bucket privé, URL signées
    courtes, suppression Storage + base, limites taille/MIME)~~ ✅ livrée 2026-07-09
-3. Brique 3 — (à préciser depuis le plan de fusion) ← **prochaine**
+3. ~~Brique 3 — socle API pour `commitments` (le vrai cœur)~~ ✅ livrée 2026-07-09
+4. Brique 4 — brancher la page Engagements sur `/api/commitments` (connectés),
+   mode invité gardé en local ← **prochaine** (première mise en service visible)
 4. Brique 4 — (à préciser depuis le plan de fusion)
 5. Brique 5 — (à préciser depuis le plan de fusion)
 
@@ -587,6 +622,7 @@ extension annuaire résiliation.
 | 2026-07-03 | Tableau de bord (`/dashboard`) : résumé + atterrissage après connexion | 90/90 sandbox PASS, 9/9 navigateur PASS, build vert |
 | 2026-07-09 | Brique 1 — Socle API : réponse standard 10 codes, validation Zod alignée base, services subscriptions/reminders, routes canoniques (couche additive) | 30/30 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 | 2026-07-09 | Brique 2 — Socle Storage durci : bucket privé `bank-statements`, helpers MIME/taille/chemin per-user testés, service uploads (URL signées courtes, suppression Storage+base), routes `/api/uploads*` ; suppression des routes mortes upload/analyze | 17/17 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
+| 2026-07-09 | Brique 3 — Socle API `commitments` (le vrai cœur) : validation Zod alignée base (service_type/frequency/status/importance), service + routes `/api/commitments*` ; doublon subscriptions/commitments et dette reminders.commitment_id documentés | 19/19 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
