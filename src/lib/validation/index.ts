@@ -4,6 +4,7 @@
 export * from './common'
 export * from './leads'
 export * from './commitments'
+export * from './factures'
 export * from './subscriptions'
 export * from './reminders'
 export * from './uploads'

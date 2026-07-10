@@ -64,9 +64,8 @@ export interface LetterListItem {
   generated_at: string
 }
 
-// Engagements et rappels passent désormais par le socle API (colonnes gérées
-// côté serveur) ; seules les factures ponctuelles gardent une sélection directe.
-const FACTURE_COLS = 'id, name, amount, mode, start_date, interval_months, next_due_date, notice_days, status'
+// Engagements, rappels et factures ponctuelles passent désormais par le socle
+// API pour les comptes connectés (colonnes et validation gérées côté serveur).
 
 type Supabase = ReturnType<typeof createSupabaseBrowserClient>
 type Backend =
@@ -220,22 +219,15 @@ export async function deleteReminder(id: string): Promise<void> {
 export async function listFactures(): Promise<FactureRow[]> {
   const b = await backend()
   if (b.kind === 'local') return readRows<FactureRow>(b.kv, LOCAL_KEYS.factures)
-  const { data, error } = await b.supabase.from('factures_ponctuelles').select(FACTURE_COLS)
-  if (error) fail(error.message)
-  return (data ?? []) as FactureRow[]
+  return apiGet<FactureRow[]>('/api/factures')
 }
 
 export async function addFacture(input: Omit<FactureRow, 'id' | 'status'>): Promise<FactureRow> {
   const b = await backend()
   const row = { ...input, status: 'active' }
   if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.factures, [row])[0] as FactureRow
-  const { data, error } = await b.supabase
-    .from('factures_ponctuelles')
-    .insert({ ...row, user_id: b.userId })
-    .select(FACTURE_COLS)
-    .single()
-  if (error || !data) fail(error?.message ?? 'Ajout de la facture impossible.')
-  return data as FactureRow
+  // Le serveur force le statut et vérifie la cohérence du mode (interval/manual).
+  return apiPost<FactureRow>('/api/factures', input)
 }
 
 export async function updateFacture(id: string, patch: Partial<FactureRow>): Promise<void> {
@@ -244,8 +236,9 @@ export async function updateFacture(id: string, patch: Partial<FactureRow>): Pro
     if (!updateRow(b.kv, LOCAL_KEYS.factures, id, patch)) fail('Facture introuvable.')
     return
   }
-  const { error } = await b.supabase.from('factures_ponctuelles').update(patch).eq('id', id)
-  if (error) fail(error.message)
+  const { id: _omit, ...body } = patch
+  void _omit
+  await apiPatch(`/api/factures/${id}`, body)
 }
 
 export async function deleteFacture(id: string): Promise<void> {
@@ -256,8 +249,8 @@ export async function deleteFacture(id: string): Promise<void> {
       if (r.facture_id === id) deleteRow(b.kv, LOCAL_KEYS.reminders, r.id)
     return
   }
-  const { error } = await b.supabase.from('factures_ponctuelles').delete().eq('id', id)
-  if (error) fail(error.message)
+  // Les rappels liés partent en cascade côté base (FK ON DELETE CASCADE).
+  await apiDelete(`/api/factures/${id}`)
 }
 
 // ─── LETTRES ────────────────────────────────────────────────────────────────

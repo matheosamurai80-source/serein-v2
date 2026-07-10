@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-09 (Brique 5 — Rappels sur le socle)
+> Dernière mise à jour : 2026-07-09 (Brique 6 — Factures sur le socle)
 
 ## 1. Le produit
 
@@ -566,9 +566,34 @@ Correction de la dette n°2 de la Brique 3, puis mise en service des Rappels.
   Checklist : connecté → /rappels → programmer un rappel (engagement ET
   facture), marquer lu, supprimer.
 
-**Prochaine brique candidate : Brique 6** — trancher le doublon
-`subscriptions`/`commitments` (nettoyage de fond), ou brancher les Factures
-ponctuelles sur un socle `/api/factures`. À cadrer avec Juju.
+### Brique 6 — Factures ponctuelles branchées sur le socle (livré 2026-07-09)
+Dernier module « métier » encore en accès direct : les factures ponctuelles
+(eau, taxe, assurance annuelle…) passent maintenant par `/api/factures` pour les
+comptes connectés. Mode invité inchangé.
+- **`src/lib/validation/factures.ts`** : schéma aligné sur les CHECK réels —
+  mode ∈ interval|manual, status ∈ active|archived, interval_months 1..60,
+  notice_days 0..365, **et les règles conditionnelles** : interval →
+  start_date + interval_months requis ; manual → next_due_date requis
+  (miroir de `mode_interval_complet` / `mode_manual_complet`).
+- **`src/lib/services/factures.ts`** : list/create/update/delete, session +
+  RLS + `.eq` → NOT_FOUND.
+- **Routes** `/api/factures` (GET/POST) et `/api/factures/[id]` (PATCH/DELETE).
+- **`src/lib/data/store.ts`** : branche cloud des 4 fonctions factures → socle.
+  `FACTURE_COLS` retiré (dernière sélection directe supprimée du façade cloud).
+- **Vérifs faites ici** : sandbox **412 PASS** (dont cohérence de mode) ; lint 0,
+  `tsc` src propre, build vert ; **E2E Playwright Factures mode invité 6/6**
+  (interval + manual, persistance, « payée », suppression) ; smoke
+  `/api/factures` non authentifié → **401** standard.
+- ⚠️ Même limite : chemin **connecté** non exécutable ici → à valider sur la
+  preview (ajouter une facture « fréquence » et une « dates fixes »).
+
+**Socle terminé pour les 3 modules métier** : engagements, rappels et factures
+passent tous par l'API durcie (connectés) ; seul le mode invité reste 100 %
+local. Reste la dette n°1 : la table orpheline `subscriptions`.
+
+**Prochaine brique candidate : Brique 7** — trancher le doublon
+`subscriptions`/`commitments` (supprimer/fusionner la table orpheline), seul
+reliquat du plan de fusion encore ouvert.
 
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
@@ -651,8 +676,10 @@ serein-v2 est LE projet définitif, l'ancien « New project » est abandonné
    invité gardé en local~~ ✅ livrée 2026-07-09 (1ʳᵉ mise en service du socle)
 5. ~~Brique 5 — dette `reminders.commitment_id` corrigée + Rappels branchés sur
    `/api/reminders`~~ ✅ livrée 2026-07-09
-6. Brique 6 — consolidation `subscriptions`/`commitments`, ou Factures sur un
-   socle `/api/factures` ← **prochaine** (à cadrer)
+6. ~~Brique 6 — Factures ponctuelles branchées sur `/api/factures`~~ ✅ livrée
+   2026-07-09 (socle terminé pour les 3 modules métier)
+7. Brique 7 — consolidation `subscriptions`/`commitments` (table orpheline)
+   ← **prochaine** (dernier reliquat du plan de fusion)
 4. Brique 4 — (à préciser depuis le plan de fusion)
 5. Brique 5 — (à préciser depuis le plan de fusion)
 
@@ -681,6 +708,7 @@ extension annuaire résiliation.
 | 2026-07-09 | Brique 3 — Socle API `commitments` (le vrai cœur) : validation Zod alignée base (service_type/frequency/status/importance), service + routes `/api/commitments*` ; doublon subscriptions/commitments et dette reminders.commitment_id documentés | 19/19 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
 | 2026-07-09 | Brique 4 — Engagements branchés sur le socle : façade `store.ts` (cloud) → `/api/commitments`, client typé `data/api.ts`, mode invité intact | Suite sandbox 394 PASS, E2E Playwright invité 6/6, smoke serveur 401/422 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 | 2026-07-09 | Brique 5 — dette rappels corrigée (migration : `commitment_id` nullable + CHECK cible présente) + Rappels branchés sur `/api/reminders` (factures incluses) | Sandbox 395 PASS, E2E Playwright Rappels invité 6/6, smoke `/api/reminders` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
+| 2026-07-09 | Brique 6 — Factures ponctuelles branchées sur le socle : validation Zod (mode/status + règles conditionnelles), service + routes `/api/factures*`, façade cloud rebranchée | Sandbox 412 PASS, E2E Playwright Factures invité 6/6, smoke `/api/factures` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
