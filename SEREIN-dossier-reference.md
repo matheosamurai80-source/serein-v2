@@ -753,6 +753,13 @@ extension annuaire résiliation.
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+- **Réorganisation en onglets (2026-07-09)** : retour de Juju « PanierMalin
+  bordélique » (tout empilé sur une page). Passage à une **barre d'onglets
+  fixe en bas** (standard mobile) : 📷 Scanner (+ ticket de caisse) · 🛒 Liste
+  (défaut) · 📦 Inventaire · 🏷️ Plans — une seule vue à la fois. **Layout
+  uniquement, zéro changement de logique** (IDs et handlers intacts). Scan
+  code-barres : confirmation renforcée « ✓ Ajouté à votre inventaire : … »
+  (+ vibration). Vérif : E2E Playwright onglets 11/11, sandbox 433 PASS.
 - **Listes v1 (2026-07-05)** : liste de courses (`listes.mjs`, logique pure
   testée 15/15) — ajout dédoublonné, cocher, ⭐ récurrent, « Nouvelle
   semaine » (les récurrents reviennent, les achats ponctuels sortent),

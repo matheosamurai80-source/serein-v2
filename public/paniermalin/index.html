@@ -10,7 +10,7 @@
 <style>
   :root { --green:#2F7A4D; --green-dark:#245E3B; --bg:#F6F8F4; --card:#FFFFFF; --line:#E3E9E0; --text:#20301F; --dim:#6C7A6A }
   * { box-sizing:border-box; margin:0 }
-  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; padding-bottom:40px }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; padding-bottom:82px }
   header { background:var(--green); color:#fff; padding:18px 16px 16px; text-align:center }
   header h1 { font-size:22px; font-weight:800; letter-spacing:-.3px }
   header p { font-size:13px; opacity:.85; margin-top:2px }
@@ -50,6 +50,19 @@
   h2 { font-size:15px; font-weight:800; margin-bottom:8px }
   .hint { font-size:12.5px; color:var(--dim); line-height:1.5 }
   .empty { text-align:center; color:var(--dim); font-size:14px; padding:18px 0 }
+  /* Onglets (une vue à la fois, barre fixe en bas — standard mobile) */
+  .screen { display:none }
+  .screen.active { display:block; animation:pmfade .2s ease }
+  @keyframes pmfade { from{opacity:.35} to{opacity:1} }
+  .tabbar { position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; max-width:520px; margin:0 auto;
+            background:var(--card); border-top:1px solid var(--line); box-shadow:0 -2px 14px rgba(0,0,0,.06);
+            padding-bottom:env(safe-area-inset-bottom,0) }
+  .tab { flex:1; background:none; color:var(--dim); border-radius:0; padding:9px 4px 10px; font-size:11px; font-weight:800;
+         display:flex; flex-direction:column; align-items:center; gap:3px }
+  .tab .ic { font-size:21px; line-height:1; filter:grayscale(.45); opacity:.7 }
+  .tab.active { color:var(--green-dark) }
+  .tab.active .ic { filter:none; opacity:1 }
+  #status.ok { color:var(--green-dark); font-weight:700 }
 </style>
 </head>
 <body>
@@ -66,6 +79,7 @@
       <option value="">🏦 Ma banque…</option>
     </select>
   </div>
+  <div class="screen" id="scr-scan">
   <div class="card">
     <video id="cam" playsinline muted></video>
     <div class="row">
@@ -104,7 +118,9 @@
     <strong>rien n'est enregistré sans votre validation</strong> : pour chaque ligne, choisissez « ignorer »,
     « entrée libre » ou l'association à un produit déjà scanné (son prix sera mis à jour).</p>
   </div>
+  </div><!-- /scr-scan -->
 
+  <div class="screen active" id="scr-liste">
   <div class="card">
     <h2 style="display:flex;align-items:center;justify-content:space-between">
       <span>🛒 Ma liste de courses <span class="hint" id="listCount"></span></span>
@@ -130,7 +146,9 @@
     automatiquement à chaque « nouvelle semaine ». « Partager (texte) » envoie la liste par SMS/WhatsApp.
     « Synchro famille » crée un lien : chacun coche depuis son téléphone et tout le monde voit la liste à jour.</p>
   </div>
+  </div><!-- /scr-liste -->
 
+  <div class="screen" id="scr-inv">
   <div class="card">
     <h2>Mon inventaire <span class="hint" id="count"></span></h2>
     <div id="basket"><p class="empty">Scannez vos produits : l&rsquo;app s&rsquo;en souvient.</p></div>
@@ -143,12 +161,16 @@
     est stockée en Europe sous un code aléatoire, sans votre identité. Le scan n'envoie que le code-barres
     à Open Food Facts.</p>
   </div>
+  </div><!-- /scr-inv -->
+
+  <div class="screen" id="scr-plans">
   <div class="card">
     <h2>🏷️ Bons plans &amp; cartes de fidélité</h2>
     <div id="bonsPlans"><p class="empty">Chargement…</p></div>
     <p class="hint" style="margin-top:8px">Liens officiels vers les promos et cartes des grandes enseignes —
     aucun partenariat, aucune commission.</p>
   </div>
+  </div><!-- /scr-plans -->
 
   <p class="hint" style="text-align:center;padding-bottom:8px">
     <a href="/confidentialite" style="color:var(--dim)">Confidentialité</a> ·
@@ -157,6 +179,13 @@
     <a href="/" style="color:var(--green-dark);font-weight:700">🛡️ Serein</a>
   </p>
 </main>
+
+<nav class="tabbar" role="tablist" aria-label="Sections PanierMalin">
+  <button class="tab" data-scr="scan" type="button"><span class="ic">📷</span>Scanner</button>
+  <button class="tab active" data-scr="liste" type="button"><span class="ic">🛒</span>Liste</button>
+  <button class="tab" data-scr="inv" type="button"><span class="ic">📦</span>Inventaire</button>
+  <button class="tab" data-scr="plans" type="button"><span class="ic">🏷️</span>Plans</button>
+</nav>
 
 <script type="module">
 import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
@@ -273,7 +302,9 @@ async function addByEan(raw) {
     const p = normalizeProduct(ean, await r.json())
     if (!p) return status('Produit inconnu d\'Open Food Facts.', true)
     items.push({ ...p, purchases: recordPurchase([], { date: today() }) }); save(); render()
-    status(`Ajouté : ${p.name}`)
+    $('status').textContent = `✓ Ajouté à votre inventaire : ${p.name}`
+    $('status').className = 'ok'
+    if (navigator.vibrate) navigator.vibrate(60)
   } catch { status('Pas de réseau — réessayez.', true) }
 }
 $('addBtn').onclick = () => { addByEan($('ean').value); $('ean').value = '' }
@@ -603,6 +634,18 @@ $('banqueSelect').onchange = e => {
   e.target.value = ''
 }
 loadBanques()
+
+// ─── ONGLETS (une vue à la fois) ────────────────────────────────────────────
+const pmTabs = [...document.querySelectorAll('.tab')]
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'scr-' + id))
+  pmTabs.forEach(t => t.classList.toggle('active', t.dataset.scr === id))
+  window.scrollTo(0, 0)
+}
+pmTabs.forEach(t => t.addEventListener('click', () => showScreen(t.dataset.scr)))
+
+// Après un scan réussi, basculer sur l'Inventaire n'est pas souhaitable (on
+// enchaîne les scans) : on renforce juste la confirmation visible sur place.
 
 // ─── PWA ────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
