@@ -753,6 +753,20 @@ extension annuaire résiliation.
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+- **Prix Intelligent — l'effet waouh (2026-07-09)** : sur la fiche produit (tap
+  dans l'inventaire), au lieu du prix facial, une carte de décision :
+  💳 prix carte fidélité · 🎁 après cagnotte · 💶 **vrai prix payé** · 📦 €/kg ·
+  📈 prix habituel (moyenne perso) · 💰 **économie du jour** · 🔄 alternative la
+  plus rentable au kilo (dans l'inventaire). Logique pure `smartPrice()` /
+  `pricePerKg()` / `bestAlternative()` dans `logic.mjs`. Avantages fidélité
+  (remise % / cagnotte €) **saisis** par l'utilisateur, persistés sur le produit.
+  **Vision respectée : zéro partenariat rémunéré, données 100 % côté
+  consommateur** (prix saisis + historique perso + Open Food Facts + lien fiche
+  OFF). Vérif : sandbox `paniermalin-pricing.test.ts` 20/20, E2E Playwright UI
+  8/8 (vrai prix, habituel, économie, alternative, recompute live avec remise).
+  ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
+  Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
+  cartes de fidélité stockées, notifications de baisse, mode sombre.
 - **Réorganisation en onglets (2026-07-09)** : retour de Juju « PanierMalin
   bordélique » (tout empilé sur une page). Passage à une **barre d'onglets
   fixe en bas** (standard mobile) : 📷 Scanner (+ ticket de caisse) · 🛒 Liste

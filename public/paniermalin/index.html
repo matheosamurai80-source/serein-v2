@@ -63,6 +63,19 @@
   .tab.active { color:var(--green-dark) }
   .tab.active .ic { filter:none; opacity:1 }
   #status.ok { color:var(--green-dark); font-weight:700 }
+  /* Prix Intelligent (l'effet waouh) */
+  .smart { background:linear-gradient(180deg,#EFF7F0,#FFFFFF); border:1px solid #D7E7DA; border-radius:14px; padding:13px 14px; margin-bottom:10px }
+  .smart-h { font-weight:800; font-size:14px; margin-bottom:8px; color:var(--green-dark) }
+  .smart-line { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:4px 0; font-size:13.5px }
+  .smart-line span { color:var(--dim) }
+  .smart-line strong { font-weight:800; text-align:right }
+  .smart-line.big { border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); padding:7px 0; margin:3px 0 }
+  .smart-line.big strong { font-size:19px; color:var(--green-dark) }
+  .smart-line.save strong { color:#038141 }
+  .smart-line.alt strong { color:#2B5EA7 }
+  .smart-adv { display:flex; gap:10px; margin-top:9px; font-size:12px; color:var(--dim) }
+  .smart-adv label { display:flex; align-items:center; gap:5px }
+  .smart-adv input { width:54px; border:1.5px solid var(--line); border-radius:8px; padding:5px 6px; font-size:13px; text-align:right }
 </style>
 </head>
 <body>
@@ -188,7 +201,7 @@
 </nav>
 
 <script type="module">
-import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { validateEAN, normalizeProduct, compareBasket, pricePer100, pricePerKg, smartPrice, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -277,7 +290,54 @@ function buildDetail(p) {
   link.textContent = 'Voir la fiche complète sur Open Food Facts ↗'
   link.style.color = 'var(--green-dark)'
   det.appendChild(link)
+  det.prepend(buildSmartCard(p)) // Prix Intelligent en tête
   return det
+}
+
+// ─── PRIX INTELLIGENT — carte de décision ───────────────────────────────────
+const eur = n => `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+const eurKg = n => `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/kg`
+const smartLine = (label, val, cls = '') => `<div class="smart-line ${cls}"><span>${label}</span><strong>${val}</strong></div>`
+
+function buildSmartCard(p) {
+  // Alternatives = les autres produits de l'inventaire moins chers au kilo.
+  const alternatives = items.filter(x => x.ean !== p.ean)
+    .map(x => ({ name: x.name, perKg: pricePerKg(x.price, x.quantity) }))
+    .filter(a => a.perKg != null)
+  const si = smartPrice({
+    price: p.price, quantity: p.quantity,
+    loyaltyPct: p.loyaltyPct, cagnotte: p.cagnotte,
+    history: (p.purchases ?? []).slice(0, -1), // « habituel » = avant aujourd'hui
+    alternatives,
+  })
+  const el = document.createElement('div'); el.className = 'smart'
+  const rows = ['<div class="smart-h">💡 Prix Intelligent</div>']
+  if (si.facial == null) {
+    rows.push('<p class="hint">Ajoutez le prix en rayon (champ €) pour activer le vrai prix payé, le €/kg et vos économies.</p>')
+  } else {
+    if (si.hasLoyalty) rows.push(smartLine('💳 Prix carte fidélité', eur(si.cardPrice)))
+    if (si.hasCagnotte) rows.push(smartLine('🎁 Après cagnotte', eur(si.afterCagnotte)))
+    rows.push(smartLine('💶 Vrai prix payé', eur(si.realPaid), 'big'))
+    if (si.perKg != null) rows.push(smartLine('📦 Prix au kilo', eurKg(si.perKg)))
+    if (si.habitual != null) rows.push(smartLine('📈 Ton prix habituel', eur(si.habitual)))
+    if (si.economy > 0) rows.push(smartLine('💰 Économie aujourd\'hui', eur(si.economy), 'save'))
+    if (si.bestAlternative) rows.push(smartLine('🔄 Plus rentable au kilo', `${si.bestAlternative.name} · ${eurKg(si.bestAlternative.perKg)} (−${eurKg(si.bestAlternative.saving)})`, 'alt'))
+  }
+  rows.push(`<div class="smart-adv">
+    <label>💳 Remise carte <input type="text" inputmode="decimal" class="adv-loy" value="${p.loyaltyPct ?? ''}" placeholder="%" aria-label="remise carte %"> %</label>
+    <label>🎁 Cagnotte <input type="text" inputmode="decimal" class="adv-cag" value="${p.cagnotte ?? ''}" placeholder="€" aria-label="cagnotte €"> €</label>
+  </div>`)
+  el.innerHTML = rows.join('')
+  const bind = (sel, key) => {
+    const inp = el.querySelector(sel)
+    if (inp) inp.onchange = e => {
+      const v = parseFloat(String(e.target.value).replace(',', '.'))
+      const it = items.find(i => i.ean === p.ean)
+      if (it) { it[key] = v > 0 ? v : null; save(); render() }
+    }
+  }
+  bind('.adv-loy', 'loyaltyPct'); bind('.adv-cag', 'cagnotte')
+  return el
 }
 
 // ─── AJOUT D'UN PRODUIT ─────────────────────────────────────────────────────

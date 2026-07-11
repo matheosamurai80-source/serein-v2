@@ -205,3 +205,75 @@ export function priceSignal(history, newPrice) {
 export function findDuplicate(items, ean) {
   return (items ?? []).find(i => i.ean === ean) ?? null
 }
+
+// ─── PRIX INTELLIGENT (l'effet waouh) ───────────────────────────────────────
+// Au lieu d'un prix facial, on présente le VRAI prix payé et la décision :
+// prix carte (fidélité), prix après cagnotte, €/kg, prix habituel, économie du
+// jour, et l'alternative la plus rentable. Données 100 % côté consommateur :
+// prix saisi + avantages fidélité saisis + historique perso + inventaire.
+// Aucun catalogue de marque requis.
+
+const round2 = n => Math.round(n * 100) / 100
+const clampPct = p => Math.min(90, Math.max(0, Number(p) || 0))
+
+/** €/kg (ou €/L) à partir d'un prix et d'une quantité OFF ("400 g", "6 x 1,5 L"…). */
+export function pricePerKg(price, quantityStr) {
+  if (!(price > 0) || !quantityStr) return null
+  const s = String(quantityStr).toLowerCase().replace(',', '.')
+  const mult = s.match(/(\d+)\s*x\s*([\d.]+)/)
+  const m = s.match(/([\d.]+)\s*(kg|g|l|cl|ml)\b/)
+  if (!m) return null
+  let value = parseFloat(m[1])
+  if (mult) value = parseInt(mult[1], 10) * parseFloat(mult[2])
+  if (!(value > 0)) return null
+  const unit = m[2]
+  // base en grammes/ml (kg et L → ×1000, cl → ×10, g/ml inchangés)
+  const baseG = unit === 'kg' || unit === 'l' ? value * 1000 : unit === 'cl' ? value * 10 : value
+  return round2((price / baseG) * 1000)
+}
+
+/**
+ * Alternative la plus rentable parmi des candidats [{ name, perKg }] :
+ * la moins chère au kg ET strictement moins chère que le produit courant.
+ * Renvoie { name, perKg, saving } ou null.
+ */
+export function bestAlternative(currentPerKg, alternatives) {
+  if (!(currentPerKg > 0)) return null
+  let best = null
+  for (const a of alternatives ?? []) {
+    if (!(a && a.perKg > 0) || a.perKg >= currentPerKg) continue
+    if (!best || a.perKg < best.perKg) best = a
+  }
+  return best ? { name: best.name, perKg: round2(best.perKg), saving: round2(currentPerKg - best.perKg) } : null
+}
+
+/**
+ * Décompose un prix en « Prix Intelligent ».
+ * Entrées : price (facial), quantity, loyaltyPct (remise carte %), cagnotte (€),
+ * history [{price}], alternatives [{name, perKg}].
+ */
+export function smartPrice({ price, quantity, loyaltyPct = 0, cagnotte = 0, history = [], alternatives = [] } = {}) {
+  const facial = price > 0 ? round2(price) : null
+  const cardPrice = facial != null ? round2(facial * (1 - clampPct(loyaltyPct) / 100)) : null
+  const cg = Math.max(0, Number(cagnotte) || 0)
+  const afterCagnotte = cardPrice != null ? round2(Math.max(0, cardPrice - cg)) : null
+  const realPaid = afterCagnotte ?? cardPrice ?? facial
+  const perKg = realPaid != null ? pricePerKg(realPaid, quantity) : null
+
+  const prices = (history ?? []).map(h => h && h.price).filter(p => p > 0)
+  const habitual = prices.length ? round2(prices.reduce((a, b) => a + b, 0) / prices.length) : null
+  const economy = (habitual != null && realPaid != null && habitual > realPaid) ? round2(habitual - realPaid) : 0
+
+  return {
+    facial,                                   // prix affiché en rayon
+    cardPrice,                                // après remise carte
+    afterCagnotte,                            // après cagnotte / bon
+    realPaid,                                 // le vrai prix payé
+    perKg,                                    // €/kg du vrai prix
+    habitual,                                 // prix habituel (moyenne perso)
+    economy,                                  // économie vs habituel (0 si aucune)
+    hasLoyalty: cardPrice != null && cardPrice < (facial ?? Infinity),
+    hasCagnotte: cg > 0,
+    bestAlternative: bestAlternative(perKg, alternatives),
+  }
+}
