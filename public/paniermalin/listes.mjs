@@ -16,6 +16,42 @@ export function visible(list) {
   return (list ?? []).filter(i => !i.deleted)
 }
 
+// ─── SAISIE SEMI-AUTOMATIQUE (propositions pendant la frappe) ───────────────
+// Un socle de produits courants pour proposer dès les 1res lettres, complété
+// à l'usage par les articles récurrents et l'inventaire scanné.
+export const COMMON_GROCERIES = [
+  'Lait', 'Pain', 'Œufs', 'Beurre', 'Fromage', 'Yaourt', 'Jambon', 'Poulet', 'Steak haché', 'Poisson',
+  'Riz', 'Pâtes', 'Farine', 'Sucre', 'Sel', 'Huile', 'Vinaigre', 'Café', 'Thé', 'Eau',
+  'Jus d’orange', 'Pommes', 'Bananes', 'Tomates', 'Salade', 'Carottes', 'Pommes de terre', 'Oignons', 'Ail', 'Citron',
+  'Courgettes', 'Poivrons', 'Champignons', 'Fraises', 'Chocolat', 'Céréales', 'Biscuits', 'Confiture', 'Miel', 'Céréales',
+  'Crème fraîche', 'Lardons', 'Thon', 'Haricots verts', 'Petits pois', 'Maïs', 'Soupe', 'Pizza', 'Beurre de cacahuète', 'Biscottes',
+  'Dentifrice', 'Savon', 'Shampoing', 'Gel douche', 'Papier toilette', 'Essuie-tout', 'Lessive', 'Liquide vaisselle', 'Éponges', 'Sacs poubelle',
+  'Mouchoirs', 'Serviettes hygiéniques', 'Cotons', 'Piles', 'Ampoules', 'Croquettes chat', 'Croquettes chien', 'Litière',
+]
+
+const deburr = s => keyOf(s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/œ/g, 'oe').replace(/æ/g, 'ae')
+
+/**
+ * Propositions pour la saisie : d'abord ce qui COMMENCE par la requête, puis
+ * ce qui la CONTIENT ; sans les articles déjà dans la liste, dédoublonné.
+ * `query` vide → aucune proposition (on ne noie pas l'écran).
+ */
+export function suggestListItems(query, pool, existing = [], limit = 6) {
+  const q = deburr(query)
+  if (q.length < 1) return []
+  const taken = new Set((existing ?? []).map(deburr))
+  const seen = new Set()
+  const starts = [], contains = []
+  for (const raw of pool ?? []) {
+    const name = norm(raw)
+    const n = deburr(name)
+    if (!n || taken.has(n) || seen.has(n)) continue
+    if (n.startsWith(q)) { seen.add(n); starts.push(name) }
+    else if (n.includes(q)) { seen.add(n); contains.push(name) }
+  }
+  return [...starts, ...contains].slice(0, limit)
+}
+
 /** Ajoute un article (dédoublonné par nom). S'il existait coché ou supprimé, il revient. */
 export function addItem(list, name, { recurrent = false, now } = {}) {
   const clean = norm(name)

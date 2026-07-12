@@ -780,6 +780,15 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Barre du haut discrète + liste semi-auto (2026-07-09)** : retours de Juju.
+  ① Les 3 pavés du haut (Accueil / Ma banque / Retour Serein) regroupés dans une
+  **barre fine** : « ← Accueil » à gauche (masqué sur l'accueil), 🏦 Banque +
+  🛡️ Serein en petit à droite ; les boutons « ← Accueil » par écran sont retirés.
+  ③ **Saisie semi-automatique** de la liste : propositions pendant la frappe
+  (`COMMON_GROCERIES` + récurrents + inventaire, `suggestListItems()` — préfixe
+  puis contenu, sans accents/casse/ligatures, exclut ce qui est déjà dans la
+  liste), la saisie 100 % manuelle reste possible (Entrée / +). Vérif : sandbox
+  `paniermalin-autocomplete.test.ts` 12/12, E2E 8/8, suite 517 PASS. SW v15→v16.
 - **Scan non-alimentaire (2026-07-09)** : retour de Juju « Vania ne marche pas ».
   Le scan n'interrogeait qu'Open Food Facts (alimentaire). Élargi à la famille :
   Open **Beauty** Facts (hygiène/cosmétique) puis Open **Products** Facts (le
