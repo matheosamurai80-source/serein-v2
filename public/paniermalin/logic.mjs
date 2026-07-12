@@ -206,6 +206,59 @@ export function findDuplicate(items, ean) {
   return (items ?? []).find(i => i.ean === ean) ?? null
 }
 
+// ─── ENSEIGNES & FIDÉLITÉ (liens, PAS de carte stockée) ─────────────────────
+// Choix produit de Juju : on ne stocke aucune carte de fidélité (donnée
+// sensible) — on donne des LIENS officiels vers les enseignes (offres /
+// programme fidélité), et l'utilisateur peut en AJOUTER une si absente.
+// Aucun partenariat, aucune commission.
+
+/** Enseignes de base (sites officiels https, publics). */
+export const DEFAULT_ENSEIGNES = [
+  { name: 'Carrefour', url: 'https://www.carrefour.fr' },
+  { name: 'E.Leclerc', url: 'https://www.e.leclerc' },
+  { name: 'Intermarché', url: 'https://www.intermarche.com' },
+  { name: 'Auchan', url: 'https://www.auchan.fr' },
+  { name: 'Lidl', url: 'https://www.lidl.fr' },
+  { name: 'Super U', url: 'https://www.magasins-u.com' },
+  { name: 'Monoprix', url: 'https://www.monoprix.fr' },
+  { name: 'Aldi', url: 'https://www.aldi.fr' },
+  { name: 'Casino', url: 'https://www.casino.fr' },
+]
+
+export function isValidHttpsUrl(url) {
+  try { return new URL(String(url)).protocol === 'https:' } catch { return false }
+}
+
+/** Nettoie/valide une enseigne saisie. Renvoie { name, url } ou null. */
+export function normalizeEnseigne(e) {
+  const name = String(e?.name ?? '').trim()
+  const url = String(e?.url ?? '').trim()
+  if (!name || name.length > 60) return null
+  if (!isValidHttpsUrl(url)) return null
+  return { name, url }
+}
+
+/**
+ * Fusionne plusieurs sources d'enseignes (défaut, officielles distantes,
+ * ajouts perso), en gardant les liens https valides, sans doublon de nom
+ * (insensible à la casse), dans l'ordre d'apparition.
+ */
+export function mergeEnseignes(...lists) {
+  const seen = new Set()
+  const out = []
+  for (const list of lists) {
+    for (const raw of list ?? []) {
+      const e = normalizeEnseigne(raw)
+      if (!e) continue
+      const key = e.name.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(e)
+    }
+  }
+  return out
+}
+
 // ─── PRIX INTELLIGENT (l'effet waouh) ───────────────────────────────────────
 // Au lieu d'un prix facial, on présente le VRAI prix payé et la décision :
 // prix carte (fidélité), prix après cagnotte, €/kg, prix habituel, économie du

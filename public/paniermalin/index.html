@@ -219,10 +219,18 @@
   <div class="screen" id="scr-plans">
     <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
-    <h2>🏷️ Bons plans &amp; cartes de fidélité</h2>
-    <div id="bonsPlans"><p class="empty">Chargement…</p></div>
-    <p class="hint" style="margin-top:8px">Liens officiels vers les promos et cartes des grandes enseignes —
-    aucun partenariat, aucune commission.</p>
+    <h2>🏪 Enseignes &amp; fidélité</h2>
+    <p class="hint">Liens officiels vers les offres et programmes fidélité — aucun partenariat, aucune commission.
+    <strong>Rien n'est stocké</strong> : juste des liens. Une enseigne manque ? Ajoute-la.</p>
+    <div id="bonsPlans" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:12px">
+      <input type="text" id="ensName" placeholder="Nom (ex. Grand Frais)">
+    </div>
+    <div class="row" style="margin-top:6px">
+      <input type="text" id="ensUrl" inputmode="url" placeholder="https://…">
+      <button id="ensAdd" class="ghost">Ajouter</button>
+    </div>
+    <div id="ensMsg" class="hint" style="margin-top:6px;min-height:15px"></div>
   </div>
   </div><!-- /scr-plans -->
 
@@ -235,7 +243,7 @@
 </main>
 
 <script type="module">
-import { validateEAN, normalizeProduct, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { validateEAN, normalizeProduct, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -685,32 +693,58 @@ $('ticketApply').onclick = () => {
     : 'Rien à enregistrer — toutes les lignes étaient sur « ignorer ».'
 }
 
-// ─── BONS PLANS (table partagée liens_utiles, mêmes règles que Serein) ─────
-async function loadBonsPlans() {
-  const box = $('bonsPlans')
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/liens_utiles?service_key=eq.paniermalin&categorie=eq.grande_distribution&order=ordre_affichage,nom&select=nom,url,description`, {
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
-    })
-    const rows = (await r.json()).filter(l => { try { return new URL(l.url).protocol === 'https:' } catch { return false } })
-    if (!rows.length) { box.innerHTML = '<p class="empty">Aucun lien disponible pour l\'instant.</p>'; return }
-    box.innerHTML = ''
-    for (const l of rows) {
-      const div = document.createElement('div')
-      div.className = 'prod'
-      div.innerHTML = `<div class="pinfo"><div class="pname"></div><div class="pmeta"></div></div><span style="color:var(--green-dark)">↗</span>`
-      const a = document.createElement('a')
-      a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer'
-      a.textContent = l.nom; a.style.color = 'var(--green-dark)'
-      div.querySelector('.pname').appendChild(a)
-      div.querySelector('.pmeta').textContent = l.description ?? ''
-      box.appendChild(div)
+// ─── ENSEIGNES & FIDÉLITÉ (liens : défaut + officiels distants + ajouts perso) ─
+// Pas de carte stockée : uniquement des liens. Les ajouts perso (nom + lien)
+// restent sur l'appareil ; on peut les retirer.
+let customEnseignes = JSON.parse(localStorage.getItem('enseignes') ?? '[]')
+let remoteEnseignes = []
+const saveEnseignes = () => localStorage.setItem('enseignes', JSON.stringify(customEnseignes))
+
+function renderEnseignes() {
+  const box = $('bonsPlans'); if (!box) return
+  box.innerHTML = ''
+  const list = mergeEnseignes(DEFAULT_ENSEIGNES, remoteEnseignes, customEnseignes)
+  const customKeys = new Set(customEnseignes.map(c => String(c.name ?? '').toLowerCase()))
+  for (const e of list) {
+    const div = document.createElement('div'); div.className = 'prod'
+    const info = document.createElement('div'); info.className = 'pinfo'
+    const a = document.createElement('a')
+    a.href = e.url; a.target = '_blank'; a.rel = 'noopener noreferrer'
+    a.textContent = e.name; a.style.color = 'var(--green-dark)'; a.style.fontWeight = '700'
+    info.appendChild(a); div.appendChild(info)
+    if (customKeys.has(e.name.toLowerCase())) {
+      const del = document.createElement('button'); del.className = 'del'; del.textContent = '✕'; del.setAttribute('aria-label', 'retirer')
+      del.onclick = () => { customEnseignes = customEnseignes.filter(c => String(c.name ?? '').toLowerCase() !== e.name.toLowerCase()); saveEnseignes(); renderEnseignes() }
+      div.appendChild(del)
+    } else {
+      const arrow = document.createElement('span'); arrow.textContent = '↗'; arrow.style.color = 'var(--green-dark)'
+      div.appendChild(arrow)
     }
-  } catch {
-    box.innerHTML = '<p class="empty">Aucun lien disponible pour l\'instant.</p>'
+    box.appendChild(div)
   }
 }
-loadBonsPlans()
+
+$('ensAdd').onclick = () => {
+  const e = normalizeEnseigne({ name: $('ensName').value, url: $('ensUrl').value })
+  if (!e) { $('ensMsg').textContent = '⚠️ Indique un nom et un lien https valide (ex. https://…).'; return }
+  const exists = mergeEnseignes(DEFAULT_ENSEIGNES, remoteEnseignes, customEnseignes).some(x => x.name.toLowerCase() === e.name.toLowerCase())
+  if (exists) { $('ensMsg').textContent = 'Cette enseigne est déjà dans la liste.'; return }
+  customEnseignes.push(e); saveEnseignes()
+  $('ensName').value = ''; $('ensUrl').value = ''; $('ensMsg').textContent = `✓ ${e.name} ajoutée.`
+  renderEnseignes()
+}
+
+async function loadBonsPlans() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/liens_utiles?service_key=eq.paniermalin&categorie=eq.grande_distribution&order=ordre_affichage,nom&select=nom,url`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    })
+    remoteEnseignes = (await r.json()).map(l => ({ name: l.nom, url: l.url }))
+  } catch { remoteEnseignes = [] }
+  renderEnseignes()
+}
+renderEnseignes() // défaut + perso tout de suite (sans attendre le réseau)
+loadBonsPlans()   // puis on complète avec les liens officiels distants
 
 // ─── MA BANQUE (menu déroulant, lien direct — mêmes données que Serein) ────
 async function loadBanques() {

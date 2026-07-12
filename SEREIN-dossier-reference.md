@@ -767,6 +767,17 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Enseignes & fidélité = liens, pas de carte stockée (2026-07-09)** : choix
+  de Juju — on ne stocke AUCUNE carte de fidélité (donnée sensible), on donne des
+  **liens officiels** vers les enseignes (offres/fidélité), + **ajout perso**
+  d'une enseigne (nom + lien https) si absente, retirable. Sources fusionnées :
+  liste par défaut (9 enseignes FR, sites officiels https) + liens distants
+  (Supabase `liens_utiles`) + ajouts perso (localStorage, juste des liens).
+  Logique pure `mergeEnseignes()` / `normalizeEnseigne()` / `isValidHttpsUrl()`
+  (dédoublonnage insensible à la casse, https only). La section « Bons plans &
+  cartes de fidélité » devient « 🏪 Enseignes & fidélité ». Vérif : sandbox
+  `paniermalin-enseignes.test.ts` 16/16, E2E Playwright 6/6, suite 479 PASS.
+  Cache SW v13→v14.
 - **Accueil = tableau de bord (2026-07-09, remplace les onglets du bas)** :
   Juju n'aimait pas la barre d'onglets → direction « Accueil façon Revolut »
   (son choix). **Écran d'accueil par défaut** : 💰 économies du jour, 🎉 bonnes
