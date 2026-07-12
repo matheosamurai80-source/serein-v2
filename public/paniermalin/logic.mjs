@@ -277,3 +277,24 @@ export function smartPrice({ price, quantity, loyaltyPct = 0, cagnotte = 0, hist
     bestAlternative: bestAlternative(perKg, alternatives),
   }
 }
+
+// ─── TABLEAU DE BORD D'ACCUEIL ──────────────────────────────────────────────
+// « L'app travaille pour toi » : au lieu de faire choisir un onglet, on résume
+// l'essentiel. Tout est dérivé de l'inventaire (prix saisis + historique perso).
+
+export function dashboardStats(items) {
+  let economyToday = 0
+  const deals = []    // bonnes affaires du moment (tu paies moins que d'habitude)
+  const toRebuy = []  // tes essentiels (achetés au moins 2 fois)
+  for (const p of items ?? []) {
+    const past = (p.purchases ?? []).slice(0, -1)
+    const si = smartPrice({ price: p.price, quantity: p.quantity, loyaltyPct: p.loyaltyPct, cagnotte: p.cagnotte, history: past })
+    if (si.economy > 0) {
+      economyToday = round2(economyToday + si.economy)
+      deals.push({ name: p.name, saving: si.economy })
+    }
+    if (isRecurring(p.purchases)) toRebuy.push(p.name)
+  }
+  deals.sort((a, b) => b.saving - a.saving)
+  return { economyToday, deals, toRebuy, trackedCount: (items ?? []).length }
+}

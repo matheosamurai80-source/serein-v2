@@ -10,7 +10,7 @@
 <style>
   :root { --green:#2F7A4D; --green-dark:#245E3B; --bg:#F6F8F4; --card:#FFFFFF; --line:#E3E9E0; --text:#20301F; --dim:#6C7A6A }
   * { box-sizing:border-box; margin:0 }
-  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; padding-bottom:82px }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; padding-bottom:28px }
   header { background:var(--green); color:#fff; padding:18px 16px 16px; text-align:center }
   header h1 { font-size:22px; font-weight:800; letter-spacing:-.3px }
   header p { font-size:13px; opacity:.85; margin-top:2px }
@@ -76,6 +76,19 @@
   .smart-adv { display:flex; gap:10px; margin-top:9px; font-size:12px; color:var(--dim) }
   .smart-adv label { display:flex; align-items:center; gap:5px }
   .smart-adv input { width:54px; border:1.5px solid var(--line); border-radius:8px; padding:5px 6px; font-size:13px; text-align:right }
+  /* Accueil — tableau de bord */
+  .home-hero { text-align:center; padding:20px 16px }
+  .home-hi { font-size:14px; color:var(--dim); margin-bottom:12px }
+  .home-eco span { display:block; font-size:12px; color:var(--dim); font-weight:800; text-transform:uppercase; letter-spacing:.4px }
+  .home-eco strong { display:block; font-size:36px; font-weight:800; color:var(--green-dark); letter-spacing:-.5px; margin-top:2px }
+  .home-scan { width:100%; padding:16px; font-size:16px; margin-bottom:14px; box-shadow:0 8px 22px rgba(47,122,77,.22) }
+  .home-line { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:6px 0; font-size:14px; border-top:1px solid var(--line) }
+  .home-line:first-child { border-top:none }
+  .home-line strong { color:#038141; font-weight:800 }
+  .home-quick { margin-top:2px }
+  .home-quick button { flex:1; padding:14px 6px; font-size:13px }
+  .back { background:none; color:var(--green-dark); font-weight:700; padding:2px 0 10px; font-size:13.5px; margin:0 }
+  .back:active { transform:none; opacity:.6 }
 </style>
 </head>
 <body>
@@ -92,7 +105,32 @@
       <option value="">🏦 Ma banque…</option>
     </select>
   </div>
+  <div class="screen active" id="scr-home">
+    <div class="card home-hero">
+      <p class="home-hi">Bonjour 👋 — voici ce qui compte aujourd'hui.</p>
+      <div class="home-eco">
+        <span>💰 Économies du jour</span>
+        <strong id="homeEco">0,00 €</strong>
+      </div>
+    </div>
+    <button class="home-scan" data-goto="scan" type="button">📷 Scanner un produit</button>
+    <div class="card" id="homeDealsCard" style="display:none">
+      <h2>🎉 Bonnes affaires du moment</h2>
+      <div id="homeDeals"></div>
+    </div>
+    <div class="card" id="homeRebuyCard" style="display:none">
+      <h2>🔁 À racheter (tes essentiels)</h2>
+      <p class="hint" id="homeRebuy"></p>
+    </div>
+    <div class="row home-quick">
+      <button class="ghost" data-goto="liste" type="button">🛒 Ma liste</button>
+      <button class="ghost" data-goto="inv" type="button">📦 Inventaire</button>
+      <button class="ghost" data-goto="plans" type="button">🏷️ Plans</button>
+    </div>
+  </div>
+
   <div class="screen" id="scr-scan">
+    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <video id="cam" playsinline muted></video>
     <div class="row">
@@ -133,7 +171,8 @@
   </div>
   </div><!-- /scr-scan -->
 
-  <div class="screen active" id="scr-liste">
+  <div class="screen" id="scr-liste">
+    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <h2 style="display:flex;align-items:center;justify-content:space-between">
       <span>🛒 Ma liste de courses <span class="hint" id="listCount"></span></span>
@@ -162,6 +201,7 @@
   </div><!-- /scr-liste -->
 
   <div class="screen" id="scr-inv">
+    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <h2>Mon inventaire <span class="hint" id="count"></span></h2>
     <div id="basket"><p class="empty">Scannez vos produits : l&rsquo;app s&rsquo;en souvient.</p></div>
@@ -177,6 +217,7 @@
   </div><!-- /scr-inv -->
 
   <div class="screen" id="scr-plans">
+    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <h2>🏷️ Bons plans &amp; cartes de fidélité</h2>
     <div id="bonsPlans"><p class="empty">Chargement…</p></div>
@@ -193,15 +234,8 @@
   </p>
 </main>
 
-<nav class="tabbar" role="tablist" aria-label="Sections PanierMalin">
-  <button class="tab" data-scr="scan" type="button"><span class="ic">📷</span>Scanner</button>
-  <button class="tab active" data-scr="liste" type="button"><span class="ic">🛒</span>Liste</button>
-  <button class="tab" data-scr="inv" type="button"><span class="ic">📦</span>Inventaire</button>
-  <button class="tab" data-scr="plans" type="button"><span class="ic">🏷️</span>Plans</button>
-</nav>
-
 <script type="module">
-import { validateEAN, normalizeProduct, compareBasket, pricePer100, pricePerKg, smartPrice, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { validateEAN, normalizeProduct, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -256,6 +290,7 @@ function render() {
     if (openDetails.has(p.ean)) box.appendChild(buildDetail(p))
   }
   try { renderListe() } catch { /* liste pas encore initialisée au premier rendu */ }
+  try { renderHome() } catch { /* accueil : dérivé de l'inventaire */ }
 }
 
 // ─── DÉTAIL PRODUIT (Brique 4 : tout vient des données déjà stockées) ──────
@@ -695,17 +730,28 @@ $('banqueSelect').onchange = e => {
 }
 loadBanques()
 
-// ─── ONGLETS (une vue à la fois) ────────────────────────────────────────────
-const pmTabs = [...document.querySelectorAll('.tab')]
+// ─── NAVIGATION (Accueil = hub ; une vue à la fois) ─────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'scr-' + id))
-  pmTabs.forEach(t => t.classList.toggle('active', t.dataset.scr === id))
   window.scrollTo(0, 0)
+  if (id === 'home') renderHome()
 }
-pmTabs.forEach(t => t.addEventListener('click', () => showScreen(t.dataset.scr)))
+document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => showScreen(b.dataset.goto)))
 
-// Après un scan réussi, basculer sur l'Inventaire n'est pas souhaitable (on
-// enchaîne les scans) : on renforce juste la confirmation visible sur place.
+// ─── TABLEAU DE BORD D'ACCUEIL ──────────────────────────────────────────────
+function renderHome() {
+  const d = dashboardStats(items)
+  $('homeEco').textContent = eur(d.economyToday || 0)
+  const dealsCard = $('homeDealsCard')
+  if (d.deals.length) {
+    dealsCard.style.display = ''
+    $('homeDeals').innerHTML = d.deals.slice(0, 4)
+      .map(x => `<div class="home-line"><span>${x.name}</span><strong>−${eur(x.saving)}</strong></div>`).join('')
+  } else dealsCard.style.display = 'none'
+  const rebuyCard = $('homeRebuyCard')
+  if (d.toRebuy.length) { rebuyCard.style.display = ''; $('homeRebuy').textContent = d.toRebuy.slice(0, 10).join(' · ') }
+  else rebuyCard.style.display = 'none'
+}
 
 // ─── PWA ────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')

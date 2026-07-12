@@ -767,13 +767,19 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
-- **Réorganisation en onglets (2026-07-09)** : retour de Juju « PanierMalin
-  bordélique » (tout empilé sur une page). Passage à une **barre d'onglets
-  fixe en bas** (standard mobile) : 📷 Scanner (+ ticket de caisse) · 🛒 Liste
-  (défaut) · 📦 Inventaire · 🏷️ Plans — une seule vue à la fois. **Layout
-  uniquement, zéro changement de logique** (IDs et handlers intacts). Scan
-  code-barres : confirmation renforcée « ✓ Ajouté à votre inventaire : … »
-  (+ vibration). Vérif : E2E Playwright onglets 11/11, sandbox 433 PASS.
+- **Accueil = tableau de bord (2026-07-09, remplace les onglets du bas)** :
+  Juju n'aimait pas la barre d'onglets → direction « Accueil façon Revolut »
+  (son choix). **Écran d'accueil par défaut** : 💰 économies du jour, 🎉 bonnes
+  affaires du moment, 🔁 à racheter (tes essentiels/récurrents), gros bouton
+  Scanner, accès rapides Liste/Inventaire/Plans. **La barre d'onglets du bas est
+  supprimée** ; l'accueil est le hub, chaque écran a un « ← Accueil ». Logique
+  pure `dashboardStats()` (économies = somme des prix sous l'habituel ; affaires ;
+  récurrents). Vérif : sandbox `paniermalin-dashboard.test.ts` 10/10, E2E
+  Playwright accueil 9/9, suite 463 PASS. Cache SW v12→v13.
+- **Réorganisation en onglets (2026-07-09, remplacée le même jour)** : première
+  tentative (barre d'onglets bas) — remplacée par l'Accueil ci-dessus après
+  retour de Juju. Scan code-barres : confirmation renforcée « ✓ Ajouté à votre
+  inventaire : … » (+ vibration) — conservée.
 - **Listes v1 (2026-07-05)** : liste de courses (`listes.mjs`, logique pure
   testée 15/15) — ajout dédoublonné, cocher, ⭐ récurrent, « Nouvelle
   semaine » (les récurrents reviennent, les achats ponctuels sortent),
