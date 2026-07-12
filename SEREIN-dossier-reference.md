@@ -627,6 +627,19 @@ durci (réponse standard, validation, services, Storage) couvre les 4 modules
 métier — engagements, rappels, factures, abonnements détectés — pour les comptes
 connectés, mode invité préservé.
 
+### Serein — résiliation : liens d'envoi et de résiliation en ligne (2026-07-09)
+Retour de Juju : « pas de lien pour envoyer la lettre ni de lien de résiliation
+pour les services en ligne ». Deux ajouts sur `/resiliation`, dans la limite
+ORIAS (Serein arme, n'envoie jamais à la place du client) :
+- **Lien d'envoi** : « 📮 L'envoyer en recommandé en ligne (La Poste) » —
+  service officiel, c'est le client qui envoie. En plus de Copier/Télécharger.
+- **Lien de résiliation en ligne** : nouveau champ `cancelUrl` sur l'annuaire
+  `providers.ts` pour les services web (Netflix, Spotify, Canal+, Basic-Fit,
+  Orange, SFR, Free, Bouygues). Bandeau « 💻 [service] se résilie en ligne → »
+  quand le prestataire détecté en a un. Assurance/énergie : pas de lien (par
+  lettre). Vérif : sandbox `resiliation-links.test.ts` (services web = lien
+  https ; assurance/énergie = lettre) + E2E Playwright 5/5, suite 506 PASS.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).

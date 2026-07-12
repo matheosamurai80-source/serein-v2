@@ -17,22 +17,24 @@ export interface ProviderInfo {
   address: string
   /** Variantes de nom pour la détection (libellés bancaires, contrats…) */
   aliases: string[]
+  /** Lien officiel pour résilier / gérer en ligne (services web). Absent = par lettre. */
+  cancelUrl?: string
 }
 
 export const PROVIDERS: ProviderInfo[] = [
   // Télécom
   { id: 'orange', name: 'Orange', category: 'telecom',
     service: 'Orange — Service Résiliation', address: 'TSA 10018, 59878 Lille Cedex 9',
-    aliases: ['orange', 'sosh', 'livebox'] },
+    aliases: ['orange', 'sosh', 'livebox'], cancelUrl: 'https://espace-client.orange.fr' },
   { id: 'sfr', name: 'SFR / RED', category: 'telecom',
     service: 'SFR — Service Résiliation', address: 'TSA 30103, 69947 Lyon Cedex 20',
-    aliases: ['sfr', 'red by sfr', 'red-by-sfr'] },
+    aliases: ['sfr', 'red by sfr', 'red-by-sfr'], cancelUrl: 'https://www.sfr.fr/mon-espace-client' },
   { id: 'free', name: 'Free', category: 'telecom',
     service: 'Free — Service Résiliation', address: '75371 Paris Cedex 08',
-    aliases: ['free', 'freebox', 'free mobile'] },
+    aliases: ['free', 'freebox', 'free mobile'], cancelUrl: 'https://subscribe.free.fr/login/' },
   { id: 'bouygues', name: 'Bouygues Telecom / B&You', category: 'telecom',
     service: 'Bouygues Telecom — Service Clients', address: 'TSA 59013, 60643 Chantilly Cedex',
-    aliases: ['bouygues', 'bouygtel', 'b&you', 'bbox'] },
+    aliases: ['bouygues', 'bouygtel', 'b&you', 'bbox'], cancelUrl: 'https://www.bouyguestelecom.fr/mon-compte' },
   // Assurance
   { id: 'axa', name: 'AXA', category: 'insurance',
     service: 'AXA France — Service Relation Clients', address: 'TSA 46307, 95901 Cergy-Pontoise Cedex 9',
@@ -65,17 +67,17 @@ export const PROVIDERS: ProviderInfo[] = [
   // Streaming / divertissement
   { id: 'canal', name: 'Canal+', category: 'streaming',
     service: 'CANAL+ — Service Résiliation', address: 'TSA 86712, 95905 Cergy-Pontoise Cedex 9',
-    aliases: ['canal+', 'canal plus', 'canalplus', 'canal'] },
+    aliases: ['canal+', 'canal plus', 'canalplus', 'canal'], cancelUrl: 'https://www.canalplus.com/compte/' },
   { id: 'netflix', name: 'Netflix', category: 'streaming',
     service: 'Netflix International B.V.', address: 'Karperstraat 8-10, 1075 KZ Amsterdam, Pays-Bas',
-    aliases: ['netflix'] },
+    aliases: ['netflix'], cancelUrl: 'https://www.netflix.com/cancelplan' },
   { id: 'spotify', name: 'Spotify', category: 'streaming',
     service: 'Spotify AB', address: 'Regeringsgatan 19, 111 53 Stockholm, Suède',
-    aliases: ['spotify'] },
+    aliases: ['spotify'], cancelUrl: 'https://www.spotify.com/fr/account/subscription/' },
   // Salle de sport
   { id: 'basicfit', name: 'Basic-Fit', category: 'fitness',
     service: 'Basic-Fit France — Service Clients', address: 'Tour W, 102 Terrasse Boieldieu, 92800 Puteaux',
-    aliases: ['basic-fit', 'basic fit', 'basicfit'] },
+    aliases: ['basic-fit', 'basic fit', 'basicfit'], cancelUrl: 'https://my.basic-fit.com' },
 ]
 
 function normalize(s: string): string {
