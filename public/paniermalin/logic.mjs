@@ -42,6 +42,30 @@ export function normalizeProduct(ean, off) {
   }
 }
 
+// ─── SOURCES PRODUIT (famille Open Food Facts, données ouvertes) ────────────
+// L'alimentaire vit sur Open Food Facts ; l'hygiène/cosmétique (Vania, gel
+// douche, dentifrice…) sur Open Beauty Facts ; le reste sur Open Products
+// Facts. Même schéma d'API et même normalisation → on essaie dans l'ordre.
+export const PRODUCT_API_HOSTS = [
+  'world.openfoodfacts.org',
+  'world.openbeautyfacts.org',
+  'world.openproductsfacts.org',
+]
+
+export function productApiUrl(host, ean) {
+  return `https://${host}/api/v2/product/${encodeURIComponent(ean)}.json`
+    + '?fields=product_name,brands,quantity,nutriscore_grade,nova_group,nutriments,additives_tags'
+}
+
+/** Premier résultat reconnu (status 1) parmi plusieurs sources → produit normalisé. */
+export function pickProduct(ean, responses) {
+  for (const off of responses ?? []) {
+    const p = normalizeProduct(ean, off)
+    if (p) return p
+  }
+  return null
+}
+
 // ─── DÉTAIL PRODUIT (Brique 4) ──────────────────────────────────────────────
 // Fiche enrichie sur demande (tap), sans appel réseau supplémentaire : tout
 // vient de la réponse Open Food Facts déjà stockée. Les produits scannés

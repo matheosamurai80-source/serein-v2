@@ -243,7 +243,7 @@
 </main>
 
 <script type="module">
-import { validateEAN, normalizeProduct, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { validateEAN, normalizeProduct, PRODUCT_API_HOSTS, productApiUrl, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -401,9 +401,16 @@ async function addByEan(raw) {
   $('dup').style.display = 'none'
   status('Recherche du produit…')
   try {
-    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${ean}.json?fields=product_name,brands,quantity,nutriscore_grade,nova_group,nutriments,additives_tags`)
-    const p = normalizeProduct(ean, await r.json())
-    if (!p) return status('Produit inconnu d\'Open Food Facts.', true)
+    // Alimentaire, puis hygiène (Vania…), puis divers — famille Open Food Facts.
+    let p = null
+    for (const host of PRODUCT_API_HOSTS) {
+      try {
+        const r = await fetch(productApiUrl(host, ean))
+        p = normalizeProduct(ean, await r.json())
+        if (p) break
+      } catch { /* source suivante */ }
+    }
+    if (!p) return status('Produit introuvable dans les bases ouvertes (alimentaire, hygiène, divers).', true)
     items.push({ ...p, purchases: recordPurchase([], { date: today() }) }); save(); render()
     $('status').textContent = `✓ Ajouté à votre inventaire : ${p.name}`
     $('status').className = 'ok'

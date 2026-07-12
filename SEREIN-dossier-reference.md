@@ -767,6 +767,12 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Scan non-alimentaire (2026-07-09)** : retour de Juju « Vania ne marche pas ».
+  Le scan n'interrogeait qu'Open Food Facts (alimentaire). Élargi à la famille :
+  Open **Beauty** Facts (hygiène/cosmétique) puis Open **Products** Facts (le
+  reste) — `PRODUCT_API_HOSTS`, `productApiUrl()`, `pickProduct()` (1re source
+  reconnue). Données ouvertes, zéro partenariat. Vérif : sandbox
+  `paniermalin-sources.test.ts` 9/9, suite 488 PASS. Cache SW v14→v15.
 - **Enseignes & fidélité = liens, pas de carte stockée (2026-07-09)** : choix
   de Juju — on ne stocke AUCUNE carte de fidélité (donnée sensible), on donne des
   **liens officiels** vers les enseignes (offres/fidélité), + **ajout perso**
