@@ -89,6 +89,19 @@
   .home-quick button { flex:1; padding:14px 6px; font-size:13px }
   .back { background:none; color:var(--green-dark); font-weight:700; padding:2px 0 10px; font-size:13.5px; margin:0 }
   .back:active { transform:none; opacity:.6 }
+  /* Barre du haut discrète (Accueil · banque · Serein) */
+  .topbar { display:flex; align-items:center; gap:8px; margin:0 0 12px; min-height:36px }
+  .tb-spacer { flex:1 }
+  .tb-btn { background:none; border:1.5px solid var(--line); border-radius:10px; padding:7px 11px; font-size:13.5px; font-weight:700;
+            color:var(--green-dark); text-decoration:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer }
+  .tb-btn:active { transform:scale(.97) }
+  .tb-icon { font-size:16px; padding:7px 10px }
+  .tb-sel { border:1.5px solid var(--line); border-radius:10px; padding:7px 9px; font-size:13px; font-weight:700;
+            color:var(--green-dark); background:var(--card); max-width:120px }
+  /* Propositions de saisie (liste de courses) */
+  .listauto { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
+  .listauto button { background:#EDF3EA; color:var(--green-dark); border:1px solid var(--line); border-radius:99px;
+                     padding:6px 11px; font-size:13px; font-weight:700 }
 </style>
 </head>
 <body>
@@ -97,13 +110,13 @@
   <p>Scannez, comparez, choisissez le meilleur.</p>
 </header>
 <main>
-  <div class="row" style="margin:0 0 14px">
-    <a href="/" id="backSerein" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:11px;color:var(--green-dark);font-weight:700;text-decoration:none">
-      🛡️ Retour Serein
-    </a>
-    <select id="banqueSelect" aria-label="Ouvrir le site de ma banque" style="flex:1;border:1.5px solid var(--line);border-radius:12px;padding:11px;font-size:14px;font-weight:700;color:var(--green-dark);background:var(--card)">
-      <option value="">🏦 Ma banque…</option>
+  <div class="topbar">
+    <button id="tbBack" class="tb-btn" data-goto="home" type="button" style="display:none">← Accueil</button>
+    <span class="tb-spacer"></span>
+    <select id="banqueSelect" class="tb-sel" aria-label="Ouvrir le site de ma banque" title="Ma banque">
+      <option value="">🏦 Banque</option>
     </select>
+    <a href="/" class="tb-btn tb-icon" aria-label="Retour Serein" title="Retour Serein">🛡️</a>
   </div>
   <div class="screen active" id="scr-home">
     <div class="card home-hero">
@@ -130,7 +143,6 @@
   </div>
 
   <div class="screen" id="scr-scan">
-    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <video id="cam" playsinline muted></video>
     <div class="row">
@@ -172,16 +184,16 @@
   </div><!-- /scr-scan -->
 
   <div class="screen" id="scr-liste">
-    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <h2 style="display:flex;align-items:center;justify-content:space-between">
       <span>🛒 Ma liste de courses <span class="hint" id="listCount"></span></span>
       <button id="recFilter" class="ghost" style="padding:6px 12px;font-size:12px;border-radius:99px"></button>
     </h2>
     <div class="row" style="margin-top:6px">
-      <input type="text" id="listInput" placeholder="Ajouter : lait, pain, piles…">
+      <input type="text" id="listInput" placeholder="Ajouter : lait, pain, piles…" autocomplete="off">
       <button id="listAdd" class="ghost">+</button>
     </div>
+    <div id="listAuto" class="listauto"></div>
     <div id="promoSuggs" style="margin-top:8px"></div>
     <div id="listSuggs" class="hint" style="margin-top:8px"></div>
     <div id="listItems" style="margin-top:6px"><p class="empty">Votre liste est vide.</p></div>
@@ -201,7 +213,6 @@
   </div><!-- /scr-liste -->
 
   <div class="screen" id="scr-inv">
-    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <h2>Mon inventaire <span class="hint" id="count"></span></h2>
     <div id="basket"><p class="empty">Scannez vos produits : l&rsquo;app s&rsquo;en souvient.</p></div>
@@ -217,7 +228,6 @@
   </div><!-- /scr-inv -->
 
   <div class="screen" id="scr-plans">
-    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <h2>🏪 Enseignes &amp; fidélité</h2>
     <p class="hint">Liens officiels vers les offres et programmes fidélité — aucun partenariat, aucune commission.
@@ -243,8 +253,8 @@
 </main>
 
 <script type="module">
-import { validateEAN, normalizeProduct, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
-import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions } from './listes.mjs'
+import { validateEAN, normalizeProduct, PRODUCT_API_HOSTS, productApiUrl, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions, COMMON_GROCERIES, suggestListItems } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
 const status = (msg, err = false) => { $('status').textContent = msg; $('status').className = err ? 'err' : '' }
@@ -401,9 +411,16 @@ async function addByEan(raw) {
   $('dup').style.display = 'none'
   status('Recherche du produit…')
   try {
-    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${ean}.json?fields=product_name,brands,quantity,nutriscore_grade,nova_group,nutriments,additives_tags`)
-    const p = normalizeProduct(ean, await r.json())
-    if (!p) return status('Produit inconnu d\'Open Food Facts.', true)
+    // Alimentaire, puis hygiène (Vania…), puis divers — famille Open Food Facts.
+    let p = null
+    for (const host of PRODUCT_API_HOSTS) {
+      try {
+        const r = await fetch(productApiUrl(host, ean))
+        p = normalizeProduct(ean, await r.json())
+        if (p) break
+      } catch { /* source suivante */ }
+    }
+    if (!p) return status('Produit introuvable dans les bases ouvertes (alimentaire, hygiène, divers).', true)
     items.push({ ...p, purchases: recordPurchase([], { date: today() }) }); save(); render()
     $('status').textContent = `✓ Ajouté à votre inventaire : ${p.name}`
     $('status').className = 'ok'
@@ -505,8 +522,23 @@ function renderListe() {
 }
 
 $('recFilter').onclick = () => { recSeulement = !recSeulement; renderListe() }
-$('listAdd').onclick = () => { liste = addItem(liste, $('listInput').value); saveListe(); renderListe(); $('listInput').value = '' }
-$('listInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('listAdd').click() })
+// Propositions semi-automatiques pendant la frappe (produits courants +
+// récurrents + inventaire), sans jamais bloquer la saisie 100 % manuelle.
+function renderAutocomplete() {
+  const box = $('listAuto'); if (!box) return
+  const pool = [...COMMON_GROCERIES, ...recurrentItems(liste).map(i => i.name), ...items.map(p => p.name)]
+  const existing = liste.filter(i => !i.deleted).map(i => i.name)
+  box.innerHTML = ''
+  for (const name of suggestListItems($('listInput').value, pool, existing, 6)) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = `+ ${name}`
+    b.onclick = () => { liste = addItem(liste, name); saveListe(); $('listInput').value = ''; renderListe(); renderAutocomplete() }
+    box.appendChild(b)
+  }
+}
+const addManual = () => { liste = addItem(liste, $('listInput').value); saveListe(); $('listInput').value = ''; renderListe(); renderAutocomplete() }
+$('listAdd').onclick = addManual
+$('listInput').addEventListener('keydown', e => { if (e.key === 'Enter') addManual() })
+$('listInput').addEventListener('input', renderAutocomplete)
 $('listWeek').onclick = () => { liste = resetWeek(liste); saveListe(); renderListe(); status('Nouvelle semaine : les récurrents 🔁 sont de retour dans la liste.') }
 $('listShare').onclick = async () => {
   const text = shareText(liste, 'https://serein-v2.vercel.app/paniermalin')
@@ -767,6 +799,7 @@ loadBanques()
 // ─── NAVIGATION (Accueil = hub ; une vue à la fois) ─────────────────────────
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'scr-' + id))
+  $('tbBack').style.display = id === 'home' ? 'none' : '' // ← Accueil seulement hors accueil
   window.scrollTo(0, 0)
   if (id === 'home') renderHome()
 }

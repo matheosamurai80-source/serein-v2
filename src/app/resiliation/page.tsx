@@ -10,6 +10,9 @@ import { listLetters, addLetter, isGuest, type LetterListItem } from '@/lib/data
 import type { TransactionCategory } from '@/types'
 
 const SENDER_KEY = 'serein.sender' // nom + adresse mémorisés sur l'appareil
+// Envoi en recommandé en ligne — service officiel La Poste. C'est le CLIENT qui
+// envoie (Serein arme, n'agit jamais à sa place). Aucune commission.
+const LA_POSTE_LRE = 'https://www.laposte.fr/lettre-recommandee-en-ligne'
 
 const LETTER_TYPE_LABELS: Record<string, string> = {
   standard: 'Standard', chatel: 'Loi Chatel', hamon: 'Loi Hamon', negotiation: 'Négociation',
@@ -134,6 +137,12 @@ export default function ResiliationPage() {
   }
 
   const ready = serviceName && senderName && senderAddress && providerName && providerAddress
+
+  // Service résiliable en ligne (streaming, télécom, sport…) : on propose le
+  // lien officiel, souvent plus simple que la lettre.
+  const detectedProvider = providerById(providerId) ?? findProvider(serviceName)
+  const onlineCancelUrl = detectedProvider?.cancelUrl ?? null
+  const onlineName = detectedProvider?.name ?? serviceName
 
   const generate = () => {
     if (!ready) return
@@ -279,6 +288,15 @@ export default function ResiliationPage() {
           </div>
         </div>
 
+        {onlineCancelUrl && (
+          <a href={onlineCancelUrl} target="_blank" rel="noopener noreferrer" data-testid="online-cancel"
+            className="w-full block bg-sage/10 border border-sage/25 rounded-2xl p-4 mb-4 text-center hover:bg-sage/15 transition-colors">
+            <span className="font-semibold text-moss">💻 {onlineName} se résilie en ligne →</span>
+            <span className="block text-[13px] text-ink/70 mt-1 leading-[1.5]">
+              Le plus simple : résilier directement sur le site officiel. La lettre reste dispo ci-dessous si tu préfères l&apos;écrit.
+            </span>
+          </a>
+        )}
         <Button onClick={generate} disabled={!ready} className={!ready ? 'opacity-40 cursor-not-allowed' : ''}>
           Générer ma lettre →
         </Button>
@@ -304,8 +322,14 @@ export default function ResiliationPage() {
               {guest ? 'Enregistrer sur cet appareil' : 'Sauvegarder dans mon espace'}
             </Button>
           </div>
-          <p className="font-mono text-[11px] text-ink/50 tracking-wider text-center mt-4">
-            À envoyer en recommandé avec accusé de réception — gardez le récépissé.
+          <div className="flex justify-center mt-4">
+            <a href={LA_POSTE_LRE} target="_blank" rel="noopener noreferrer" data-testid="send-lre"
+              className="text-[13.5px] font-semibold text-moss underline hover:text-ink transition-colors">
+              📮 L&apos;envoyer en recommandé en ligne (La Poste) ↗
+            </a>
+          </div>
+          <p className="font-mono text-[11px] text-ink/50 tracking-wider text-center mt-2">
+            Recommandé avec accusé de réception — gardez le récépissé. C&apos;est vous qui envoyez.
           </p>
         </div>
       )}

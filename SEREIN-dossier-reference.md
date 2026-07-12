@@ -627,6 +627,19 @@ durci (réponse standard, validation, services, Storage) couvre les 4 modules
 métier — engagements, rappels, factures, abonnements détectés — pour les comptes
 connectés, mode invité préservé.
 
+### Serein — résiliation : liens d'envoi et de résiliation en ligne (2026-07-09)
+Retour de Juju : « pas de lien pour envoyer la lettre ni de lien de résiliation
+pour les services en ligne ». Deux ajouts sur `/resiliation`, dans la limite
+ORIAS (Serein arme, n'envoie jamais à la place du client) :
+- **Lien d'envoi** : « 📮 L'envoyer en recommandé en ligne (La Poste) » —
+  service officiel, c'est le client qui envoie. En plus de Copier/Télécharger.
+- **Lien de résiliation en ligne** : nouveau champ `cancelUrl` sur l'annuaire
+  `providers.ts` pour les services web (Netflix, Spotify, Canal+, Basic-Fit,
+  Orange, SFR, Free, Bouygues). Bandeau « 💻 [service] se résilie en ligne → »
+  quand le prestataire détecté en a un. Assurance/énergie : pas de lien (par
+  lettre). Vérif : sandbox `resiliation-links.test.ts` (services web = lien
+  https ; assurance/énergie = lettre) + E2E Playwright 5/5, suite 506 PASS.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -767,6 +780,21 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Barre du haut discrète + liste semi-auto (2026-07-09)** : retours de Juju.
+  ① Les 3 pavés du haut (Accueil / Ma banque / Retour Serein) regroupés dans une
+  **barre fine** : « ← Accueil » à gauche (masqué sur l'accueil), 🏦 Banque +
+  🛡️ Serein en petit à droite ; les boutons « ← Accueil » par écran sont retirés.
+  ③ **Saisie semi-automatique** de la liste : propositions pendant la frappe
+  (`COMMON_GROCERIES` + récurrents + inventaire, `suggestListItems()` — préfixe
+  puis contenu, sans accents/casse/ligatures, exclut ce qui est déjà dans la
+  liste), la saisie 100 % manuelle reste possible (Entrée / +). Vérif : sandbox
+  `paniermalin-autocomplete.test.ts` 12/12, E2E 8/8, suite 517 PASS. SW v15→v16.
+- **Scan non-alimentaire (2026-07-09)** : retour de Juju « Vania ne marche pas ».
+  Le scan n'interrogeait qu'Open Food Facts (alimentaire). Élargi à la famille :
+  Open **Beauty** Facts (hygiène/cosmétique) puis Open **Products** Facts (le
+  reste) — `PRODUCT_API_HOSTS`, `productApiUrl()`, `pickProduct()` (1re source
+  reconnue). Données ouvertes, zéro partenariat. Vérif : sandbox
+  `paniermalin-sources.test.ts` 9/9, suite 488 PASS. Cache SW v14→v15.
 - **Enseignes & fidélité = liens, pas de carte stockée (2026-07-09)** : choix
   de Juju — on ne stocke AUCUNE carte de fidélité (donnée sensible), on donne des
   **liens officiels** vers les enseignes (offres/fidélité), + **ajout perso**
