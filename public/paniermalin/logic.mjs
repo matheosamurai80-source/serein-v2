@@ -205,3 +205,149 @@ export function priceSignal(history, newPrice) {
 export function findDuplicate(items, ean) {
   return (items ?? []).find(i => i.ean === ean) ?? null
 }
+
+// ─── ENSEIGNES & FIDÉLITÉ (liens, PAS de carte stockée) ─────────────────────
+// Choix produit de Juju : on ne stocke aucune carte de fidélité (donnée
+// sensible) — on donne des LIENS officiels vers les enseignes (offres /
+// programme fidélité), et l'utilisateur peut en AJOUTER une si absente.
+// Aucun partenariat, aucune commission.
+
+/** Enseignes de base (sites officiels https, publics). */
+export const DEFAULT_ENSEIGNES = [
+  { name: 'Carrefour', url: 'https://www.carrefour.fr' },
+  { name: 'E.Leclerc', url: 'https://www.e.leclerc' },
+  { name: 'Intermarché', url: 'https://www.intermarche.com' },
+  { name: 'Auchan', url: 'https://www.auchan.fr' },
+  { name: 'Lidl', url: 'https://www.lidl.fr' },
+  { name: 'Super U', url: 'https://www.magasins-u.com' },
+  { name: 'Monoprix', url: 'https://www.monoprix.fr' },
+  { name: 'Aldi', url: 'https://www.aldi.fr' },
+  { name: 'Casino', url: 'https://www.casino.fr' },
+]
+
+export function isValidHttpsUrl(url) {
+  try { return new URL(String(url)).protocol === 'https:' } catch { return false }
+}
+
+/** Nettoie/valide une enseigne saisie. Renvoie { name, url } ou null. */
+export function normalizeEnseigne(e) {
+  const name = String(e?.name ?? '').trim()
+  const url = String(e?.url ?? '').trim()
+  if (!name || name.length > 60) return null
+  if (!isValidHttpsUrl(url)) return null
+  return { name, url }
+}
+
+/**
+ * Fusionne plusieurs sources d'enseignes (défaut, officielles distantes,
+ * ajouts perso), en gardant les liens https valides, sans doublon de nom
+ * (insensible à la casse), dans l'ordre d'apparition.
+ */
+export function mergeEnseignes(...lists) {
+  const seen = new Set()
+  const out = []
+  for (const list of lists) {
+    for (const raw of list ?? []) {
+      const e = normalizeEnseigne(raw)
+      if (!e) continue
+      const key = e.name.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push(e)
+    }
+  }
+  return out
+}
+
+// ─── PRIX INTELLIGENT (l'effet waouh) ───────────────────────────────────────
+// Au lieu d'un prix facial, on présente le VRAI prix payé et la décision :
+// prix carte (fidélité), prix après cagnotte, €/kg, prix habituel, économie du
+// jour, et l'alternative la plus rentable. Données 100 % côté consommateur :
+// prix saisi + avantages fidélité saisis + historique perso + inventaire.
+// Aucun catalogue de marque requis.
+
+const round2 = n => Math.round(n * 100) / 100
+const clampPct = p => Math.min(90, Math.max(0, Number(p) || 0))
+
+/** €/kg (ou €/L) à partir d'un prix et d'une quantité OFF ("400 g", "6 x 1,5 L"…). */
+export function pricePerKg(price, quantityStr) {
+  if (!(price > 0) || !quantityStr) return null
+  const s = String(quantityStr).toLowerCase().replace(',', '.')
+  const mult = s.match(/(\d+)\s*x\s*([\d.]+)/)
+  const m = s.match(/([\d.]+)\s*(kg|g|l|cl|ml)\b/)
+  if (!m) return null
+  let value = parseFloat(m[1])
+  if (mult) value = parseInt(mult[1], 10) * parseFloat(mult[2])
+  if (!(value > 0)) return null
+  const unit = m[2]
+  // base en grammes/ml (kg et L → ×1000, cl → ×10, g/ml inchangés)
+  const baseG = unit === 'kg' || unit === 'l' ? value * 1000 : unit === 'cl' ? value * 10 : value
+  return round2((price / baseG) * 1000)
+}
+
+/**
+ * Alternative la plus rentable parmi des candidats [{ name, perKg }] :
+ * la moins chère au kg ET strictement moins chère que le produit courant.
+ * Renvoie { name, perKg, saving } ou null.
+ */
+export function bestAlternative(currentPerKg, alternatives) {
+  if (!(currentPerKg > 0)) return null
+  let best = null
+  for (const a of alternatives ?? []) {
+    if (!(a && a.perKg > 0) || a.perKg >= currentPerKg) continue
+    if (!best || a.perKg < best.perKg) best = a
+  }
+  return best ? { name: best.name, perKg: round2(best.perKg), saving: round2(currentPerKg - best.perKg) } : null
+}
+
+/**
+ * Décompose un prix en « Prix Intelligent ».
+ * Entrées : price (facial), quantity, loyaltyPct (remise carte %), cagnotte (€),
+ * history [{price}], alternatives [{name, perKg}].
+ */
+export function smartPrice({ price, quantity, loyaltyPct = 0, cagnotte = 0, history = [], alternatives = [] } = {}) {
+  const facial = price > 0 ? round2(price) : null
+  const cardPrice = facial != null ? round2(facial * (1 - clampPct(loyaltyPct) / 100)) : null
+  const cg = Math.max(0, Number(cagnotte) || 0)
+  const afterCagnotte = cardPrice != null ? round2(Math.max(0, cardPrice - cg)) : null
+  const realPaid = afterCagnotte ?? cardPrice ?? facial
+  const perKg = realPaid != null ? pricePerKg(realPaid, quantity) : null
+
+  const prices = (history ?? []).map(h => h && h.price).filter(p => p > 0)
+  const habitual = prices.length ? round2(prices.reduce((a, b) => a + b, 0) / prices.length) : null
+  const economy = (habitual != null && realPaid != null && habitual > realPaid) ? round2(habitual - realPaid) : 0
+
+  return {
+    facial,                                   // prix affiché en rayon
+    cardPrice,                                // après remise carte
+    afterCagnotte,                            // après cagnotte / bon
+    realPaid,                                 // le vrai prix payé
+    perKg,                                    // €/kg du vrai prix
+    habitual,                                 // prix habituel (moyenne perso)
+    economy,                                  // économie vs habituel (0 si aucune)
+    hasLoyalty: cardPrice != null && cardPrice < (facial ?? Infinity),
+    hasCagnotte: cg > 0,
+    bestAlternative: bestAlternative(perKg, alternatives),
+  }
+}
+
+// ─── TABLEAU DE BORD D'ACCUEIL ──────────────────────────────────────────────
+// « L'app travaille pour toi » : au lieu de faire choisir un onglet, on résume
+// l'essentiel. Tout est dérivé de l'inventaire (prix saisis + historique perso).
+
+export function dashboardStats(items) {
+  let economyToday = 0
+  const deals = []    // bonnes affaires du moment (tu paies moins que d'habitude)
+  const toRebuy = []  // tes essentiels (achetés au moins 2 fois)
+  for (const p of items ?? []) {
+    const past = (p.purchases ?? []).slice(0, -1)
+    const si = smartPrice({ price: p.price, quantity: p.quantity, loyaltyPct: p.loyaltyPct, cagnotte: p.cagnotte, history: past })
+    if (si.economy > 0) {
+      economyToday = round2(economyToday + si.economy)
+      deals.push({ name: p.name, saving: si.economy })
+    }
+    if (isRecurring(p.purchases)) toRebuy.push(p.name)
+  }
+  deals.sort((a, b) => b.saving - a.saving)
+  return { economyToday, deals, toRebuy, trackedCount: (items ?? []).length }
+}

@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+// Schémas hérités du tunnel d'onboarding (lead + upload invité).
+// Conservés à l'identique : comportement inchangé.
+
 export const CreateLeadSchema = z.object({
   email: z
     .string()

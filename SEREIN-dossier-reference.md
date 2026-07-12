@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-01 (brique « remise en état du dépôt »)
+> Dernière mise à jour : 2026-07-09 (Brique 7 — Détection d'abonnements)
 
 ## 1. Le produit
 
@@ -66,12 +66,15 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
    (Serein arme, n'agit pas). URL en ligne : https://serein-v2.vercel.app
 
 ### Pipeline d'analyse
-- `POST /api/leads` — crée un lead (validation Zod, rate-limit)
-- `POST /api/upload` — reçoit un relevé PDF (max 10 Mo, bucket Supabase `pdfs`)
-- `POST /api/analyze` — extrait le texte (`pdf-parse`), parse les transactions
-  (`src/lib/pdf/parser.ts`, formats bancaires français), détecte les
-  récurrences et score l'inutilité (`src/lib/scoring/engine.ts`), écrit
-  transactions/subscriptions/insights en base.
+- `POST /api/leads` — crée un lead (validation Zod, rate-limit).
+- **Analyse du relevé : côté navigateur** (`/analyse`, OCR local pdf.js +
+  Tesseract, PR #25) — le parseur (`src/lib/pdf/parser.ts`, formats bancaires
+  français) et le scoring (`src/lib/scoring/engine.ts`) tournent dans la page.
+- ⚠️ Les anciennes routes `POST /api/upload` et `POST /api/analyze` ont été
+  **supprimées à la Brique 2** : elles visaient un bucket fantôme `pdfs`, un
+  schéma mort (`file_path`, `lead_id`…) et tournaient en **service-role
+  (contournait la RLS)**. Remplacées par le socle Storage `/api/uploads` (voir
+  plus bas).
 
 ### Moteur de scoring (logique métier centrale)
 - Récurrence : ≥ 2 occurrences, montants similaires (tolérance 15 %),
@@ -416,6 +419,214 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   texte. (PanierMalin : l'OCR ticket reste local — distinct, décrit tel quel.)
 - Aucune logique métier modifiée : 319/319 sandbox intacts, 24 cas navigateur.
 
+### Brique 1 — Socle API (livré 2026-07-09, plan de fusion « New project »)
+Première brique du plan de fusion : serein-v2 est LE projet définitif. Objectif
+= un contrat d'API unique et durci pour les modules `subscriptions` et
+`reminders`, sans changer aucun comportement visible.
+- **`src/lib/api/response.ts`** : enveloppe standard. Succès `{ ok:true, data }`,
+  erreur `{ ok:false, error:{ code, message, details? } }`. 10 codes normalisés
+  (UNAUTHORIZED 401, EMAIL_NOT_VERIFIED 403, FORBIDDEN 403, VALIDATION_ERROR 422,
+  NOT_FOUND 404, RATE_LIMITED 429, PREMIUM_REQUIRED 402, AI_PROVIDER_ERROR 502,
+  STORAGE_ERROR 502, INTERNAL_ERROR 500). `handle()` mappe les `ApiError` et
+  masque toute exception inconnue en INTERNAL_ERROR (zéro fuite de détail).
+- **`src/lib/validation/`** (l'ancien `validation.ts` devient un dossier, import
+  `@/lib/validation` inchangé) : schémas Zod alignés sur les **colonnes réelles
+  des tables live** (lues en base le 2026-07-09, pas sur les docs de l'ancien
+  projet). subscriptions, reminders, uploads, cancellation_letters + leads
+  hérité. `user_id` n'est JAMAIS accepté du payload → il vient de la session.
+- **`src/lib/services/{subscriptions,reminders}.ts`** + `session.ts` :
+  create/list/update/delete. `requireUser()` vérifie la session (401 sinon) ;
+  la RLS + `.eq('id')` bornent à l'utilisateur (introuvable → NOT_FOUND). Toute
+  la logique d'accès vit là, **aucune logique dans les routes**.
+- **Routes canoniques** `/api/subscriptions(/[id])` et `/api/reminders(/[id])`
+  (GET/POST/PATCH/DELETE) : route → Zod → auth → service → réponse standard.
+- ⚠️ **Pas de « migration » à faire** : contrairement à ce que supposait le
+  prompt, il n'existait aucune route subscriptions/reminders à migrer. L'app est
+  client-side Supabase (`src/lib/data/store.ts`, RLS). Le socle est donc une
+  couche serveur **additive et non-branchée** ; aucune page ne la consomme
+  encore → comportement visible strictement inchangé.
+- ⚠️ **Tension DB notée (hors scope)** : `reminders.commitment_id` est NOT NULL
+  en base, or `store.ts` insère `null` pour les rappels de factures. Le schéma
+  Zod reflète la base (commitment_id requis). Bug du store à traiter à part.
+- Vérifs : sandbox **30/30 PASS** (`sandbox/validation.test.ts`), suite complète
+  verte, lint 0 erreur, `tsc` src propre, `npm run build` vert (les 8 routes
+  API listées, dont les 4 nouvelles). Aucun secret `NEXT_PUBLIC_`.
+
+### Brique 2 — Socle Storage / uploads durci (livré 2026-07-09)
+Deuxième brique du plan de fusion. Objectif : un accès aux documents (relevés)
+correct et durci, sur le socle Brique 1. **Aucun changement DB** — le bucket
+privé et les policies existaient déjà en base (vérifié le 2026-07-09).
+- **`src/lib/storage/documents.ts`** (logique pure, testée) : bucket privé
+  unique `bank-statements`, MIME = PDF seul, taille ≤ 10 Mo, TTL des URL signées
+  court (60 s). `validateDocumentFile()`, `objectPathFor(userId, id)` (un
+  document vit toujours sous `${userId}/…`), `isOwnedPath()` (garde anti-fuite,
+  bloque la traversée `../autre-user`).
+- **`src/lib/services/uploads.ts`** (session + RLS) : `createUpload` (valide →
+  ligne `uploads` → objet Storage, **rollback de la ligne si l'upload échoue**),
+  `listUploads`, `createDownloadUrl` (URL signée courte), `deleteUpload`
+  (**suppression coordonnée objet Storage + ligne base**). NOT_FOUND si le
+  document n'est pas celui de l'utilisateur.
+- **Routes** `/api/uploads` (GET/POST multipart), `/api/uploads/[id]` (DELETE),
+  `/api/uploads/[id]/download` (GET → URL signée). Route → validation → auth →
+  service → réponse standard.
+- **Sécurité en base (déjà présente, vérifiée)** : bucket `bank-statements`
+  privé (10 Mo, PDF) ; policies Storage per-utilisateur
+  (`foldername[1] = auth.uid()`) INSERT/SELECT/DELETE ; table `uploads` en RLS
+  `owner_all`. Le code s'appuie dessus + double la garde côté serveur.
+- **Nettoyage** : suppression des routes mortes `/api/upload` et `/api/analyze`
+  (bucket fantôme + service-role + schéma mort) et de la config morte
+  (`UPLOAD_CONFIG`, `RATE_LIMIT.upload/analyze`). Surface d'attaque réduite.
+- ⚠️ Comme la Brique 1, ce socle est **prêt mais non branché** dans l'UI :
+  l'analyse Serein reste client-side (OCR local). Ces routes sont la porte
+  serveur durcie pour quand un flux d'upload sera branché (ou pour la refonte
+  de l'analyse). Comportement visible inchangé.
+- Vérifs : sandbox **17/17 PASS** (`sandbox/storage.test.ts`), suite complète
+  verte, lint 0 erreur, `tsc` src propre, build vert (3 routes `/api/uploads*`).
+
+### Brique 3 — Socle API pour `commitments`, le vrai cœur (livré 2026-07-09)
+Troisième brique. Constat qui l'a motivée : la Brique 1 avait bâti le socle sur
+`subscriptions`, mais **toute l'app tourne sur `commitments`** (dashboard,
+rappels, engagements, analyse, export) — `subscriptions` est **orpheline**
+(elle n'était remplie que par l'ancienne `/api/analyze`, supprimée en Brique 2).
+On donne donc un socle durci à la vraie table, préalable pour brancher plus tard
+la page Engagements dessus.
+- **`src/lib/validation/commitments.ts`** : schéma Zod aligné sur les colonnes et
+  CHECK réels (vérifiés le 2026-07-09). service_type (10 valeurs), frequency
+  (dont `one_time`), status (dont `expired`), importance (low→critical) ;
+  `amount` nullable ; dates au format AAAA-MM-JJ ; `user_id` jamais du payload.
+- **`src/lib/services/commitments.ts`** : list/create/update/delete, session +
+  RLS + `.eq` → NOT_FOUND. Colonnes = celles de `store.ts` + `importance`/`notes`.
+- **Routes** `/api/commitments` (GET/POST) et `/api/commitments/[id]`
+  (PATCH/DELETE). Route → Zod → auth → service → réponse standard.
+- Vérifs : sandbox **19/19 PASS** (`sandbox/commitments-validation.test.ts`),
+  suite complète verte, lint 0 erreur, `tsc` src propre, build vert.
+- ⚠️ Comme Brique 1/2 : socle **additif, pas encore branché** dans l'UI (les
+  pages passent encore par `store.ts` en direct, mode invité compris).
+  Comportement visible inchangé.
+
+**⚠️ Deux dettes honnêtes mises au jour (à traiter dans une brique dédiée, PAS
+ici) :**
+1. ~~**Doublon de modèle** : `subscriptions` (orpheline) vs `commitments`.~~
+   ✅ **Résolu en Brique 7** : ce n'était pas un doublon mais la table de
+   **détection** (abonnements repérés dans les relevés). Elle est maintenant
+   branchée et utilisée (page `/abonnements`).
+2. ~~**`reminders.commitment_id` NOT NULL** en base alors que `store.ts` insère
+   `null` pour les rappels de factures ponctuelles.~~ ✅ **Corrigé en Brique 5**
+   (colonne rendue nullable + CHECK « au moins une cible : engagement OU
+   facture »).
+
+### Brique 4 — Engagements branchés sur le socle (livré 2026-07-09)
+Première **mise en service** du socle : pour les comptes connectés, la façade de
+données `store.ts` parle désormais à `/api/commitments` (validation Zod + auth +
+RLS côté serveur) au lieu d'attaquer Supabase en direct. Le **mode invité reste
+100 % local** (aucun changement). Branchement fait au bon endroit — la façade —
+donc **aucune page réécrite**.
+- **`src/lib/data/api.ts`** : client typé du socle. `unwrap()` déballe
+  l'enveloppe standard (pur, testé), `apiGet/Post/Patch/Delete` en
+  `credentials: same-origin` — la session voyage par cookie (@supabase/ssr),
+  donc l'appel serveur est authentifié sans réglage.
+- **`src/lib/data/store.ts`** : branche cloud de `listCommitments`,
+  `addCommitments` (un POST par engagement), `updateCommitment`,
+  `deleteCommitment` → socle API. Branche invité inchangée. `COMMITMENT_COLS`
+  retiré (les colonnes sont gérées côté serveur).
+- **Vérifs faites ici** : sandbox client `data-api.test.ts` (pur) + suite
+  complète **394 PASS** ; lint 0, `tsc` src propre, build vert ; E2E Playwright
+  Engagements **mode invité 6/6** (ajout / total / persistance / résilié /
+  suppression — la branche locale n'a pas régressé) ; smoke serveur non
+  authentifié → `/api/commitments` répond **401 UNAUTHORIZED** et un id invalide
+  **422 VALIDATION_ERROR** (enveloppe standard).
+- ⚠️ **Limite de vérification (environnement)** : ce bac à sable **ne peut pas
+  atteindre Supabase** (egress bloqué — les tests navigateur historiques
+  coupent `supabase.co`). Le chemin **connecté** (add/modif/suppression en étant
+  loggué) n'est donc pas exécutable ici. Il est sûr par construction (mêmes
+  insert/RLS qu'avant, derrière un client typé + pont cookie confirmé) et part
+  sur la **preview Vercel** de la branche — à valider là avant merge en prod.
+  Checklist preview : se connecter → /engagements → ajouter, marquer résilié,
+  supprimer un engagement ; vérifier qu'il réapparaît après rechargement.
+
+### Brique 5 — Dette rappels corrigée + Rappels branchés sur le socle (livré 2026-07-09)
+Correction de la dette n°2 de la Brique 3, puis mise en service des Rappels.
+- **Migration DB `reminders_allow_facture_target`** (table vide, 0 ligne → sans
+  risque) : `commitment_id` passe **nullable** + nouveau CHECK
+  `reminders_target_present_check` = `commitment_id IS NOT NULL OR facture_id IS
+  NOT NULL`. Un rappel peut donc cibler un engagement **ou** une facture
+  ponctuelle — ce que le code faisait déjà mais que la base refusait côté cloud.
+- **`src/lib/validation/reminders.ts`** : schéma revu — `commitment_id` et
+  `facture_id` optionnels, `.refine` « au moins une cible ». Base réutilisable
+  pour la mise à jour partielle (`ReminderShape.partial()`).
+- **`src/lib/data/store.ts`** : branche cloud de `listReminders` / `addReminder`
+  (factures incluses) / `updateReminder` / `deleteReminder` → `/api/reminders`.
+  Branche invité inchangée. `REMINDER_COLS` retiré.
+- **Vérifs faites ici** : suite sandbox **395 PASS** (dont schéma rappels revu :
+  facture seule acceptée, sans cible rejetée) ; lint 0, `tsc` src propre, build
+  vert ; **E2E Playwright Rappels mode invité 6/6** (engagement→suggestion→
+  programmer→lu→persistance→suppression) ; smoke `/api/reminders` non
+  authentifié → **401** standard.
+- ⚠️ Même limite qu'en Brique 4 : le chemin **connecté** n'est pas exécutable
+  ici (pas d'accès Supabase). Sûr par construction ; à valider sur la preview.
+  Checklist : connecté → /rappels → programmer un rappel (engagement ET
+  facture), marquer lu, supprimer.
+
+### Brique 6 — Factures ponctuelles branchées sur le socle (livré 2026-07-09)
+Dernier module « métier » encore en accès direct : les factures ponctuelles
+(eau, taxe, assurance annuelle…) passent maintenant par `/api/factures` pour les
+comptes connectés. Mode invité inchangé.
+- **`src/lib/validation/factures.ts`** : schéma aligné sur les CHECK réels —
+  mode ∈ interval|manual, status ∈ active|archived, interval_months 1..60,
+  notice_days 0..365, **et les règles conditionnelles** : interval →
+  start_date + interval_months requis ; manual → next_due_date requis
+  (miroir de `mode_interval_complet` / `mode_manual_complet`).
+- **`src/lib/services/factures.ts`** : list/create/update/delete, session +
+  RLS + `.eq` → NOT_FOUND.
+- **Routes** `/api/factures` (GET/POST) et `/api/factures/[id]` (PATCH/DELETE).
+- **`src/lib/data/store.ts`** : branche cloud des 4 fonctions factures → socle.
+  `FACTURE_COLS` retiré (dernière sélection directe supprimée du façade cloud).
+- **Vérifs faites ici** : sandbox **412 PASS** (dont cohérence de mode) ; lint 0,
+  `tsc` src propre, build vert ; **E2E Playwright Factures mode invité 6/6**
+  (interval + manual, persistance, « payée », suppression) ; smoke
+  `/api/factures` non authentifié → **401** standard.
+- ⚠️ Même limite : chemin **connecté** non exécutable ici → à valider sur la
+  preview (ajouter une facture « fréquence » et une « dates fixes »).
+
+**Socle terminé pour les 3 modules métier** : engagements, rappels et factures
+passent tous par l'API durcie (connectés) ; seul le mode invité reste 100 %
+local. Reste la dette n°1 : la table orpheline `subscriptions`.
+
+### Brique 7 — Détection d'abonnements branchée sur `subscriptions` (livré 2026-07-09)
+Le cœur de Serein enfin persisté : les abonnements repérés dans un relevé sont
+**mémorisés** (table `subscriptions`, pas jetés), avec les « dormants », et une
+page pour les suivre ou les ignorer. Réponse à « la garder ET la construire ».
+- **`src/lib/subscriptions/detect.ts`** (logique pure, testée) : conversion
+  détection → ligne `subscriptions`. `annual → yearly`, montant réel reconstruit
+  (l'annuel ×12), `isDormant` (plus vu depuis > 60 j), dédoublonnage par nom
+  (interne + contre l'existant). Dates mal formées → `last_seen` null (robuste).
+- **`src/lib/data/store.ts`** : façade `subscriptions` — `listSubscriptions`,
+  `saveDetectedSubscriptions` (cloud → `/api/subscriptions` de la Brique 1 ;
+  invité → local), `deleteSubscription`.
+- **`/analyse`** : après le scoring, la détection est **enregistrée**
+  (best-effort, non bloquant) — sans casser le flux « suivre dans mes
+  engagements » existant. Un lien renvoie vers les détectés.
+- **`/abonnements`** (nouvelle page + entrée de nav « Détectés ») : liste les
+  abonnements détectés (montant, fréquence, fiabilité %, badge **Dormant**),
+  bandeau « N dormants », actions **Résilier — générer la lettre →** (lien vers
+  `/resiliation?service=…`, pré-remplit le formulaire = le moat détection→
+  annulation), **Suivre** (→ engagement) et **Ignorer**. (Lien résiliation
+  ajouté le 2026-07-09 suite au retour de Juju : « pas de lien résiliation pour
+  les souscriptions en ligne ».)
+- **Vérifs faites ici** : sandbox **433 PASS** (dont 22 sur la conversion) ;
+  lint 0, `tsc` src propre, build vert ; **E2E Playwright invité 6/6** (analyse
+  d'un relevé collé → persistance → page détectés → Suivre → présent dans
+  Engagements → Ignorer) ; smoke `/api/subscriptions` non authentifié → **401**.
+- ⚠️ Même limite : chemin **connecté** non exécutable ici → à valider sur preview
+  (analyser un relevé en étant connecté, puis /abonnements).
+- Slice suivante possible : marquer « suivi » plutôt que supprimer, filtrer les
+  dormants, badge de compteur dans la nav.
+
+**🎉 Plan de fusion « New project → serein-v2 » : TERMINÉ (7 briques).** Le socle
+durci (réponse standard, validation, services, Storage) couvre les 4 modules
+métier — engagements, rappels, factures, abonnements détectés — pour les comptes
+connectés, mode invité préservé.
+
 ### Base de données
 `supabase/schema.sql` — 5 tables historiques du tunnel : leads, uploads,
 transactions, subscriptions, insights (service_role uniquement).
@@ -484,10 +695,30 @@ Plan de briques validé par Juju le 2026-07-05 (« prompt ultime ») :
 5. ~~Brique 3 — OCR ticket de caisse~~ ✅ livrée (l'association automatique
    ticket→fiche Open Food Facts reste hors scope, à réévaluer si besoin).
 
-**Plan « prompt ultime » terminé (5/5).** Prochaines candidates à
-prioriser avec Juju : chatbot assistant (guidé gratuit ou IA générative =
-clé API payante), rappels e-mail, admin des liens utiles, facturation
-`user_services`.
+**Plan « prompt ultime » terminé (5/5).**
+
+**Plan de fusion « New project → serein-v2 » (validé Juju le 2026-07-09)** —
+serein-v2 est LE projet définitif, l'ancien « New project » est abandonné
+(seule sa doc est récupérée). Briques dans l'ordre :
+1. ~~Brique 1 — Socle API (réponse standard, Zod, services)~~ ✅ livrée 2026-07-09
+2. ~~Brique 2 — durcissement uploads / Storage (bucket privé, URL signées
+   courtes, suppression Storage + base, limites taille/MIME)~~ ✅ livrée 2026-07-09
+3. ~~Brique 3 — socle API pour `commitments` (le vrai cœur)~~ ✅ livrée 2026-07-09
+4. ~~Brique 4 — Engagements branchés sur `/api/commitments` (connectés), mode
+   invité gardé en local~~ ✅ livrée 2026-07-09 (1ʳᵉ mise en service du socle)
+5. ~~Brique 5 — dette `reminders.commitment_id` corrigée + Rappels branchés sur
+   `/api/reminders`~~ ✅ livrée 2026-07-09
+6. ~~Brique 6 — Factures ponctuelles branchées sur `/api/factures`~~ ✅ livrée
+   2026-07-09 (socle terminé pour les 3 modules métier)
+7. ~~Brique 7 — détection d'abonnements branchée sur `subscriptions`
+   (page `/abonnements`, dormants, suivre/ignorer)~~ ✅ livrée 2026-07-09
+
+**Plan de fusion terminé (7/7).** Pistes ensuite (à cadrer) : slice 2 de la
+détection (statut « suivi », filtres, compteur nav) ; refonte de l'analyse vers
+Mistral OCR (aligne le code sur la page Confidentialité — nécessite une clé API
+payante + accord d'envoi à un tiers).
+4. Brique 4 — (à préciser depuis le plan de fusion)
+5. Brique 5 — (à préciser depuis le plan de fusion)
 
 Garées (hors briques, à re-prioriser ensuite) : chatbot assistant (guidé
 gratuit ou IA générative = clé API payante à décider), rappels e-mail,
@@ -509,12 +740,57 @@ extension annuaire résiliation.
 | 2026-07-03 | Bascule thème clair (crème/vert forêt/ambre) sur toute l'app | build vert, 3 pages vérifiées en capture, contraste OK |
 | 2026-07-03 | Connexion (`/connexion`) : vrais comptes e-mail/mot de passe, nav connectée | 81/81 sandbox PASS, 7/7 navigateur PASS, build vert |
 | 2026-07-03 | Tableau de bord (`/dashboard`) : résumé + atterrissage après connexion | 90/90 sandbox PASS, 9/9 navigateur PASS, build vert |
+| 2026-07-09 | Brique 1 — Socle API : réponse standard 10 codes, validation Zod alignée base, services subscriptions/reminders, routes canoniques (couche additive) | 30/30 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
+| 2026-07-09 | Brique 2 — Socle Storage durci : bucket privé `bank-statements`, helpers MIME/taille/chemin per-user testés, service uploads (URL signées courtes, suppression Storage+base), routes `/api/uploads*` ; suppression des routes mortes upload/analyze | 17/17 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
+| 2026-07-09 | Brique 3 — Socle API `commitments` (le vrai cœur) : validation Zod alignée base (service_type/frequency/status/importance), service + routes `/api/commitments*` ; doublon subscriptions/commitments et dette reminders.commitment_id documentés | 19/19 sandbox PASS, suite complète verte, lint 0 erreur, `tsc` src propre, build vert |
+| 2026-07-09 | Brique 4 — Engagements branchés sur le socle : façade `store.ts` (cloud) → `/api/commitments`, client typé `data/api.ts`, mode invité intact | Suite sandbox 394 PASS, E2E Playwright invité 6/6, smoke serveur 401/422 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
+| 2026-07-09 | Brique 5 — dette rappels corrigée (migration : `commitment_id` nullable + CHECK cible présente) + Rappels branchés sur `/api/reminders` (factures incluses) | Sandbox 395 PASS, E2E Playwright Rappels invité 6/6, smoke `/api/reminders` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
+| 2026-07-09 | Brique 6 — Factures ponctuelles branchées sur le socle : validation Zod (mode/status + règles conditionnelles), service + routes `/api/factures*`, façade cloud rebranchée | Sandbox 412 PASS, E2E Playwright Factures invité 6/6, smoke `/api/factures` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
+| 2026-07-09 | Brique 7 — détection d'abonnements persistée : logique de conversion testée, façade `subscriptions`, `/analyse` enregistre, page `/abonnements` (dormants, suivre/ignorer) | Sandbox 433 PASS (dont 22 conversion), E2E Playwright détection invité 6/6, smoke `/api/subscriptions` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+- **Prix Intelligent — l'effet waouh (2026-07-09)** : sur la fiche produit (tap
+  dans l'inventaire), au lieu du prix facial, une carte de décision :
+  💳 prix carte fidélité · 🎁 après cagnotte · 💶 **vrai prix payé** · 📦 €/kg ·
+  📈 prix habituel (moyenne perso) · 💰 **économie du jour** · 🔄 alternative la
+  plus rentable au kilo (dans l'inventaire). Logique pure `smartPrice()` /
+  `pricePerKg()` / `bestAlternative()` dans `logic.mjs`. Avantages fidélité
+  (remise % / cagnotte €) **saisis** par l'utilisateur, persistés sur le produit.
+  **Vision respectée : zéro partenariat rémunéré, données 100 % côté
+  consommateur** (prix saisis + historique perso + Open Food Facts + lien fiche
+  OFF). Vérif : sandbox `paniermalin-pricing.test.ts` 20/20, E2E Playwright UI
+  8/8 (vrai prix, habituel, économie, alternative, recompute live avec remise).
+  ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
+  Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
+  cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Enseignes & fidélité = liens, pas de carte stockée (2026-07-09)** : choix
+  de Juju — on ne stocke AUCUNE carte de fidélité (donnée sensible), on donne des
+  **liens officiels** vers les enseignes (offres/fidélité), + **ajout perso**
+  d'une enseigne (nom + lien https) si absente, retirable. Sources fusionnées :
+  liste par défaut (9 enseignes FR, sites officiels https) + liens distants
+  (Supabase `liens_utiles`) + ajouts perso (localStorage, juste des liens).
+  Logique pure `mergeEnseignes()` / `normalizeEnseigne()` / `isValidHttpsUrl()`
+  (dédoublonnage insensible à la casse, https only). La section « Bons plans &
+  cartes de fidélité » devient « 🏪 Enseignes & fidélité ». Vérif : sandbox
+  `paniermalin-enseignes.test.ts` 16/16, E2E Playwright 6/6, suite 479 PASS.
+  Cache SW v13→v14.
+- **Accueil = tableau de bord (2026-07-09, remplace les onglets du bas)** :
+  Juju n'aimait pas la barre d'onglets → direction « Accueil façon Revolut »
+  (son choix). **Écran d'accueil par défaut** : 💰 économies du jour, 🎉 bonnes
+  affaires du moment, 🔁 à racheter (tes essentiels/récurrents), gros bouton
+  Scanner, accès rapides Liste/Inventaire/Plans. **La barre d'onglets du bas est
+  supprimée** ; l'accueil est le hub, chaque écran a un « ← Accueil ». Logique
+  pure `dashboardStats()` (économies = somme des prix sous l'habituel ; affaires ;
+  récurrents). Vérif : sandbox `paniermalin-dashboard.test.ts` 10/10, E2E
+  Playwright accueil 9/9, suite 463 PASS. Cache SW v12→v13.
+- **Réorganisation en onglets (2026-07-09, remplacée le même jour)** : première
+  tentative (barre d'onglets bas) — remplacée par l'Accueil ci-dessus après
+  retour de Juju. Scan code-barres : confirmation renforcée « ✓ Ajouté à votre
+  inventaire : … » (+ vibration) — conservée.
 - **Listes v1 (2026-07-05)** : liste de courses (`listes.mjs`, logique pure
   testée 15/15) — ajout dédoublonné, cocher, ⭐ récurrent, « Nouvelle
   semaine » (les récurrents reviennent, les achats ponctuels sortent),

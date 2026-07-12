@@ -10,7 +10,7 @@
 <style>
   :root { --green:#2F7A4D; --green-dark:#245E3B; --bg:#F6F8F4; --card:#FFFFFF; --line:#E3E9E0; --text:#20301F; --dim:#6C7A6A }
   * { box-sizing:border-box; margin:0 }
-  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; padding-bottom:40px }
+  body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; padding-bottom:28px }
   header { background:var(--green); color:#fff; padding:18px 16px 16px; text-align:center }
   header h1 { font-size:22px; font-weight:800; letter-spacing:-.3px }
   header p { font-size:13px; opacity:.85; margin-top:2px }
@@ -50,6 +50,45 @@
   h2 { font-size:15px; font-weight:800; margin-bottom:8px }
   .hint { font-size:12.5px; color:var(--dim); line-height:1.5 }
   .empty { text-align:center; color:var(--dim); font-size:14px; padding:18px 0 }
+  /* Onglets (une vue à la fois, barre fixe en bas — standard mobile) */
+  .screen { display:none }
+  .screen.active { display:block; animation:pmfade .2s ease }
+  @keyframes pmfade { from{opacity:.35} to{opacity:1} }
+  .tabbar { position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; max-width:520px; margin:0 auto;
+            background:var(--card); border-top:1px solid var(--line); box-shadow:0 -2px 14px rgba(0,0,0,.06);
+            padding-bottom:env(safe-area-inset-bottom,0) }
+  .tab { flex:1; background:none; color:var(--dim); border-radius:0; padding:9px 4px 10px; font-size:11px; font-weight:800;
+         display:flex; flex-direction:column; align-items:center; gap:3px }
+  .tab .ic { font-size:21px; line-height:1; filter:grayscale(.45); opacity:.7 }
+  .tab.active { color:var(--green-dark) }
+  .tab.active .ic { filter:none; opacity:1 }
+  #status.ok { color:var(--green-dark); font-weight:700 }
+  /* Prix Intelligent (l'effet waouh) */
+  .smart { background:linear-gradient(180deg,#EFF7F0,#FFFFFF); border:1px solid #D7E7DA; border-radius:14px; padding:13px 14px; margin-bottom:10px }
+  .smart-h { font-weight:800; font-size:14px; margin-bottom:8px; color:var(--green-dark) }
+  .smart-line { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:4px 0; font-size:13.5px }
+  .smart-line span { color:var(--dim) }
+  .smart-line strong { font-weight:800; text-align:right }
+  .smart-line.big { border-top:1px dashed var(--line); border-bottom:1px dashed var(--line); padding:7px 0; margin:3px 0 }
+  .smart-line.big strong { font-size:19px; color:var(--green-dark) }
+  .smart-line.save strong { color:#038141 }
+  .smart-line.alt strong { color:#2B5EA7 }
+  .smart-adv { display:flex; gap:10px; margin-top:9px; font-size:12px; color:var(--dim) }
+  .smart-adv label { display:flex; align-items:center; gap:5px }
+  .smart-adv input { width:54px; border:1.5px solid var(--line); border-radius:8px; padding:5px 6px; font-size:13px; text-align:right }
+  /* Accueil — tableau de bord */
+  .home-hero { text-align:center; padding:20px 16px }
+  .home-hi { font-size:14px; color:var(--dim); margin-bottom:12px }
+  .home-eco span { display:block; font-size:12px; color:var(--dim); font-weight:800; text-transform:uppercase; letter-spacing:.4px }
+  .home-eco strong { display:block; font-size:36px; font-weight:800; color:var(--green-dark); letter-spacing:-.5px; margin-top:2px }
+  .home-scan { width:100%; padding:16px; font-size:16px; margin-bottom:14px; box-shadow:0 8px 22px rgba(47,122,77,.22) }
+  .home-line { display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:6px 0; font-size:14px; border-top:1px solid var(--line) }
+  .home-line:first-child { border-top:none }
+  .home-line strong { color:#038141; font-weight:800 }
+  .home-quick { margin-top:2px }
+  .home-quick button { flex:1; padding:14px 6px; font-size:13px }
+  .back { background:none; color:var(--green-dark); font-weight:700; padding:2px 0 10px; font-size:13.5px; margin:0 }
+  .back:active { transform:none; opacity:.6 }
 </style>
 </head>
 <body>
@@ -66,6 +105,32 @@
       <option value="">🏦 Ma banque…</option>
     </select>
   </div>
+  <div class="screen active" id="scr-home">
+    <div class="card home-hero">
+      <p class="home-hi">Bonjour 👋 — voici ce qui compte aujourd'hui.</p>
+      <div class="home-eco">
+        <span>💰 Économies du jour</span>
+        <strong id="homeEco">0,00 €</strong>
+      </div>
+    </div>
+    <button class="home-scan" data-goto="scan" type="button">📷 Scanner un produit</button>
+    <div class="card" id="homeDealsCard" style="display:none">
+      <h2>🎉 Bonnes affaires du moment</h2>
+      <div id="homeDeals"></div>
+    </div>
+    <div class="card" id="homeRebuyCard" style="display:none">
+      <h2>🔁 À racheter (tes essentiels)</h2>
+      <p class="hint" id="homeRebuy"></p>
+    </div>
+    <div class="row home-quick">
+      <button class="ghost" data-goto="liste" type="button">🛒 Ma liste</button>
+      <button class="ghost" data-goto="inv" type="button">📦 Inventaire</button>
+      <button class="ghost" data-goto="plans" type="button">🏷️ Plans</button>
+    </div>
+  </div>
+
+  <div class="screen" id="scr-scan">
+    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <video id="cam" playsinline muted></video>
     <div class="row">
@@ -104,7 +169,10 @@
     <strong>rien n'est enregistré sans votre validation</strong> : pour chaque ligne, choisissez « ignorer »,
     « entrée libre » ou l'association à un produit déjà scanné (son prix sera mis à jour).</p>
   </div>
+  </div><!-- /scr-scan -->
 
+  <div class="screen" id="scr-liste">
+    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <h2 style="display:flex;align-items:center;justify-content:space-between">
       <span>🛒 Ma liste de courses <span class="hint" id="listCount"></span></span>
@@ -130,7 +198,10 @@
     automatiquement à chaque « nouvelle semaine ». « Partager (texte) » envoie la liste par SMS/WhatsApp.
     « Synchro famille » crée un lien : chacun coche depuis son téléphone et tout le monde voit la liste à jour.</p>
   </div>
+  </div><!-- /scr-liste -->
 
+  <div class="screen" id="scr-inv">
+    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
     <h2>Mon inventaire <span class="hint" id="count"></span></h2>
     <div id="basket"><p class="empty">Scannez vos produits : l&rsquo;app s&rsquo;en souvient.</p></div>
@@ -143,12 +214,25 @@
     est stockée en Europe sous un code aléatoire, sans votre identité. Le scan n'envoie que le code-barres
     à Open Food Facts.</p>
   </div>
+  </div><!-- /scr-inv -->
+
+  <div class="screen" id="scr-plans">
+    <button class="back" data-goto="home" type="button">← Accueil</button>
   <div class="card">
-    <h2>🏷️ Bons plans &amp; cartes de fidélité</h2>
-    <div id="bonsPlans"><p class="empty">Chargement…</p></div>
-    <p class="hint" style="margin-top:8px">Liens officiels vers les promos et cartes des grandes enseignes —
-    aucun partenariat, aucune commission.</p>
+    <h2>🏪 Enseignes &amp; fidélité</h2>
+    <p class="hint">Liens officiels vers les offres et programmes fidélité — aucun partenariat, aucune commission.
+    <strong>Rien n'est stocké</strong> : juste des liens. Une enseigne manque ? Ajoute-la.</p>
+    <div id="bonsPlans" style="margin-top:10px"></div>
+    <div class="row" style="margin-top:12px">
+      <input type="text" id="ensName" placeholder="Nom (ex. Grand Frais)">
+    </div>
+    <div class="row" style="margin-top:6px">
+      <input type="text" id="ensUrl" inputmode="url" placeholder="https://…">
+      <button id="ensAdd" class="ghost">Ajouter</button>
+    </div>
+    <div id="ensMsg" class="hint" style="margin-top:6px;min-height:15px"></div>
   </div>
+  </div><!-- /scr-plans -->
 
   <p class="hint" style="text-align:center;padding-bottom:8px">
     <a href="/confidentialite" style="color:var(--dim)">Confidentialité</a> ·
@@ -159,7 +243,7 @@
 </main>
 
 <script type="module">
-import { validateEAN, normalizeProduct, compareBasket, pricePer100, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { validateEAN, normalizeProduct, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -214,6 +298,7 @@ function render() {
     if (openDetails.has(p.ean)) box.appendChild(buildDetail(p))
   }
   try { renderListe() } catch { /* liste pas encore initialisée au premier rendu */ }
+  try { renderHome() } catch { /* accueil : dérivé de l'inventaire */ }
 }
 
 // ─── DÉTAIL PRODUIT (Brique 4 : tout vient des données déjà stockées) ──────
@@ -248,7 +333,54 @@ function buildDetail(p) {
   link.textContent = 'Voir la fiche complète sur Open Food Facts ↗'
   link.style.color = 'var(--green-dark)'
   det.appendChild(link)
+  det.prepend(buildSmartCard(p)) // Prix Intelligent en tête
   return det
+}
+
+// ─── PRIX INTELLIGENT — carte de décision ───────────────────────────────────
+const eur = n => `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+const eurKg = n => `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €/kg`
+const smartLine = (label, val, cls = '') => `<div class="smart-line ${cls}"><span>${label}</span><strong>${val}</strong></div>`
+
+function buildSmartCard(p) {
+  // Alternatives = les autres produits de l'inventaire moins chers au kilo.
+  const alternatives = items.filter(x => x.ean !== p.ean)
+    .map(x => ({ name: x.name, perKg: pricePerKg(x.price, x.quantity) }))
+    .filter(a => a.perKg != null)
+  const si = smartPrice({
+    price: p.price, quantity: p.quantity,
+    loyaltyPct: p.loyaltyPct, cagnotte: p.cagnotte,
+    history: (p.purchases ?? []).slice(0, -1), // « habituel » = avant aujourd'hui
+    alternatives,
+  })
+  const el = document.createElement('div'); el.className = 'smart'
+  const rows = ['<div class="smart-h">💡 Prix Intelligent</div>']
+  if (si.facial == null) {
+    rows.push('<p class="hint">Ajoutez le prix en rayon (champ €) pour activer le vrai prix payé, le €/kg et vos économies.</p>')
+  } else {
+    if (si.hasLoyalty) rows.push(smartLine('💳 Prix carte fidélité', eur(si.cardPrice)))
+    if (si.hasCagnotte) rows.push(smartLine('🎁 Après cagnotte', eur(si.afterCagnotte)))
+    rows.push(smartLine('💶 Vrai prix payé', eur(si.realPaid), 'big'))
+    if (si.perKg != null) rows.push(smartLine('📦 Prix au kilo', eurKg(si.perKg)))
+    if (si.habitual != null) rows.push(smartLine('📈 Ton prix habituel', eur(si.habitual)))
+    if (si.economy > 0) rows.push(smartLine('💰 Économie aujourd\'hui', eur(si.economy), 'save'))
+    if (si.bestAlternative) rows.push(smartLine('🔄 Plus rentable au kilo', `${si.bestAlternative.name} · ${eurKg(si.bestAlternative.perKg)} (−${eurKg(si.bestAlternative.saving)})`, 'alt'))
+  }
+  rows.push(`<div class="smart-adv">
+    <label>💳 Remise carte <input type="text" inputmode="decimal" class="adv-loy" value="${p.loyaltyPct ?? ''}" placeholder="%" aria-label="remise carte %"> %</label>
+    <label>🎁 Cagnotte <input type="text" inputmode="decimal" class="adv-cag" value="${p.cagnotte ?? ''}" placeholder="€" aria-label="cagnotte €"> €</label>
+  </div>`)
+  el.innerHTML = rows.join('')
+  const bind = (sel, key) => {
+    const inp = el.querySelector(sel)
+    if (inp) inp.onchange = e => {
+      const v = parseFloat(String(e.target.value).replace(',', '.'))
+      const it = items.find(i => i.ean === p.ean)
+      if (it) { it[key] = v > 0 ? v : null; save(); render() }
+    }
+  }
+  bind('.adv-loy', 'loyaltyPct'); bind('.adv-cag', 'cagnotte')
+  return el
 }
 
 // ─── AJOUT D'UN PRODUIT ─────────────────────────────────────────────────────
@@ -273,7 +405,9 @@ async function addByEan(raw) {
     const p = normalizeProduct(ean, await r.json())
     if (!p) return status('Produit inconnu d\'Open Food Facts.', true)
     items.push({ ...p, purchases: recordPurchase([], { date: today() }) }); save(); render()
-    status(`Ajouté : ${p.name}`)
+    $('status').textContent = `✓ Ajouté à votre inventaire : ${p.name}`
+    $('status').className = 'ok'
+    if (navigator.vibrate) navigator.vibrate(60)
   } catch { status('Pas de réseau — réessayez.', true) }
 }
 $('addBtn').onclick = () => { addByEan($('ean').value); $('ean').value = '' }
@@ -559,32 +693,58 @@ $('ticketApply').onclick = () => {
     : 'Rien à enregistrer — toutes les lignes étaient sur « ignorer ».'
 }
 
-// ─── BONS PLANS (table partagée liens_utiles, mêmes règles que Serein) ─────
-async function loadBonsPlans() {
-  const box = $('bonsPlans')
-  try {
-    const r = await fetch(`${SB_URL}/rest/v1/liens_utiles?service_key=eq.paniermalin&categorie=eq.grande_distribution&order=ordre_affichage,nom&select=nom,url,description`, {
-      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
-    })
-    const rows = (await r.json()).filter(l => { try { return new URL(l.url).protocol === 'https:' } catch { return false } })
-    if (!rows.length) { box.innerHTML = '<p class="empty">Aucun lien disponible pour l\'instant.</p>'; return }
-    box.innerHTML = ''
-    for (const l of rows) {
-      const div = document.createElement('div')
-      div.className = 'prod'
-      div.innerHTML = `<div class="pinfo"><div class="pname"></div><div class="pmeta"></div></div><span style="color:var(--green-dark)">↗</span>`
-      const a = document.createElement('a')
-      a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer'
-      a.textContent = l.nom; a.style.color = 'var(--green-dark)'
-      div.querySelector('.pname').appendChild(a)
-      div.querySelector('.pmeta').textContent = l.description ?? ''
-      box.appendChild(div)
+// ─── ENSEIGNES & FIDÉLITÉ (liens : défaut + officiels distants + ajouts perso) ─
+// Pas de carte stockée : uniquement des liens. Les ajouts perso (nom + lien)
+// restent sur l'appareil ; on peut les retirer.
+let customEnseignes = JSON.parse(localStorage.getItem('enseignes') ?? '[]')
+let remoteEnseignes = []
+const saveEnseignes = () => localStorage.setItem('enseignes', JSON.stringify(customEnseignes))
+
+function renderEnseignes() {
+  const box = $('bonsPlans'); if (!box) return
+  box.innerHTML = ''
+  const list = mergeEnseignes(DEFAULT_ENSEIGNES, remoteEnseignes, customEnseignes)
+  const customKeys = new Set(customEnseignes.map(c => String(c.name ?? '').toLowerCase()))
+  for (const e of list) {
+    const div = document.createElement('div'); div.className = 'prod'
+    const info = document.createElement('div'); info.className = 'pinfo'
+    const a = document.createElement('a')
+    a.href = e.url; a.target = '_blank'; a.rel = 'noopener noreferrer'
+    a.textContent = e.name; a.style.color = 'var(--green-dark)'; a.style.fontWeight = '700'
+    info.appendChild(a); div.appendChild(info)
+    if (customKeys.has(e.name.toLowerCase())) {
+      const del = document.createElement('button'); del.className = 'del'; del.textContent = '✕'; del.setAttribute('aria-label', 'retirer')
+      del.onclick = () => { customEnseignes = customEnseignes.filter(c => String(c.name ?? '').toLowerCase() !== e.name.toLowerCase()); saveEnseignes(); renderEnseignes() }
+      div.appendChild(del)
+    } else {
+      const arrow = document.createElement('span'); arrow.textContent = '↗'; arrow.style.color = 'var(--green-dark)'
+      div.appendChild(arrow)
     }
-  } catch {
-    box.innerHTML = '<p class="empty">Aucun lien disponible pour l\'instant.</p>'
+    box.appendChild(div)
   }
 }
-loadBonsPlans()
+
+$('ensAdd').onclick = () => {
+  const e = normalizeEnseigne({ name: $('ensName').value, url: $('ensUrl').value })
+  if (!e) { $('ensMsg').textContent = '⚠️ Indique un nom et un lien https valide (ex. https://…).'; return }
+  const exists = mergeEnseignes(DEFAULT_ENSEIGNES, remoteEnseignes, customEnseignes).some(x => x.name.toLowerCase() === e.name.toLowerCase())
+  if (exists) { $('ensMsg').textContent = 'Cette enseigne est déjà dans la liste.'; return }
+  customEnseignes.push(e); saveEnseignes()
+  $('ensName').value = ''; $('ensUrl').value = ''; $('ensMsg').textContent = `✓ ${e.name} ajoutée.`
+  renderEnseignes()
+}
+
+async function loadBonsPlans() {
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/liens_utiles?service_key=eq.paniermalin&categorie=eq.grande_distribution&order=ordre_affichage,nom&select=nom,url`, {
+      headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` },
+    })
+    remoteEnseignes = (await r.json()).map(l => ({ name: l.nom, url: l.url }))
+  } catch { remoteEnseignes = [] }
+  renderEnseignes()
+}
+renderEnseignes() // défaut + perso tout de suite (sans attendre le réseau)
+loadBonsPlans()   // puis on complète avec les liens officiels distants
 
 // ─── MA BANQUE (menu déroulant, lien direct — mêmes données que Serein) ────
 async function loadBanques() {
@@ -603,6 +763,29 @@ $('banqueSelect').onchange = e => {
   e.target.value = ''
 }
 loadBanques()
+
+// ─── NAVIGATION (Accueil = hub ; une vue à la fois) ─────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === 'scr-' + id))
+  window.scrollTo(0, 0)
+  if (id === 'home') renderHome()
+}
+document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => showScreen(b.dataset.goto)))
+
+// ─── TABLEAU DE BORD D'ACCUEIL ──────────────────────────────────────────────
+function renderHome() {
+  const d = dashboardStats(items)
+  $('homeEco').textContent = eur(d.economyToday || 0)
+  const dealsCard = $('homeDealsCard')
+  if (d.deals.length) {
+    dealsCard.style.display = ''
+    $('homeDeals').innerHTML = d.deals.slice(0, 4)
+      .map(x => `<div class="home-line"><span>${x.name}</span><strong>−${eur(x.saving)}</strong></div>`).join('')
+  } else dealsCard.style.display = 'none'
+  const rebuyCard = $('homeRebuyCard')
+  if (d.toRebuy.length) { rebuyCard.style.display = ''; $('homeRebuy').textContent = d.toRebuy.slice(0, 10).join(' · ') }
+  else rebuyCard.style.display = 'none'
+}
 
 // ─── PWA ────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')

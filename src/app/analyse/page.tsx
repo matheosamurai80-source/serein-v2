@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
-import { listCommitments, addCommitments } from '@/lib/data/store'
+import { listCommitments, addCommitments, listSubscriptions, saveDetectedSubscriptions } from '@/lib/data/store'
 import { parseStatement } from '@/lib/pdf/parser'
 import { scoreSubscriptions } from '@/lib/scoring/engine'
 import { buildSuggestions, analyseStats, type CommitmentSuggestion } from '@/lib/analyse/logic'
+import { buildDetectedRows } from '@/lib/subscriptions/detect'
 import { extractPdfText } from '@/lib/pdf/browser'
 
 // Analyse de relevé : Serein détecte et suggère ; le client choisit ce qu'il
@@ -30,6 +31,18 @@ export default function AnalysePage() {
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [existingNames, setExistingNames] = useState<string[]>([])
   const [unmatched, setUnmatched] = useState<string[]>([])
+  const [savedCount, setSavedCount] = useState(0)
+
+  // Mémorise la détection dans « abonnements détectés » (best-effort, non bloquant).
+  const persistDetected = async (scored: Parameters<typeof buildDetectedRows>[0]) => {
+    try {
+      const existing = await listSubscriptions()
+      const rows = buildDetectedRows(scored, existing.map(s => s.name), { todayISO: new Date().toISOString().slice(0, 10) })
+      if (!rows.length) return
+      await saveDetectedSubscriptions(rows)
+      setSavedCount(rows.length)
+    } catch { /* mémorisation best-effort : l'analyse reste utilisable */ }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -52,6 +65,13 @@ export default function AnalysePage() {
     setSuggestions(sugg)
     setStats(analyseStats(txs, sugg))
     setChecked(new Set(sugg.filter(s => !s.alreadyTracked).map(s => s.name)))
+    setSavedCount(0)
+    void persistDetected(subscriptions)
+    // Retour positif explicite (le succès ne doit pas être silencieux).
+    const n = subscriptions.length
+    toast.show(n > 0
+      ? `✓ Relevé analysé — ${txs.length} opérations lues, ${n} abonnement${n > 1 ? 's' : ''} détecté${n > 1 ? 's' : ''}`
+      : `✓ Relevé analysé — ${txs.length} opérations lues, aucun abonnement récurrent repéré`)
   }
 
   const handleFile = async (file: File) => {
@@ -159,6 +179,12 @@ export default function AnalysePage() {
                 {stats.newCount < stats.subscriptionCount && <> (dont {stats.subscriptionCount - stats.newCount} déjà suivi{stats.subscriptionCount - stats.newCount > 1 ? 's' : ''})</>}
                 {' '}— soit ≈ {stats.monthlyTotal.toLocaleString('fr-FR')} €/mois ({stats.annualTotal.toLocaleString('fr-FR')} €/an).
               </p>
+              {savedCount > 0 && (
+                <p className="text-[12.5px] text-ink/60 leading-[1.55] mt-2" data-testid="saved-hint">
+                  🗂️ {savedCount} abonnement{savedCount > 1 ? 's' : ''} mémorisé{savedCount > 1 ? 's' : ''} dans vos{' '}
+                  <a href="/abonnements" className="text-moss underline">abonnements détectés</a>.
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2.5 mb-4">

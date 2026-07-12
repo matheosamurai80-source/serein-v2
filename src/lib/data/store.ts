@@ -1,4 +1,6 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+import { apiGet, apiPost, apiPatch, apiDelete } from './api'
+import type { DetectedSubscriptionRow } from '@/lib/subscriptions/detect'
 import { buildLetterRow, mapRegimeToLetterType } from '@/lib/letters/db'
 import type { RegimeResult } from '@/lib/letters/legal'
 import {
@@ -63,9 +65,8 @@ export interface LetterListItem {
   generated_at: string
 }
 
-const COMMITMENT_COLS = 'id, name, provider, service_type, amount, frequency, anniversary_date, cancellation_deadline, cancellation_notice_days, status'
-const REMINDER_COLS = 'id, commitment_id, facture_id, kind, scheduled_for, channel, message, status'
-const FACTURE_COLS = 'id, name, amount, mode, start_date, interval_months, next_due_date, notice_days, status'
+// Engagements, rappels et factures ponctuelles passent désormais par le socle
+// API pour les comptes connectés (colonnes et validation gérées côté serveur).
 
 type Supabase = ReturnType<typeof createSupabaseBrowserClient>
 type Backend =
@@ -112,12 +113,14 @@ function fail(message: string): never { throw new Error(message) }
 
 // ─── ENGAGEMENTS ────────────────────────────────────────────────────────────
 
+// Compte connecté → socle API durci (`/api/commitments`, validation + RLS
+// côté serveur). Invité → localStorage. La session voyage par cookie, donc les
+// appels serveur sont authentifiés sans réglage supplémentaire.
+
 export async function listCommitments(): Promise<CommitmentRow[]> {
   const b = await backend()
   if (b.kind === 'local') return readRows<CommitmentRow>(b.kv, LOCAL_KEYS.commitments)
-  const { data, error } = await b.supabase.from('commitments').select(COMMITMENT_COLS)
-  if (error) fail(error.message)
-  return data ?? []
+  return apiGet<CommitmentRow[]>('/api/commitments')
 }
 
 export async function addCommitments(inputs: NewCommitment[]): Promise<CommitmentRow[]> {
@@ -135,12 +138,17 @@ export async function addCommitments(inputs: NewCommitment[]): Promise<Commitmen
     ...(i.detected_automatically ? { detected_automatically: true } : {}),
   }))
   if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.commitments, rows) as CommitmentRow[]
-  const { data, error } = await b.supabase
-    .from('commitments')
-    .insert(rows.map(r => ({ ...r, user_id: b.userId })))
-    .select(COMMITMENT_COLS)
-  if (error) fail(error.message)
-  return data ?? []
+  // Un POST par engagement (le lot détecté reste petit) : validation Zod + RLS
+  // s'appliquent à chacun côté serveur.
+  return Promise.all(inputs.map(i => apiPost<CommitmentRow>('/api/commitments', {
+    name: i.name,
+    service_type: i.service_type,
+    amount: i.amount,
+    frequency: i.frequency,
+    anniversary_date: i.anniversary_date ?? null,
+    cancellation_notice_days: i.cancellation_notice_days ?? null,
+    ...(i.detected_automatically ? { detected_automatically: true } : {}),
+  })))
 }
 
 export async function updateCommitment(id: string, patch: Partial<CommitmentRow>): Promise<void> {
@@ -149,8 +157,10 @@ export async function updateCommitment(id: string, patch: Partial<CommitmentRow>
     if (!updateRow(b.kv, LOCAL_KEYS.commitments, id, patch)) fail('Engagement introuvable.')
     return
   }
-  const { error } = await b.supabase.from('commitments').update(patch).eq('id', id)
-  if (error) fail(error.message)
+  // `id` n'est pas un champ modifiable : on ne l'envoie pas au serveur.
+  const { id: _omit, ...body } = patch
+  void _omit
+  await apiPatch(`/api/commitments/${id}`, body)
 }
 
 export async function deleteCommitment(id: string): Promise<void> {
@@ -162,8 +172,7 @@ export async function deleteCommitment(id: string): Promise<void> {
       if (r.commitment_id === id) deleteRow(b.kv, LOCAL_KEYS.reminders, r.id)
     return
   }
-  const { error } = await b.supabase.from('commitments').delete().eq('id', id)
-  if (error) fail(error.message)
+  await apiDelete(`/api/commitments/${id}`)
 }
 
 // ─── RAPPELS ────────────────────────────────────────────────────────────────
@@ -171,9 +180,7 @@ export async function deleteCommitment(id: string): Promise<void> {
 export async function listReminders(): Promise<ReminderRow[]> {
   const b = await backend()
   if (b.kind === 'local') return readRows<ReminderRow>(b.kv, LOCAL_KEYS.reminders)
-  const { data, error } = await b.supabase.from('reminders').select(REMINDER_COLS)
-  if (error) fail(error.message)
-  return data ?? []
+  return apiGet<ReminderRow[]>('/api/reminders')
 }
 
 export async function addReminder(
@@ -188,13 +195,9 @@ export async function addReminder(
     status: draft.status ?? 'pending',
   }
   if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.reminders, [row])[0]
-  const { data, error } = await b.supabase
-    .from('reminders')
-    .insert({ ...row, user_id: b.userId })
-    .select(REMINDER_COLS)
-    .single()
-  if (error || !data) fail(error?.message ?? 'Création du rappel impossible.')
-  return data
+  // Un rappel de facture (commitment_id null, facture_id posé) est désormais
+  // accepté côté serveur (dette Brique 3 corrigée : CHECK « au moins une cible »).
+  return apiPost<ReminderRow>('/api/reminders', row)
 }
 
 export async function updateReminder(id: string, patch: { status: string }): Promise<void> {
@@ -203,15 +206,13 @@ export async function updateReminder(id: string, patch: { status: string }): Pro
     if (!updateRow(b.kv, LOCAL_KEYS.reminders, id, patch)) fail('Rappel introuvable.')
     return
   }
-  const { error } = await b.supabase.from('reminders').update(patch).eq('id', id)
-  if (error) fail(error.message)
+  await apiPatch(`/api/reminders/${id}`, patch)
 }
 
 export async function deleteReminder(id: string): Promise<void> {
   const b = await backend()
   if (b.kind === 'local') { deleteRow(b.kv, LOCAL_KEYS.reminders, id); return }
-  const { error } = await b.supabase.from('reminders').delete().eq('id', id)
-  if (error) fail(error.message)
+  await apiDelete(`/api/reminders/${id}`)
 }
 
 // ─── FACTURES PONCTUELLES ───────────────────────────────────────────────────
@@ -219,22 +220,15 @@ export async function deleteReminder(id: string): Promise<void> {
 export async function listFactures(): Promise<FactureRow[]> {
   const b = await backend()
   if (b.kind === 'local') return readRows<FactureRow>(b.kv, LOCAL_KEYS.factures)
-  const { data, error } = await b.supabase.from('factures_ponctuelles').select(FACTURE_COLS)
-  if (error) fail(error.message)
-  return (data ?? []) as FactureRow[]
+  return apiGet<FactureRow[]>('/api/factures')
 }
 
 export async function addFacture(input: Omit<FactureRow, 'id' | 'status'>): Promise<FactureRow> {
   const b = await backend()
   const row = { ...input, status: 'active' }
   if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.factures, [row])[0] as FactureRow
-  const { data, error } = await b.supabase
-    .from('factures_ponctuelles')
-    .insert({ ...row, user_id: b.userId })
-    .select(FACTURE_COLS)
-    .single()
-  if (error || !data) fail(error?.message ?? 'Ajout de la facture impossible.')
-  return data as FactureRow
+  // Le serveur force le statut et vérifie la cohérence du mode (interval/manual).
+  return apiPost<FactureRow>('/api/factures', input)
 }
 
 export async function updateFacture(id: string, patch: Partial<FactureRow>): Promise<void> {
@@ -243,8 +237,9 @@ export async function updateFacture(id: string, patch: Partial<FactureRow>): Pro
     if (!updateRow(b.kv, LOCAL_KEYS.factures, id, patch)) fail('Facture introuvable.')
     return
   }
-  const { error } = await b.supabase.from('factures_ponctuelles').update(patch).eq('id', id)
-  if (error) fail(error.message)
+  const { id: _omit, ...body } = patch
+  void _omit
+  await apiPatch(`/api/factures/${id}`, body)
 }
 
 export async function deleteFacture(id: string): Promise<void> {
@@ -255,8 +250,48 @@ export async function deleteFacture(id: string): Promise<void> {
       if (r.facture_id === id) deleteRow(b.kv, LOCAL_KEYS.reminders, r.id)
     return
   }
-  const { error } = await b.supabase.from('factures_ponctuelles').delete().eq('id', id)
-  if (error) fail(error.message)
+  // Les rappels liés partent en cascade côté base (FK ON DELETE CASCADE).
+  await apiDelete(`/api/factures/${id}`)
+}
+
+// ─── ABONNEMENTS DÉTECTÉS ───────────────────────────────────────────────────
+// Mémoire de la détection : ce que Serein a repéré dans les relevés (y compris
+// les « dormants »). Distinct des engagements suivis (`commitments`).
+
+export interface SubscriptionRow {
+  id: string
+  name: string
+  amount: number
+  frequency: string
+  status: string
+  source: string | null
+  occurrences: number | null
+  last_seen: string | null
+  confidence: number | null
+  dormant: boolean
+}
+
+export async function listSubscriptions(): Promise<SubscriptionRow[]> {
+  const b = await backend()
+  if (b.kind === 'local') return readRows<SubscriptionRow>(b.kv, LOCAL_KEYS.subscriptions)
+  return apiGet<SubscriptionRow[]>('/api/subscriptions')
+}
+
+/** Enregistre un lot d'abonnements détectés (déjà dédoublonné par l'appelant). */
+export async function saveDetectedSubscriptions(rows: DetectedSubscriptionRow[]): Promise<SubscriptionRow[]> {
+  if (rows.length === 0) return []
+  const b = await backend()
+  if (b.kind === 'local') {
+    const withStatus = rows.map(r => ({ ...r, status: 'active' }))
+    return insertRows(b.kv, LOCAL_KEYS.subscriptions, withStatus) as SubscriptionRow[]
+  }
+  return Promise.all(rows.map(r => apiPost<SubscriptionRow>('/api/subscriptions', r)))
+}
+
+export async function deleteSubscription(id: string): Promise<void> {
+  const b = await backend()
+  if (b.kind === 'local') { deleteRow(b.kv, LOCAL_KEYS.subscriptions, id); return }
+  await apiDelete(`/api/subscriptions/${id}`)
 }
 
 // ─── LETTRES ────────────────────────────────────────────────────────────────
