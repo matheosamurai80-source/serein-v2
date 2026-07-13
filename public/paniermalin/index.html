@@ -274,7 +274,7 @@
 </main>
 
 <script type="module">
-import { validateEAN, normalizeProduct, PRODUCT_API_HOSTS, productApiUrl, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, openPricesUrl, summarizeCommunityPrices, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { validateEAN, normalizeProduct, PRODUCT_API_HOSTS, productApiUrl, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, openPricesUrl, openPricesProductUrl, summarizeCommunityPrices, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions, COMMON_GROCERIES, suggestListItems, parseShoppingListPhoto, isOnList } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -370,6 +370,14 @@ function buildDetail(p) {
   link.textContent = 'Voir la fiche complète sur Open Food Facts ↗'
   link.style.color = 'var(--green-dark)'
   det.appendChild(link)
+  if (!String(p.ean ?? '').startsWith('libre-')) {
+    const op = document.createElement('a')
+    op.href = openPricesProductUrl(p.ean); op.target = '_blank'; op.rel = 'noopener noreferrer'
+    op.textContent = '🤝 Prix communauté / contribuer sur Open Prices ↗'
+    op.style.cssText = 'color:var(--green-dark);display:block;margin-top:6px'
+    op.setAttribute('data-testid', 'openprices-link')
+    det.appendChild(op)
+  }
   det.prepend(buildSmartCard(p)) // Prix Intelligent en tête
   return det
 }
@@ -473,30 +481,46 @@ $('addBtn').onclick = () => { addByEan($('ean').value); $('ean').value = '' }
 $('ean').addEventListener('keydown', e => { if (e.key === 'Enter') $('addBtn').click() })
 
 // ─── SCANNER (BarcodeDetector — Android Chrome ; iOS : saisie manuelle) ─────
-let scanning = false, stream = null
-const stopScan = () => { scanning = false; stream?.getTracks().forEach(t => t.stop()); $('cam').style.display = 'none'; $('scanBtn').textContent = '📷 Scanner un code-barres' }
+let scanning = false, stream = null, zxingControls = null
+const stopScan = () => {
+  scanning = false
+  try { zxingControls?.stop() } catch { /* ignore */ }
+  zxingControls = null
+  stream?.getTracks().forEach(t => t.stop())
+  $('cam').style.display = 'none'; $('scanBtn').textContent = '📷 Scanner un code-barres'
+}
 
 // Le scan peut alimenter l'inventaire OU la liste de courses (même caméra).
 let scanMode = 'inv'
 async function scanOnce() {
   if (scanning) return stopScan()
-  if (!('BarcodeDetector' in window)) return status('Scanner non disponible sur ce navigateur (iPhone : tapez le code ci-dessous).', true)
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
   } catch { return status('Accès caméra refusé — autorisez-le ou tapez le code.', true) }
   const video = $('cam'); video.srcObject = stream; video.style.display = 'block'; await video.play()
-  const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8'] })
   scanning = true; $('scanBtn').textContent = '⏹ Arrêter le scan'; status('Visez le code-barres…')
-  while (scanning) {
+  const onCode = async v => {
+    stopScan(); if (navigator.vibrate) navigator.vibrate(80)
+    if (scanMode === 'list') await addEanToList(v); else await addByEan(v)
+  }
+  if ('BarcodeDetector' in window) {
+    // Android Chrome : détecteur natif
+    const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8'] })
+    while (scanning) {
+      try { const codes = await detector.detect(video); if (codes.length) { await onCode(codes[0].rawValue); break } }
+      catch { /* frame suivante */ }
+      await new Promise(r => setTimeout(r, 180))
+    }
+  } else {
+    // iOS / navigateurs sans BarcodeDetector : secours ZXing chargé à la volée.
     try {
-      const codes = await detector.detect(video)
-      if (codes.length) {
-        const v = codes[0].rawValue; stopScan(); if (navigator.vibrate) navigator.vibrate(80)
-        if (scanMode === 'list') await addEanToList(v); else await addByEan(v)
-        break
-      }
-    } catch { /* frame suivante */ }
-    await new Promise(r => setTimeout(r, 180))
+      const { BrowserMultiFormatReader } = await import('https://esm.sh/@zxing/browser@0.1.4')
+      zxingControls = await new BrowserMultiFormatReader().decodeFromVideoElement(video, (result) => {
+        if (result && scanning) onCode(result.getText())
+      })
+    } catch {
+      status('Scanner indisponible sur ce navigateur — tape le code à la main ci-dessous.', true); stopScan()
+    }
   }
 }
 $('scanBtn').onclick = () => { scanMode = 'inv'; scanOnce() }
