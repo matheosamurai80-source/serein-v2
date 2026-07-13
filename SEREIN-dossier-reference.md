@@ -780,6 +780,19 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Liste : ajout par code-barres et par photo (2026-07-09)** : retour de Juju.
+  Dans l'écran Liste, en plus du manuel/autocomplétion : bouton **📷 Code-barres**
+  (bascule sur la caméra, `scanMode='list'` → le produit scanné va dans la liste
+  via `addEanToList`, nom trouvé dans la famille Open Food Facts) et **🖼️ Photo
+  de ma liste** (OCR local Tesseract → `parseShoppingListPhoto()` retire
+  puces/cases/numéros/quantités → articles proposés à ajouter un par un ou tous).
+  Le scanner a été refactoré en `scanOnce()` réutilisable (inventaire OU liste).
+  Vérif : sandbox `paniermalin-listphoto.test.ts` 11/11, E2E 6/6, suite 528 PASS.
+  Cache SW v16→v18. ⚠️ scan/photo runtime non testables en sandbox (caméra +
+  module OCR réseau) : logique pure testée + boutons/navigation E2E.
+- **Thème clair forcé (2026-07-09)** : `color-scheme: light` sur Serein +
+  PanierMalin — empêche le mode sombre auto du navigateur d'assombrir des apps
+  conçues en clair (retour « trop sombre »). Vrai mode sombre optionnel = plus tard.
 - **Barre du haut discrète + liste semi-auto (2026-07-09)** : retours de Juju.
   ① Les 3 pavés du haut (Accueil / Ma banque / Retour Serein) regroupés dans une
   **barre fine** : « ← Accueil » à gauche (masqué sur l'accueil), 🏦 Banque +
