@@ -9,7 +9,8 @@
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html { height: 100%; scroll-behavior: smooth; }
+  /* App en thème clair : on empêche le mode sombre auto du navigateur d'assombrir. */
+  html { height: 100%; scroll-behavior: smooth; color-scheme: light; }
   body {
     font-family: var(--font-sans);
     background: #FCFAF5;
