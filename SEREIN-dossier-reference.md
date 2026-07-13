@@ -780,6 +780,12 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Inventaire → liste « À racheter » en un tap (2026-07-09)** : ferme la boucle
+  scan → inventaire → liste. Chaque produit de l'inventaire a un bouton **🛒**
+  (→ **✓** s'il est déjà sur la liste) qui l'ajoute à la liste de courses.
+  Helper pur `isOnList()` (insensible casse/espaces, ignore les pierres
+  tombales). Vérif : sandbox `paniermalin-rebuy.test.ts` 5/5, E2E 3/3, suite
+  533 PASS. Cache SW v19→v20.
 - **Liste : ajout par code-barres et par photo (2026-07-09)** : retour de Juju.
   Dans l'écran Liste, en plus du manuel/autocomplétion : bouton **📷 Code-barres**
   (bascule sur la caméra, `scanMode='list'` → le produit scanné va dans la liste
