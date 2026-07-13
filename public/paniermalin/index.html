@@ -4,12 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2F7A4D">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <title>PanierMalin — scanner &amp; comparer</title>
+<script>/* Applique le thème choisi AVANT le rendu (pas de clignotement). Défaut : clair. */
+(function(){try{var t=localStorage.getItem('pm.theme')||'light';var r=document.documentElement;r.setAttribute('data-theme',t);r.style.colorScheme=t;}catch(e){}})()</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <style>
   :root { color-scheme:light; --green:#2F7A4D; --green-dark:#245E3B; --bg:#F6F8F4; --card:#FFFFFF; --line:#E3E9E0; --text:#20301F; --dim:#6C7A6A }
+  /* Vrai thème sombre optionnel (bouton ☀️/🌙). Défaut = clair. */
+  :root[data-theme="dark"] { --green:#3E9E63; --green-dark:#84D6A0; --bg:#0F1513; --card:#18211E; --line:#2A3A34; --text:#E7EEE9; --dim:#93A79E }
+  [data-theme="dark"] button.ghost, [data-theme="dark"] .listauto button, [data-theme="dark"] .tb-btn { background:#22302B; color:var(--green-dark); border-color:var(--line) }
+  [data-theme="dark"] input[type=text], [data-theme="dark"] .tb-sel, [data-theme="dark"] .prod input.price, [data-theme="dark"] .smart-adv input { background:var(--card); color:var(--text); border-color:var(--line) }
+  [data-theme="dark"] input::placeholder { color:var(--dim) }
+  [data-theme="dark"] .detail { background:#131B18 }
+  [data-theme="dark"] .smart { background:linear-gradient(180deg,#15201B,#18211E); border-color:var(--line) }
+  [data-theme="dark"] .dup { background:#2A2712; border-color:#5B5024; color:var(--text) }
+  [data-theme="dark"] .best-badge, [data-theme="dark"] .tag-rec { background:#1E3A2A; color:var(--green-dark) }
   * { box-sizing:border-box; margin:0 }
   body { background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,sans-serif; padding-bottom:28px }
   header { background:var(--green); color:#fff; padding:18px 16px 16px; text-align:center }
@@ -114,6 +125,7 @@
   <div class="topbar">
     <button id="tbBack" class="tb-btn" data-goto="home" type="button" style="display:none">← Accueil</button>
     <span class="tb-spacer"></span>
+    <button id="themeToggle" class="tb-btn tb-icon" type="button" aria-label="Basculer clair / sombre" title="Clair / sombre">🌙</button>
     <select id="banqueSelect" class="tb-sel" aria-label="Ouvrir le site de ma banque" title="Ma banque">
       <option value="">🏦 Banque</option>
     </select>
@@ -857,6 +869,17 @@ function showScreen(id) {
   if (id === 'home') renderHome()
 }
 document.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => showScreen(b.dataset.goto)))
+
+// ─── THÈME CLAIR / SOMBRE (choix de l'utilisateur, prioritaire sur le navigateur) ─
+const THEME_KEY = 'pm.theme'
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t)
+  document.documentElement.style.colorScheme = t
+  localStorage.setItem(THEME_KEY, t)
+  $('themeToggle').textContent = t === 'dark' ? '☀️' : '🌙'
+}
+$('themeToggle').textContent = (localStorage.getItem(THEME_KEY) || 'light') === 'dark' ? '☀️' : '🌙'
+$('themeToggle').onclick = () => setTheme((localStorage.getItem(THEME_KEY) || 'light') === 'dark' ? 'light' : 'dark')
 
 // ─── TABLEAU DE BORD D'ACCUEIL ──────────────────────────────────────────────
 function renderHome() {
