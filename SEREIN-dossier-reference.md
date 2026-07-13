@@ -790,9 +790,15 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   Vérif : sandbox `paniermalin-listphoto.test.ts` 11/11, E2E 6/6, suite 528 PASS.
   Cache SW v16→v18. ⚠️ scan/photo runtime non testables en sandbox (caméra +
   module OCR réseau) : logique pure testée + boutons/navigation E2E.
-- **Thème clair forcé (2026-07-09)** : `color-scheme: light` sur Serein +
-  PanierMalin — empêche le mode sombre auto du navigateur d'assombrir des apps
-  conçues en clair (retour « trop sombre »). Vrai mode sombre optionnel = plus tard.
+- **Thème clair forcé + vrai bouton clair/sombre (2026-07-09)** : `color-scheme:
+  light` sur Serein + PanierMalin. Comme le navigateur de Juju forçait quand même
+  le sombre, PanierMalin a désormais un **bouton ☀️/🌙** (barre du haut) : vrai
+  thème sombre (variables CSS `:root[data-theme=dark]`), défaut **clair**, choix
+  persistant (localStorage `pm.theme`), appliqué avant rendu (script `<head>`, pas
+  de clignotement) + `colorScheme` posé sur `<html>` (prioritaire sur le
+  navigateur). Vérif : E2E Playwright 7/7 (défaut clair, bascule sombre réelle,
+  persistance, retour clair). SW v18→v19. Serein : toggle possible plus tard
+  (Tailwind, plus gros chantier).
 - **Barre du haut discrète + liste semi-auto (2026-07-09)** : retours de Juju.
   ① Les 3 pavés du haut (Accueil / Ma banque / Retour Serein) regroupés dans une
   **barre fine** : « ← Accueil » à gauche (masqué sur l'accueil), 🏦 Banque +
