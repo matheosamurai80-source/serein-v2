@@ -76,6 +76,11 @@ export function openPricesUrl(ean) {
   return `https://prices.openfoodfacts.org/api/v1/prices?product_code=${encodeURIComponent(ean)}&order_by=-date&size=25`
 }
 
+/** Page Open Prices du produit — pour consulter/contribuer un prix (avec son compte OFF). */
+export function openPricesProductUrl(ean) {
+  return `https://prices.openfoodfacts.org/products/${encodeURIComponent(ean)}`
+}
+
 function extractPriceEntry(it) {
   if (!it || typeof it !== 'object') return null
   const price = Number(it.price)

@@ -780,6 +780,20 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Audit leviers 2 & 3 (2026-07-09)** :
+  - **#3 Scan iOS** : `scanOnce()` tente `BarcodeDetector` (Android, inchangé),
+    et **à défaut charge ZXing à la volée** (`esm.sh/@zxing/browser`) pour
+    scanner sur iPhone/Safari. Additif : le chemin Android qui marche n'est pas
+    touché (aucune régression) ; iOS était sans scan → au pire reste sans scan.
+    `stopScan()` arrête aussi ZXing. ⚠️ Non testable en bac à sable (caméra +
+    CDN) → **à valider sur iPhone** ; E2E : clic scan sans crash JS, chemin
+    Android intact.
+  - **#2 Contribuer les prix** : Open Prices exige un **compte OFF + photo de
+    preuve** pour poster → l'auto-contribution complète est un chantier non
+    vérifiable ici. Livré la version sûre : lien **« 🤝 contribuer sur Open
+    Prices »** sur la fiche produit (`openPricesProductUrl`) → l'utilisateur
+    poste avec son compte (on l'arme, on n'agit pas à sa place). Testé (URL) + E2E.
+  Cache SW v21→v22.
 - **Open Prices — prix communautaires (2026-07-09, brique n°1 de l'audit)** :
   réponse à la faiblesse n°1 (donnée prix manuelle). La carte Prix Intelligent
   affiche un **« 💬 Prix communauté : dès X € · enseigne »** tiré d'Open Prices

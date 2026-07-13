@@ -4,7 +4,7 @@
  * Lancer : npm run test:sandbox
  */
 // @ts-expect-error module ESM sans types (app statique)
-import { openPricesUrl, summarizeCommunityPrices } from '../public/paniermalin/logic.mjs'
+import { openPricesUrl, openPricesProductUrl, summarizeCommunityPrices } from '../public/paniermalin/logic.mjs'
 
 let failures = 0
 function check(name: string, cond: boolean, detail = '') {
@@ -13,6 +13,7 @@ function check(name: string, cond: boolean, detail = '') {
 }
 
 check('URL API construite avec le code-barres', openPricesUrl('3017620422003').includes('product_code=3017620422003'))
+check('URL page produit Open Prices (contribuer)', openPricesProductUrl('3017620422003') === 'https://prices.openfoodfacts.org/products/3017620422003')
 
 // Forme documentée : { items: [...] }, order_by=-date (le 1er est le plus récent)
 const resp = {
