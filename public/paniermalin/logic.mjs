@@ -66,6 +66,54 @@ export function pickProduct(ean, responses) {
   return null
 }
 
+// ─── OPEN PRICES — prix communautaires (Open Food Facts, données ouvertes) ──
+// Réponse à la faiblesse n°1 de l'audit : montrer un prix de référence même
+// sans saisie de l'utilisateur. Base communautaire ouverte, zéro partenariat.
+// Parseur TOLÉRANT (les noms de champs peuvent varier) : en cas de forme
+// inattendue → null (rien affiché, rien de cassé).
+
+export function openPricesUrl(ean) {
+  return `https://prices.openfoodfacts.org/api/v1/prices?product_code=${encodeURIComponent(ean)}&order_by=-date&size=25`
+}
+
+function extractPriceEntry(it) {
+  if (!it || typeof it !== 'object') return null
+  const price = Number(it.price)
+  if (!(price > 0)) return null
+  const currency = it.currency ?? it.price_currency ?? null
+  const date = it.date ?? it.created ?? it.created_at ?? null
+  const loc = it.location ?? {}
+  const store = it.location_osm_name ?? loc.osm_name ?? loc.osm_brand ?? loc.osm_address_city ?? it.store ?? null
+  return { price: Math.round(price * 100) / 100, currency, date, store: store ? String(store) : null }
+}
+
+/**
+ * Synthèse des prix communautaires (EUR par défaut) : nombre, plus bas, médiane,
+ * dernier relevé (prix + enseigne + date). null si rien d'exploitable.
+ */
+export function summarizeCommunityPrices(resp, { currency = 'EUR' } = {}) {
+  const raw = Array.isArray(resp) ? resp : (resp?.items ?? resp?.results ?? [])
+  const entries = []
+  for (const it of raw) {
+    const e = extractPriceEntry(it)
+    if (!e) continue
+    if (e.currency && currency && e.currency.toUpperCase() !== currency.toUpperCase()) continue
+    entries.push(e)
+  }
+  if (!entries.length) return null
+  const prices = entries.map(e => e.price).sort((a, b) => a - b)
+  const mid = Math.floor(prices.length / 2)
+  const median = prices.length % 2 ? prices[mid] : (prices[mid - 1] + prices[mid]) / 2
+  // `order_by=-date` → le 1er est le plus récent ; sinon on prend celui daté max.
+  const latest = entries.reduce((a, b) => (String(b.date ?? '') > String(a.date ?? '') ? b : a), entries[0])
+  return {
+    count: entries.length,
+    lowest: prices[0],
+    median: Math.round(median * 100) / 100,
+    latest: { price: latest.price, store: latest.store, date: latest.date },
+  }
+}
+
 // ─── DÉTAIL PRODUIT (Brique 4) ──────────────────────────────────────────────
 // Fiche enrichie sur demande (tap), sans appel réseau supplémentaire : tout
 // vient de la réponse Open Food Facts déjà stockée. Les produits scannés
