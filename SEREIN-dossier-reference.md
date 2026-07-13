@@ -780,6 +780,19 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
   ⚠️ Cache SW bumpé v10→v12 (sinon l'ancienne page reste servie).
   Suite cadrée (non construite) : onglet Accueil = tableau de bord d'économies,
   cartes de fidélité stockées, notifications de baisse, mode sombre.
+- **Open Prices — prix communautaires (2026-07-09, brique n°1 de l'audit)** :
+  réponse à la faiblesse n°1 (donnée prix manuelle). La carte Prix Intelligent
+  affiche un **« 💬 Prix communauté : dès X € · enseigne »** tiré d'Open Prices
+  (base de prix ouverte d'Open Food Facts), **même sans saisie** de l'utilisateur.
+  Zéro partenariat, données ouvertes, cohérent avec la ligne « famille OFF ».
+  `openPricesUrl()` + `summarizeCommunityPrices()` (parseur TOLÉRANT : compte,
+  plus bas, médiane, dernier relevé ; filtre EUR ; formes de champs variables
+  gérées → null si inexploitable). Affichage **best-effort** (fetch côté client,
+  non bloquant si l'API diffère/indispo). ⚠️ L'API Open Prices est **bloquée dans
+  le bac à sable** : parseur testé contre le contrat documenté (sandbox
+  `paniermalin-openprices.test.ts` 12/12) + E2E best-effort 4/4 (carte OK, fetch
+  tenté, rien cassé si indispo) — **le rendu réel des prix communautaires est à
+  vérifier sur un vrai téléphone**. Cache SW v20→v21.
 - **Inventaire → liste « À racheter » en un tap (2026-07-09)** : ferme la boucle
   scan → inventaire → liste. Chaque produit de l'inventaire a un bouton **🛒**
   (→ **✓** s'il est déjà sur la liste) qui l'ajoute à la liste de courses.

@@ -274,7 +274,7 @@
 </main>
 
 <script type="module">
-import { validateEAN, normalizeProduct, PRODUCT_API_HOSTS, productApiUrl, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { validateEAN, normalizeProduct, PRODUCT_API_HOSTS, productApiUrl, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, openPricesUrl, summarizeCommunityPrices, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions, COMMON_GROCERIES, suggestListItems, parseShoppingListPhoto, isOnList } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -403,11 +403,13 @@ function buildSmartCard(p) {
     if (si.economy > 0) rows.push(smartLine('💰 Économie aujourd\'hui', eur(si.economy), 'save'))
     if (si.bestAlternative) rows.push(smartLine('🔄 Plus rentable au kilo', `${si.bestAlternative.name} · ${eurKg(si.bestAlternative.perKg)} (−${eurKg(si.bestAlternative.saving)})`, 'alt'))
   }
+  rows.push('<div data-community></div>') // prix communautaire (Open Prices), rempli en async
   rows.push(`<div class="smart-adv">
     <label>💳 Remise carte <input type="text" inputmode="decimal" class="adv-loy" value="${p.loyaltyPct ?? ''}" placeholder="%" aria-label="remise carte %"> %</label>
     <label>🎁 Cagnotte <input type="text" inputmode="decimal" class="adv-cag" value="${p.cagnotte ?? ''}" placeholder="€" aria-label="cagnotte €"> €</label>
   </div>`)
   el.innerHTML = rows.join('')
+  void loadCommunityPrice(p, el.querySelector('[data-community]'))
   const bind = (sel, key) => {
     const inp = el.querySelector(sel)
     if (inp) inp.onchange = e => {
@@ -418,6 +420,19 @@ function buildSmartCard(p) {
   }
   bind('.adv-loy', 'loyaltyPct'); bind('.adv-cag', 'cagnotte')
   return el
+}
+
+// Prix communautaire Open Prices (best-effort : si indispo, on n'affiche rien).
+async function loadCommunityPrice(p, slot) {
+  if (!slot || !p?.ean || String(p.ean).startsWith('libre-')) return
+  try {
+    const r = await fetch(openPricesUrl(p.ean))
+    if (!r.ok) return
+    const s = summarizeCommunityPrices(await r.json())
+    if (!s) return
+    const store = s.latest?.store ? ` · ${s.latest.store}` : ''
+    slot.innerHTML = smartLine('💬 Prix communauté', `dès ${eur(s.lowest)}${store}`, 'alt')
+  } catch { /* pas de réseau / API indispo : silencieux */ }
 }
 
 // ─── AJOUT D'UN PRODUIT ─────────────────────────────────────────────────────
