@@ -16,6 +16,12 @@ export function visible(list) {
   return (list ?? []).filter(i => !i.deleted)
 }
 
+/** Vrai si un article (par nom) est déjà présent dans la liste (actif). */
+export function isOnList(list, name) {
+  const k = keyOf(name)
+  return (list ?? []).some(i => !i.deleted && keyOf(i.name) === k)
+}
+
 // ─── SAISIE SEMI-AUTOMATIQUE (propositions pendant la frappe) ───────────────
 // Un socle de produits courants pour proposer dès les 1res lettres, complété
 // à l'usage par les articles récurrents et l'inventaire scanné.
