@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-14 (PanierMalin — refonte « saisie intuitive » : le ticket remplit tout)
+> Dernière mise à jour : 2026-07-14 (PanierMalin — lecteur de ticket réel : formats enseignes, code TVA, promos 2 lignes)
 
 ## 1. Le produit
 
@@ -762,12 +762,28 @@ extension annuaire résiliation.
 | 2026-07-09 | Brique 7 — détection d'abonnements persistée : logique de conversion testée, façade `subscriptions`, `/analyse` enregistre, page `/abonnements` (dormants, suivre/ignorer) | Sandbox 433 PASS (dont 22 conversion), E2E Playwright détection invité 6/6, smoke `/api/subscriptions` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 | 2026-07-14 | PanierMalin — capture du prix payé (encadré après scan) + magasin + ligne « 🏪 Le moins cher pour toi » (`bestStore`, 100 % historique perso) : la source de prix reste indépendante (tes achats, zéro partenaire) | Sandbox 554 PASS 0 FAIL (dont `beststore` 8/8), `node --check` index.html OK, contrat carte DOM linkedom 8/8, cache SW v23 ; rendu réel à confirmer sur téléphone |
 | 2026-07-14 | PanierMalin — refonte n°1 « saisie intuitive » : le ticket importe tout d'un coup (`ticketToItems` + `normalizeItemName`), fini la validation ligne par ligne ; magasin demandé une fois ; accueil = Ma liste + « J'ai fait mes courses », code-barres en secondaire | Sandbox 569 PASS 0 FAIL (dont `ticket-import`), `node --check` OK, contrat DOM linkedom 15/15, cache SW v24 ; lecture réelle d'un ticket à confirmer sur téléphone |
+| 2026-07-14 | PanierMalin — lecteur de ticket RÉEL (retour terrain « rien de détecté ») : `parseTicketText` gère code TVA en fin de ligne, rayons « >> », promos sur 2 lignes ; vrai ticket Leclerc figé en cas de test | Sandbox 579 PASS 0 FAIL, `paniermalin-ticket-reel.test.ts` 37 produits (avant : 0), non-régression ancien test verte, cache SW v25 |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+- **Lecteur de ticket réel — formats enseignes (2026-07-14)** : Juju teste avec
+  un **vrai ticket** (appli E.Leclerc) → « rien de détecté ». Le parseur cherchait
+  le prix en **fin de ligne**, or les vraies enseignes ajoutent un **code TVA**
+  après le prix (« RECEPTION 380G  3.57  1 » → il tombait sur le « 1 »), utilisent
+  des **en-têtes de rayon** (« >> EPICERIE ») et mettent les **promos sur deux
+  lignes** (« PAINS AU CHOCOLAT.360G » puis « 2 X 1.89€  3.78 »). `parseTicketText`
+  réécrit : prix = décimale à 2 chiffres suivie d'un **code TVA optionnel** ;
+  lignes « >> » ignorées ; **ligne « N X …€ » = total rattaché au produit de la
+  ligne précédente** (report d'un `pending`) ; décimale DANS le nom (« 9X16.67G »)
+  ne fausse plus le prix. Le vrai ticket de Juju est figé comme **cas de test
+  terrain** : `paniermalin-ticket-reel.test.ts` → **37 produits** (avant : 0),
+  prix/promos/rayons corrects. Non-régression : ancien `paniermalin-ticket.test.ts`
+  toujours vert (tickets classiques). Suite **579 PASS 0 FAIL**. Cache SW v24→v25.
+  💡 Insight : les tickets Leclerc sont **numériques dans l'appli** → une capture
+  d'écran se lit mieux qu'une photo papier.
 - **Refonte n°1 « saisie intuitive » — le ticket remplit tout (2026-07-14)** :
   retour cash de Juju (le créateur) : « trop compliqué pour juste une liste et un
   inventaire, pas de logique dans la navigation, trop de saisie, je n'ai moi-même
