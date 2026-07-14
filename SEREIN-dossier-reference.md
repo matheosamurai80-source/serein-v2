@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-09 (Brique 7 — Détection d'abonnements)
+> Dernière mise à jour : 2026-07-14 (PanierMalin — capture du prix payé + « le moins cher pour toi »)
 
 ## 1. Le produit
 
@@ -760,12 +760,34 @@ extension annuaire résiliation.
 | 2026-07-09 | Brique 5 — dette rappels corrigée (migration : `commitment_id` nullable + CHECK cible présente) + Rappels branchés sur `/api/reminders` (factures incluses) | Sandbox 395 PASS, E2E Playwright Rappels invité 6/6, smoke `/api/reminders` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 | 2026-07-09 | Brique 6 — Factures ponctuelles branchées sur le socle : validation Zod (mode/status + règles conditionnelles), service + routes `/api/factures*`, façade cloud rebranchée | Sandbox 412 PASS, E2E Playwright Factures invité 6/6, smoke `/api/factures` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 | 2026-07-09 | Brique 7 — détection d'abonnements persistée : logique de conversion testée, façade `subscriptions`, `/analyse` enregistre, page `/abonnements` (dormants, suivre/ignorer) | Sandbox 433 PASS (dont 22 conversion), E2E Playwright détection invité 6/6, smoke `/api/subscriptions` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
+| 2026-07-14 | PanierMalin — capture du prix payé (encadré après scan) + magasin + ligne « 🏪 Le moins cher pour toi » (`bestStore`, 100 % historique perso) : la source de prix reste indépendante (tes achats, zéro partenaire) | Sandbox 554 PASS 0 FAIL (dont `beststore` 8/8), `node --check` index.html OK, contrat carte DOM linkedom 8/8, cache SW v23 ; rendu réel à confirmer sur téléphone |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+- **Capture du prix payé + « le moins cher pour toi » (2026-07-14)** : retour de
+  Juju « ça fonctionne mais toujours pas de tarif / où acheter moins cher /
+  comment rester indépendants ». Diagnostic : le moteur Prix Intelligent était
+  déjà complet, mais **rien ne demandait le prix** — le champ € était minuscule
+  et caché, jamais rempli, donc la carte restait au message d'invite. Correctif :
+  ① après un scan, **la fiche s'ouvre automatiquement** ; ② la carte affiche
+  directement un encadré **« 💶 Combien tu l'as payé ? »** (gros champ prix +
+  champ **magasin**, bouton Valider) qui allume tout le reste ; ③ nouvelle ligne
+  **« 🏪 Le moins cher pour toi »** = le magasin où TU l'as eu le moins cher,
+  calculé sur ton seul historique (fonction pure `bestStore()`). **C'est la
+  réponse « rester indépendant » : la source de prix, c'est TES achats** — aucun
+  partenaire, aucune enseigne rémunérée, rien de partagé ni vendu. Open Prices
+  reste en bonus par-dessus (souvent vide en France). Helper `applyPaid()` :
+  enregistre prix + magasin **sans doublonner** l'achat du jour (corrige aussi le
+  double-comptage de l'ancien champ €). `recordPurchase()` accepte le magasin.
+  Vérif : sandbox `paniermalin-beststore.test.ts` 8/8, suite **554 PASS 0 FAIL**,
+  syntaxe du script `index.html` validée (`node --check`), contrat carte DOM
+  (linkedom) 8/8 : capture → prix payé/habituel/économie/€ au kg/« moins cher
+  pour toi » corrects. Cache SW v22→v23. ⚠️ Caméra/OCR/réseau non testables en
+  bac à sable : logique pure + contrat DOM testés, **rendu réel à confirmer sur
+  téléphone**.
 - **Prix Intelligent — l'effet waouh (2026-07-09)** : sur la fiche produit (tap
   dans l'inventaire), au lieu du prix facial, une carte de décision :
   💳 prix carte fidélité · 🎁 après cagnotte · 💶 **vrai prix payé** · 📦 €/kg ·
