@@ -15,7 +15,7 @@
   /* Vrai thème sombre optionnel (bouton ☀️/🌙). Défaut = clair. */
   :root[data-theme="dark"] { --green:#3E9E63; --green-dark:#84D6A0; --bg:#0F1513; --card:#18211E; --line:#2A3A34; --text:#E7EEE9; --dim:#93A79E }
   [data-theme="dark"] button.ghost, [data-theme="dark"] .listauto button, [data-theme="dark"] .tb-btn { background:#22302B; color:var(--green-dark); border-color:var(--line) }
-  [data-theme="dark"] input[type=text], [data-theme="dark"] .tb-sel, [data-theme="dark"] .prod input.price, [data-theme="dark"] .smart-adv input { background:var(--card); color:var(--text); border-color:var(--line) }
+  [data-theme="dark"] input[type=text], [data-theme="dark"] .tb-sel, [data-theme="dark"] .prod input.price, [data-theme="dark"] .smart-adv input, [data-theme="dark"] textarea { background:var(--card); color:var(--text); border-color:var(--line) }
   [data-theme="dark"] input::placeholder { color:var(--dim) }
   [data-theme="dark"] .detail { background:#131B18 }
   [data-theme="dark"] .smart { background:linear-gradient(180deg,#15201B,#18211E); border-color:var(--line) }
@@ -192,6 +192,12 @@
     </div>
     <p class="hint" style="margin-top:8px">La photo est lue <strong>sur ton téléphone</strong> (elle n'est envoyée nulle part).
     L'OCR n'est pas parfait : vérifie d'un coup d'œil et <strong>retire (✕) une ligne mal lue</strong> avant d'enregistrer.</p>
+    <details id="ticketPasteWrap" style="margin-top:6px">
+      <summary style="font-weight:700;color:var(--green-dark);cursor:pointer">✍️ Coller le texte du ticket (si la photo ne marche pas)</summary>
+      <p class="hint" style="margin-top:6px">Copie le texte de ton ticket (appli de l'enseigne, e-mail…) et colle-le ici.</p>
+      <textarea id="ticketPaste" rows="6" placeholder="Colle ici les lignes du ticket…" style="width:100%;border:1.5px solid var(--line);border-radius:12px;padding:10px;font-size:14px;resize:vertical"></textarea>
+      <button id="ticketPasteBtn" class="ghost" style="width:100%;margin-top:6px">Lire ce texte</button>
+    </details>
   </div>
 
   <details class="card">
@@ -802,7 +808,10 @@ async function ocrImage(file) {
     pretraiterRgba(img.data)
     ctx.putImageData(img, 0, 0)
   } catch { /* prétraitement indisponible : OCR sur l'image brute */ }
-  const T = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js')
+  // Module OCR chargé à la volée : CDN principal puis secours (mobile capricieux).
+  let T
+  try { T = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js') }
+  catch { T = await import('https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.esm.min.js') }
   const worker = await T.createWorker('fra')
   try {
     const { data } = await worker.recognize(canvas)
@@ -812,27 +821,39 @@ async function ocrImage(file) {
   }
 }
 
+// Affiche les lignes reconnues (commun à l'OCR photo ET au « coller le texte »).
+function ingestTicketLines(text) {
+  ticketLines = parseTicketText(text)
+  renderTicket()
+  const has = ticketLines.length > 0
+  $('ticketStoreRow').style.display = has ? '' : 'none'
+  if (has && !$('ticketStore').value) $('ticketStore').value = localStorage.getItem('pm.lastStore') || ''
+  $('ticketStatus').textContent = has
+    ? `${ticketLines.length} produit${ticketLines.length > 1 ? 's' : ''} lu${ticketLines.length > 1 ? 's' : ''} — indique le magasin, puis « Tout enregistrer ».`
+    : 'Aucun produit reconnu — vérifie que le texte contient des prix (ex. « 3,57 »).'
+  return has
+}
+
 async function handleTicketInput(e) {
   const f = e.target.files?.[0]
   if (!f) return
-  $('ticketStatus').textContent = 'Lecture du ticket sur votre téléphone… (jusqu\'à 30 s au premier usage)'
+  $('ticketStatus').textContent = 'Lecture du ticket sur ton téléphone… (jusqu\'à 30 s au premier usage)'
   try {
-    const text = await ocrImage(f)
-    ticketLines = parseTicketText(text)
-    renderTicket()
-    const has = ticketLines.length > 0
-    $('ticketStoreRow').style.display = has ? '' : 'none'
-    if (has && !$('ticketStore').value) $('ticketStore').value = localStorage.getItem('pm.lastStore') || ''
-    $('ticketStatus').textContent = has
-      ? `${ticketLines.length} produit${ticketLines.length > 1 ? 's' : ''} lu${ticketLines.length > 1 ? 's' : ''} — indique le magasin, puis « Tout enregistrer ».`
-      : 'Aucun produit reconnu — réessaie avec une photo plus nette et bien éclairée.'
-  } catch {
-    $('ticketStatus').textContent = 'Lecture impossible (le module OCR se télécharge au premier usage : vérifiez le réseau).'
+    ingestTicketLines(await ocrImage(f))
+  } catch (err) {
+    // On montre la VRAIE raison : ça nous dit si c'est le module, l'image ou le réseau.
+    const why = String(err?.message || err || 'inconnue').slice(0, 120)
+    $('ticketStatus').innerHTML = `Lecture photo impossible (${why}). <strong>Plan B ci-dessous : colle le texte du ticket.</strong>`
+    $('ticketPasteWrap').open = true
   }
   e.target.value = ''
 }
 $('ticketCam').onchange = handleTicketInput
 $('ticketFile').onchange = handleTicketInput
+$('ticketPasteBtn').onclick = () => {
+  const has = ingestTicketLines($('ticketPaste').value)
+  if (has) $('ticketPasteWrap').open = false
+}
 
 function renderTicket() {
   const box = $('ticketLines')

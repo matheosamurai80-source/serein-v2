@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-14 (PanierMalin — lecteur de ticket réel : formats enseignes, code TVA, promos 2 lignes)
+> Dernière mise à jour : 2026-07-14 (PanierMalin — OCR fiabilisé + plan B « coller le texte du ticket »)
 
 ## 1. Le produit
 
@@ -763,12 +763,25 @@ extension annuaire résiliation.
 | 2026-07-14 | PanierMalin — capture du prix payé (encadré après scan) + magasin + ligne « 🏪 Le moins cher pour toi » (`bestStore`, 100 % historique perso) : la source de prix reste indépendante (tes achats, zéro partenaire) | Sandbox 554 PASS 0 FAIL (dont `beststore` 8/8), `node --check` index.html OK, contrat carte DOM linkedom 8/8, cache SW v23 ; rendu réel à confirmer sur téléphone |
 | 2026-07-14 | PanierMalin — refonte n°1 « saisie intuitive » : le ticket importe tout d'un coup (`ticketToItems` + `normalizeItemName`), fini la validation ligne par ligne ; magasin demandé une fois ; accueil = Ma liste + « J'ai fait mes courses », code-barres en secondaire | Sandbox 569 PASS 0 FAIL (dont `ticket-import`), `node --check` OK, contrat DOM linkedom 15/15, cache SW v24 ; lecture réelle d'un ticket à confirmer sur téléphone |
 | 2026-07-14 | PanierMalin — lecteur de ticket RÉEL (retour terrain « rien de détecté ») : `parseTicketText` gère code TVA en fin de ligne, rayons « >> », promos sur 2 lignes ; vrai ticket Leclerc figé en cas de test | Sandbox 579 PASS 0 FAIL, `paniermalin-ticket-reel.test.ts` 37 produits (avant : 0), non-régression ancien test verte, cache SW v25 |
+| 2026-07-14 | PanierMalin — OCR fiabilisé (« lecture impossible » sur mobile) : CDN Tesseract de secours (jsdelivr→unpkg), vraie raison affichée, + plan B « coller le texte du ticket » (même parseur, `ingestTicketLines`) | Sandbox 579 PASS, IDs plan B (linkedom) + parse texte collé OK, `node --check` OK, cache SW v26 |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+- **OCR fiabilisé + plan B « coller le texte » (2026-07-14)** : sur le téléphone
+  de Juju, l'OCR photo échoue (« lecture impossible ») — le module Tesseract
+  (gros téléchargement CDN) ne se charge pas toujours sur mobile. Fait : ① **CDN
+  de secours** (jsdelivr → unpkg) ; ② message d'erreur qui montre **la vraie
+  raison** (module / image / réseau) au lieu d'un texte vague, pour diagnostiquer ;
+  ③ **plan B sans OCR** : un « ✍️ Coller le texte du ticket » (les tickets
+  d'enseigne sont numériques → texte copiable) qui passe par le **même** parseur
+  (`ingestTicketLines` factorisé, partagé photo + collage). Garantit que la
+  fonction marche même si l'OCR coince, et isole le problème. Vérif : suite 579
+  PASS, IDs plan B présents (linkedom), parse du texte collé OK, `node --check` OK.
+  Cache SW v25→v26. ⚠️ Le chargement OCR réel reste à confirmer sur le tél (le
+  message d'erreur nous dira la cause exacte au prochain essai).
 - **Lecteur de ticket réel — formats enseignes (2026-07-14)** : Juju teste avec
   un **vrai ticket** (appli E.Leclerc) → « rien de détecté ». Le parseur cherchait
   le prix en **fin de ligne**, or les vraies enseignes ajoutent un **code TVA**
