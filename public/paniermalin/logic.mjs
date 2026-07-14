@@ -175,23 +175,50 @@ const TICKET_EXCLUDE = new RegExp(
 
 /**
  * Texte OCR d'un ticket → lignes candidates { label, price }.
- * Rien n'est enregistré ici : chaque ligne devra être validée à la main.
+ * Gère les VRAIS formats d'enseignes (testé sur E.Leclerc) :
+ *  - prix suivi d'un code TVA en fin de ligne (« … 3.57  1 »),
+ *  - en-têtes de rayon (« >> EPICERIE ») ignorés,
+ *  - articles en promo sur DEUX lignes : nom seul, puis « 2 X 1,89€  3.78 »
+ *    → le total va au produit de la ligne précédente.
+ * Rien n'est enregistré ici : l'utilisateur garde la main (retirer une ligne).
  */
 export function parseTicketText(text) {
   const out = []
+  let pending = null // nom de produit en attente de son prix (ligne « N X …€ » suivante)
+  // prix = décimale à 2 chiffres, éventuellement suivie d'un code TVA (1-2 chiffres)
+  const priceAtEnd = /(-?\d{1,3}[.,]\d{2})\s*(?:€|eur)?\s*\d{0,2}\s*$/i
+  const isUnitLine = /^\d+\s*[xX]\s*[\d.,]+\s*(?:€|eur)?$/i // « 2 X 1,89€ » (prix unitaire seul)
+  const letters = s => (String(s).match(/[a-zA-ZÀ-ÿ]/g) ?? []).length
+  const cleanLabel = s => String(s).trim()
+    .replace(/^\d+\s*[xX*]\s*(?=[a-zA-ZÀ-ÿ])/, '')          // « 2 X YAOURT » → « YAOURT »
+    .replace(/[.·…_\-*\s]+$/, '')
+    .trim()
+
   for (const raw of String(text ?? '').split('\n')) {
     const line = raw.trim().replace(/\s+/g, ' ')
-    if (line.length < 4) continue
-    // prix en fin de ligne : « 1,89 », « 2.35 € », jamais négatif (remises)
-    const m = line.match(/(-?\d{1,3}[.,]\d{2})\s*(?:€|eur)?\s*$/i)
-    if (!m) continue
+    if (line.length < 3) continue
+    if (/^>/.test(line)) continue // en-tête de rayon « >> EPICERIE »
+    const m = line.match(priceAtEnd)
+    if (!m) {
+      // pas de prix : nom candidat pour une éventuelle ligne « N X …€ » suivante
+      pending = (letters(line) >= 3 && !TICKET_EXCLUDE.test(line)) ? cleanLabel(line) : null
+      continue
+    }
     const price = parseFloat(m[1].replace(',', '.'))
+    const labelPart = line.slice(0, m.index).trim()
+    if (isUnitLine.test(labelPart)) {
+      // « 2 X 1,89€  3.78 » → le total revient au produit en attente
+      if (pending && price >= 0.05 && price <= 500 && !TICKET_EXCLUDE.test(pending)) {
+        out.push({ label: pending, price })
+      }
+      pending = null
+      continue
+    }
+    pending = null
     if (!(price >= 0.05 && price <= 500)) continue
     if (TICKET_EXCLUDE.test(line)) continue
-    let label = line.slice(0, m.index).trim().replace(/[.·…_\-*]+$/, '').trim()
-    label = label.replace(/^\d+\s*[xX*]\s*/, '').trim() // « 2 X YAOURT » → « YAOURT »
-    // un vrai nom de produit contient au moins 3 lettres
-    if ((label.match(/[a-zA-ZÀ-ÿ]/g) ?? []).length < 3) continue
+    const label = cleanLabel(labelPart)
+    if (letters(label) < 3) continue // un vrai nom contient au moins 3 lettres
     out.push({ label, price })
   }
   return out
