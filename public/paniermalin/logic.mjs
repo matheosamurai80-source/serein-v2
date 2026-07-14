@@ -214,6 +214,52 @@ export function suggestMatch(inventory, label) {
   return best ? best.ean : null
 }
 
+/**
+ * Nom d'article normalisé (clé de fusion) : minuscules, sans accents, sans
+ * ponctuation, espaces compactés. Permet de reconnaître « YAOURT NATURE » et
+ * « Yaourt nature » comme le même produit d'un ticket à l'autre.
+ */
+export function normalizeItemName(label) {
+  return String(label ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ')
+}
+
+/**
+ * Import d'un ticket entier D'UN COUP : chaque ligne { label, price } devient un
+ * produit (ou met à jour le prix d'un produit déjà connu, même nom normalisé),
+ * avec le magasin et la date de l'achat. Aucune saisie ligne par ligne.
+ * Renvoie { items, added, updated } — `items` est une NOUVELLE liste (pas de
+ * mutation de l'entrée). C'est la « saisie intuitive » : une photo → tout se remplit.
+ */
+export function ticketToItems(lines, existing = [], { store = '', date } = {}) {
+  const items = Array.isArray(existing) ? existing.map(i => ({ ...i })) : []
+  const st = String(store ?? '').trim()
+  let added = 0, updated = 0
+  for (const line of lines ?? []) {
+    const name = String(line?.label ?? '').trim()
+    const price = line?.price
+    const key = normalizeItemName(name)
+    if (!key || !(price > 0)) continue
+    const it = items.find(i => normalizeItemName(i.name) === key)
+    if (it) {
+      it.price = price
+      if (st) it.store = st
+      it.purchases = recordPurchase(it.purchases, { date, price, store: st })
+      updated++
+    } else {
+      items.push({
+        ean: `libre-${key.replace(/ /g, '-')}`,
+        name, brand: '', quantity: '',
+        nutriscore: null, nova: null, kcal: null, price,
+        store: st || null,
+        purchases: recordPurchase([], { date, price, store: st }),
+      })
+      added++
+    }
+  }
+  return { items, added, updated }
+}
+
 // ─── COMPARAISON DU PANIER ──────────────────────────────────────────────────
 // Tri : meilleur Nutri-Score d'abord ; à égalité, le moins calorique.
 const rank = p => (p.nutriscore ? 'abcde'.indexOf(p.nutriscore) : 5)
