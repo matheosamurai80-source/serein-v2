@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-14 (PanierMalin — capture du prix payé + « le moins cher pour toi »)
+> Dernière mise à jour : 2026-07-14 (PanierMalin — refonte « saisie intuitive » : le ticket remplit tout)
 
 ## 1. Le produit
 
@@ -761,12 +761,36 @@ extension annuaire résiliation.
 | 2026-07-09 | Brique 6 — Factures ponctuelles branchées sur le socle : validation Zod (mode/status + règles conditionnelles), service + routes `/api/factures*`, façade cloud rebranchée | Sandbox 412 PASS, E2E Playwright Factures invité 6/6, smoke `/api/factures` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 | 2026-07-09 | Brique 7 — détection d'abonnements persistée : logique de conversion testée, façade `subscriptions`, `/analyse` enregistre, page `/abonnements` (dormants, suivre/ignorer) | Sandbox 433 PASS (dont 22 conversion), E2E Playwright détection invité 6/6, smoke `/api/subscriptions` 401 standard, lint 0, `tsc` src propre, build vert (connecté à valider sur preview) |
 | 2026-07-14 | PanierMalin — capture du prix payé (encadré après scan) + magasin + ligne « 🏪 Le moins cher pour toi » (`bestStore`, 100 % historique perso) : la source de prix reste indépendante (tes achats, zéro partenaire) | Sandbox 554 PASS 0 FAIL (dont `beststore` 8/8), `node --check` index.html OK, contrat carte DOM linkedom 8/8, cache SW v23 ; rendu réel à confirmer sur téléphone |
+| 2026-07-14 | PanierMalin — refonte n°1 « saisie intuitive » : le ticket importe tout d'un coup (`ticketToItems` + `normalizeItemName`), fini la validation ligne par ligne ; magasin demandé une fois ; accueil = Ma liste + « J'ai fait mes courses », code-barres en secondaire | Sandbox 569 PASS 0 FAIL (dont `ticket-import`), `node --check` OK, contrat DOM linkedom 15/15, cache SW v24 ; lecture réelle d'un ticket à confirmer sur téléphone |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
 provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 À déplacer sur son propre domaine quand PanierMalin redémarre sérieusement.
+- **Refonte n°1 « saisie intuitive » — le ticket remplit tout (2026-07-14)** :
+  retour cash de Juju (le créateur) : « trop compliqué pour juste une liste et un
+  inventaire, pas de logique dans la navigation, trop de saisie, je n'ai moi-même
+  pas envie de l'utiliser ». Décision (question posée) : **garder l'ambition
+  (acheter intelligent / prix / inventaire) mais rendre la SAISIE intuitive.**
+  Le ticket de caisse devient la **porte d'entrée** : une photo → `parseTicketText`
+  → **`ticketToItems()`** importe **tout le ticket d'un coup** (chaque ligne =
+  produit + prix + magasin + date), **fini la validation ligne par ligne** (avant :
+  un menu déroulant Ignorer/Libre/Associer PAR LIGNE — la saisie de trop).
+  `normalizeItemName()` fusionne le même produit d'un ticket à l'autre (id stable
+  `libre-<nom>`), donc l'inventaire ET le suivi de prix se construisent **sans
+  rien taper, sans scanner**. Magasin demandé **une seule fois** (mémorisé
+  `pm.lastStore`), lignes mal lues retirables (✕). **Accueil refondu** : 2 actions
+  claires — 🛒 Ma liste (quotidien) + 📸 « J'ai fait mes courses » (ticket) ; le
+  scan code-barres passe en secondaire (`<details>`). Vérif : sandbox
+  `paniermalin-ticket-import.test.ts` (import/fusion/magasin/robustesse),
+  suite **569 PASS 0 FAIL**, `node --check` index.html OK, contrat DOM linkedom
+  15/15 (id présents, accueil→liste/scan, code-barres en details, import depuis le
+  champ magasin). Cache SW v23→v24. ⚠️ Caméra/OCR non testables en bac à sable
+  (point d'injection `window.__pmOcr` conservé) : **lecture réelle d'un ticket à
+  confirmer sur téléphone**. **Prochaine brique** : vues « Placard » et « Suivi de
+  prix » en lecture (dérivées, zéro saisie) + remontée sur la liste (« tu paies ~X,
+  le moins cher chez Y »).
 - **Capture du prix payé + « le moins cher pour toi » (2026-07-14)** : retour de
   Juju « ça fonctionne mais toujours pas de tarif / où acheter moins cher /
   comment rester indépendants ». Diagnostic : le moteur Prix Intelligent était
