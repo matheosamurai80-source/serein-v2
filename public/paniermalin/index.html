@@ -89,6 +89,13 @@
   .smart-adv { display:flex; gap:10px; margin-top:9px; font-size:12px; color:var(--dim) }
   .smart-adv label { display:flex; align-items:center; gap:5px }
   .smart-adv input { width:54px; border:1.5px solid var(--line); border-radius:8px; padding:5px 6px; font-size:13px; text-align:right }
+  .smart-capture { background:var(--card); border:1.5px dashed var(--green); border-radius:12px; padding:12px; margin:2px 0 4px }
+  .smart-capture .cap-q { font-weight:800; font-size:14px; color:var(--green-dark); margin-bottom:8px }
+  .smart-capture .cap-row { display:flex; align-items:center; gap:8px; margin-bottom:8px }
+  .smart-capture input { flex:1; border:1.5px solid var(--line); border-radius:10px; padding:10px 12px; font-size:16px }
+  .smart-capture .cap-ok { width:100%; padding:11px; font-size:15px }
+  .smart-capture .cap-hint { font-size:11.5px; color:var(--dim); line-height:1.45; margin-top:7px; text-align:center }
+  [data-theme="dark"] .smart-capture input { background:var(--bg); color:var(--text); border-color:var(--line) }
   /* Accueil — tableau de bord */
   .home-hero { text-align:center; padding:20px 16px }
   .home-hi { font-size:14px; color:var(--dim); margin-bottom:12px }
@@ -274,7 +281,7 @@
 </main>
 
 <script type="module">
-import { validateEAN, normalizeProduct, PRODUCT_API_HOSTS, productApiUrl, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, openPricesUrl, openPricesProductUrl, summarizeCommunityPrices, recordPurchase, isRecurring, priceSignal, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
+import { validateEAN, normalizeProduct, PRODUCT_API_HOSTS, productApiUrl, compareBasket, pricePer100, pricePerKg, smartPrice, dashboardStats, DEFAULT_ENSEIGNES, normalizeEnseigne, mergeEnseignes, openPricesUrl, openPricesProductUrl, summarizeCommunityPrices, recordPurchase, isRecurring, priceSignal, bestStore, findDuplicate, productDetail, offProductUrl, NUTRI_EXPLAIN, NOVA_EXPLAIN, parseTicketText, suggestMatch } from './logic.mjs'
 import { addItem, toggleDone, toggleRecurrent, removeItem, resetWeek, pendingCount, sortList, shareText, suggestFromInventory, genShareCode, isValidShareCode, normalizeShareCode, mergeLists, sameLists, recurrentItems, promoSuggestions, COMMON_GROCERIES, suggestListItems, parseShoppingListPhoto, isOnList } from './listes.mjs'
 
 const $ = id => document.getElementById(id)
@@ -286,6 +293,28 @@ const today = () => new Date().toISOString().slice(0, 10)
 // migration v1 : chaque produit gagne un historique d'achats
 items = items.map(i => i.purchases ? i : { ...i, purchases: recordPurchase([], { date: today(), price: i.price }) })
 const save = () => localStorage.setItem('inventaire', JSON.stringify(items))
+
+// Enregistre le prix payé (+ magasin) sans créer un doublon d'achat le même jour.
+function applyPaid(ean, price, store = '') {
+  const it = items.find(i => i.ean === ean)
+  if (!it) return
+  const v = price > 0 ? price : null
+  it.price = v
+  const st = String(store ?? '').trim()
+  if (st) it.store = st // mémorisé pour pré-remplir le prochain scan
+  const ps = it.purchases ?? []
+  const last = ps[ps.length - 1]
+  if (last && last.date === today()) {
+    if (v != null) last.price = v
+    if (st) last.store = st
+  } else {
+    it.purchases = recordPurchase(ps, { date: today(), price: v, store: st })
+  }
+  save(); render()
+  const s = priceSignal((it.purchases ?? []).slice(0, -1), v)
+  if (s === 'promo') status('🎉 Bonne affaire : moins cher que d\'habitude !')
+  if (s === 'hausse') status('↗ Attention : plus cher que ton prix habituel.', true)
+}
 
 function render() {
   const box = $('basket')
@@ -310,16 +339,7 @@ function render() {
       <button class="rebuy" aria-label="ajouter à ma liste de courses" title="À racheter">${isOnList(liste, p.name) ? '✓' : '🛒'}</button>
       <button class="del" aria-label="retirer">✕</button>`
     div.querySelector('.price').onchange = e => {
-      const v = parseFloat(String(e.target.value).replace(',', '.'))
-      const it = items.find(i => i.ean === p.ean)
-      if (it) {
-        it.price = v > 0 ? v : null
-        if (v > 0) it.purchases = recordPurchase(it.purchases, { date: today(), price: v })
-        save(); render()
-        const s = priceSignal(it.purchases.slice(0, -1), v)
-        if (s === 'promo') status('🎉 Bonne affaire : moins cher que d\'habitude !')
-        if (s === 'hausse') status('↗ Attention : plus cher que votre prix habituel.', true)
-      }
+      applyPaid(p.ean, parseFloat(String(e.target.value).replace(',', '.')), p.store ?? '')
     }
     div.querySelector('.rebuy').onclick = () => {
       if (isOnList(liste, p.name)) { status(`« ${p.name} » est déjà sur ta liste.`); return }
@@ -401,7 +421,14 @@ function buildSmartCard(p) {
   const el = document.createElement('div'); el.className = 'smart'
   const rows = ['<div class="smart-h">💡 Prix Intelligent</div>']
   if (si.facial == null) {
-    rows.push('<p class="hint">Ajoutez le prix en rayon (champ €) pour activer le vrai prix payé, le €/kg et vos économies.</p>')
+    // Capture directe : c'est LE geste qui allume tout le reste.
+    rows.push(`<div class="smart-capture" data-testid="price-capture">
+      <div class="cap-q">💶 Combien tu l'as payé ?</div>
+      <div class="cap-row"><input class="cap-price" type="text" inputmode="decimal" placeholder="ex : 2,90" aria-label="prix payé"> €</div>
+      <div class="cap-row"><input class="cap-store" type="text" placeholder="magasin (ex : Lidl)" aria-label="magasin" value="${p.store ?? ''}"></div>
+      <button class="cap-ok" data-testid="price-ok">Valider mon prix</button>
+      <div class="cap-hint">C'est ton prix, dans ton magasin — rien n'est partagé, rien n'est vendu.</div>
+    </div>`)
   } else {
     if (si.hasLoyalty) rows.push(smartLine('💳 Prix carte fidélité', eur(si.cardPrice)))
     if (si.hasCagnotte) rows.push(smartLine('🎁 Après cagnotte', eur(si.afterCagnotte)))
@@ -409,15 +436,31 @@ function buildSmartCard(p) {
     if (si.perKg != null) rows.push(smartLine('📦 Prix au kilo', eurKg(si.perKg)))
     if (si.habitual != null) rows.push(smartLine('📈 Ton prix habituel', eur(si.habitual)))
     if (si.economy > 0) rows.push(smartLine('💰 Économie aujourd\'hui', eur(si.economy), 'save'))
+    const bs = bestStore(p.purchases)
+    if (bs) rows.push(smartLine('🏪 Le moins cher pour toi', `${bs.store} · ${eur(bs.price)}`, 'save'))
     if (si.bestAlternative) rows.push(smartLine('🔄 Plus rentable au kilo', `${si.bestAlternative.name} · ${eurKg(si.bestAlternative.perKg)} (−${eurKg(si.bestAlternative.saving)})`, 'alt'))
   }
   rows.push('<div data-community></div>') // prix communautaire (Open Prices), rempli en async
-  rows.push(`<div class="smart-adv">
+  if (si.facial != null) rows.push(`<div class="smart-adv">
+    <label>🏪 Magasin <input type="text" class="adv-store" value="${p.store ?? ''}" placeholder="ex : Lidl" aria-label="magasin"></label>
     <label>💳 Remise carte <input type="text" inputmode="decimal" class="adv-loy" value="${p.loyaltyPct ?? ''}" placeholder="%" aria-label="remise carte %"> %</label>
     <label>🎁 Cagnotte <input type="text" inputmode="decimal" class="adv-cag" value="${p.cagnotte ?? ''}" placeholder="€" aria-label="cagnotte €"> €</label>
   </div>`)
   el.innerHTML = rows.join('')
   void loadCommunityPrice(p, el.querySelector('[data-community]'))
+  // Capture : valide le prix payé (+ magasin) → tout le Prix Intelligent s'allume.
+  const capOk = el.querySelector('.cap-ok')
+  if (capOk) {
+    const submit = () => {
+      const price = parseFloat(String(el.querySelector('.cap-price').value).replace(',', '.'))
+      if (!(price > 0)) { status('Tape un prix pour voir ton Prix Intelligent.', true); return }
+      applyPaid(p.ean, price, el.querySelector('.cap-store').value)
+    }
+    capOk.onclick = submit
+    el.querySelector('.cap-price').addEventListener('keydown', e => { if (e.key === 'Enter') submit() })
+  }
+  const adv = el.querySelector('.adv-store')
+  if (adv) adv.onchange = e => applyPaid(p.ean, p.price, e.target.value)
   const bind = (sel, key) => {
     const inp = el.querySelector(sel)
     if (inp) inp.onchange = e => {
@@ -471,8 +514,10 @@ async function addByEan(raw) {
       } catch { /* source suivante */ }
     }
     if (!p) return status('Produit introuvable dans les bases ouvertes (alimentaire, hygiène, divers).', true)
-    items.push({ ...p, purchases: recordPurchase([], { date: today() }) }); save(); render()
-    $('status').textContent = `✓ Ajouté à votre inventaire : ${p.name}`
+    items.push({ ...p, purchases: recordPurchase([], { date: today() }) })
+    openDetails.add(p.ean) // ouvre direct la fiche → la capture du prix saute aux yeux
+    save(); render()
+    $('status').textContent = `✓ Ajouté : ${p.name} — indique ton prix ci-dessous 👇`
     $('status').className = 'ok'
     if (navigator.vibrate) navigator.vibrate(60)
   } catch { status('Pas de réseau — réessayez.', true) }

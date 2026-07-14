@@ -249,11 +249,33 @@ export function pricePer100(price, quantityStr) {
 // les vraies promos par rapport à VOTRE historique de prix — côté
 // consommateur, sans données des marques.
 
-/** Enregistre un achat dans l'historique d'un produit (date ISO, prix éventuel). */
-export function recordPurchase(history, { date, price = null }) {
+/** Enregistre un achat dans l'historique d'un produit (date ISO, prix + magasin éventuels). */
+export function recordPurchase(history, { date, price = null, store = null }) {
   const h = Array.isArray(history) ? [...history] : []
-  h.push({ date, price: price > 0 ? price : null })
+  const s = String(store ?? '').trim()
+  h.push({ date, price: price > 0 ? price : null, store: s || null })
   return h.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/**
+ * « Le moins cher pour toi » : à partir de TON historique (prix + magasin),
+ * le magasin où tu l'as eu le moins cher. Données 100 % perso, aucun partenaire.
+ * Renvoie { store, price } ou null (pas assez d'infos). Si un même magasin
+ * revient plusieurs fois, on garde son prix le plus bas.
+ */
+export function bestStore(history) {
+  const withStore = (history ?? []).filter(p => p && p.price > 0 && p.store)
+  if (!withStore.length) return null
+  const lowestByStore = new Map()
+  for (const p of withStore) {
+    const cur = lowestByStore.get(p.store)
+    if (cur == null || p.price < cur) lowestByStore.set(p.store, p.price)
+  }
+  let best = null
+  for (const [store, price] of lowestByStore) {
+    if (!best || price < best.price) best = { store, price: Math.round(price * 100) / 100 }
+  }
+  return best
 }
 
 /** Achat récurrent = au moins 2 achats. */
