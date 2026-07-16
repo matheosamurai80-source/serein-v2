@@ -4,7 +4,7 @@
  * Méthode BUILD : logique pure, PASS/FAIL, AVANT toute UI.
  * Lancer : npm run test:sandbox
  */
-import { routerDocument, scoreDocument, ROUTE_TO_SERVICE } from '../src/lib/router/logic'
+import { routerDocument, scoreDocument, ROUTE_TO_SERVICE, describeDestination } from '../src/lib/router/logic'
 
 let failures = 0
 function check(name: string, cond: boolean, detail = '') {
@@ -69,6 +69,15 @@ check('note quelconque sans signal → inconnu', routerDocument('Penser à rappe
 // Extensibilité : un nouveau service = une règle en plus, pas un écran.
 check('scoreDocument expose les 3 classes routables',
   ['courses', 'abonnement', 'demarche'].every(k => k in scoreDocument('x')))
+
+// ─── 5. ORIENTATION (type → destination pour le bouton « + ») ───────────────
+check('courses → destination PanierMalin', describeDestination('courses').href === '/paniermalin' && describeDestination('courses').service === 'Courses')
+check('abonnement → destination /analyse', describeDestination('abonnement').href === '/analyse')
+check('demarche → destination /resiliation', describeDestination('demarche').href === '/resiliation')
+check('inconnu → pas de href (l utilisateur choisit)', describeDestination('inconnu').href === '' && describeDestination('inconnu').cta === '')
+check('chaque destination a un emoji et une phrase', (['courses', 'abonnement', 'demarche', 'inconnu'] as const).every(t => {
+  const d = describeDestination(t); return d.emoji.length > 0 && d.headline.length > 0
+}))
 
 console.log(failures === 0 ? '\n✅ ROUTEUR : TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)

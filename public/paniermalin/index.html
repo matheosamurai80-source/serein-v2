@@ -1004,6 +1004,20 @@ function renderHome() {
   else rebuyCard.style.display = 'none'
 }
 
+// ─── RELAIS DEPUIS LE « + » DE SEREIN (même origine) ────────────────────────
+// Un ticket reconnu par le bouton « + » arrive ici : on ouvre l'écran ticket,
+// on lit le texte tout de suite, l'utilisateur n'a plus qu'à indiquer le magasin.
+try {
+  const intake = localStorage.getItem('pm.intakeTicket')
+  if (intake && intake.trim()) {
+    localStorage.removeItem('pm.intakeTicket')
+    showScreen('scan')
+    $('ticketPaste').value = intake
+    $('ticketPasteWrap').open = true
+    ingestTicketLines(intake)
+  }
+} catch { /* pas de relais : app normale */ }
+
 // ─── PWA ────────────────────────────────────────────────────────────────────
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js')
 
