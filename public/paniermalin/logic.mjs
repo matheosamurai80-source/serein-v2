@@ -191,10 +191,19 @@ export function parseTicketText(text) {
   const letters = s => (String(s).match(/[a-zA-ZÀ-ÿ]/g) ?? []).length
   const cleanLabel = s => String(s).trim()
     .replace(/^\d+\s*[xX*]\s*(?=[a-zA-ZÀ-ÿ])/, '')          // « 2 X YAOURT » → « YAOURT »
+    .replace(/\s+\d+\s*[xX]\s*[\d.,]+\s*(?:€|eur)?$/i, '')  // « … 2 X 1,89€ » (promo collée) retiré
     .replace(/[.·…_\-*\s]+$/, '')
     .trim()
 
-  for (const raw of String(text ?? '').split('\n')) {
+  // Beaucoup d'applis « aplatissent » le ticket au copier-coller : tout sur une
+  // seule ligne, séparé par des espaces. On réinsère des sauts de ligne — après
+  // chaque « prix + code TVA » (fin d'un article) et autour des rayons « >> » —
+  // pour retrouver une ligne par produit. (Sans effet sur un ticket déjà multi-lignes.)
+  const normalized = String(text ?? '')
+    .replace(/>>[^\n]*?\s{2,}/g, '\n')                       // « >> LIQUIDE      PRODUIT… » → coupe
+    .replace(/(\d{1,3}[.,]\d{2}\s+\d{1,2})\s{2,}/g, '$1\n')  // « … 3.57  1   ARTICLE… » → coupe
+
+  for (const raw of normalized.split('\n')) {
     const line = raw.trim().replace(/\s+/g, ' ')
     if (line.length < 3) continue
     if (/^>/.test(line)) continue // en-tête de rayon « >> EPICERIE »

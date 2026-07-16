@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-14 (Fusion — le « + » branché : page `/ajouter` reconnaît et oriente)
+> Dernière mise à jour : 2026-07-14 (Fix terrain — ticket collé « aplati » + « + » visible dans PanierMalin)
 >
 > **Architecture de la fusion gravée dans `SEREIN-PLAN-FUSION.md`** (un geste,
 > trois onglets, des cartes ; le « + » route via `routerDocument`).
@@ -769,6 +769,7 @@ extension annuaire résiliation.
 | 2026-07-14 | PanierMalin — OCR fiabilisé (« lecture impossible » sur mobile) : CDN Tesseract de secours (jsdelivr→unpkg), vraie raison affichée, + plan B « coller le texte du ticket » (même parseur, `ingestTicketLines`) | Sandbox 579 PASS, IDs plan B (linkedom) + parse texte collé OK, `node --check` OK, cache SW v26 |
 | 2026-07-14 | Fusion — principes gravés (`SEREIN-PLAN-FUSION.md`) + **routeur universel** `routerDocument(texte)→ courses/abonnement/demarche/inconnu` (Brique 6 candidate, `src/lib/router/logic.ts`) : signaux pondérés + garde-fou seuil/marge → `inconnu` si faible/ambigu ; `ROUTE_TO_SERVICE`. Logique pure, AUCUNE UI encore | Sandbox 592 PASS 0 FAIL (`router.test.ts` 13/13, dont le vrai ticket Leclerc), `src` tsc + lint clean, **build prod vert** |
 | 2026-07-14 | Fusion — **le « + » branché** : page `/ajouter` (dépôt PDF/OCR ou collage) → `routerDocument` + `describeDestination` → carte d'orientation (override + `inconnu`→choix) ; relais même origine (`sessionStorage` → `/analyse`, `localStorage` → PanierMalin ouvre le ticket) ; « ＋ Ajouter » dans la nav | Sandbox 597 PASS 0 FAIL (`router.test.ts` 18/18 avec orientation), **build prod vert** (route `/ajouter`), `node --check` PanierMalin OK, cache SW v27 |
+| 2026-07-14 | Fix terrain (retour Juju) — ① `parseTicketText` gère le **copier-coller aplati** (tout sur une ligne : réinsertion de sauts après « prix+TVA » et autour des rayons `>>`) ; ② label de promo nettoyé ; ③ « ＋ Ajouter » ajouté à la **barre PanierMalin** (le « + » n'était que dans le menu Serein) | Sandbox 604 PASS 0 FAIL (ton copier-coller réel = **47 produits**, avant : 1), non-régression tickets classiques verte, `node --check` OK, cache SW v28 |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
