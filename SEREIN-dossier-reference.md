@@ -1,7 +1,10 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-14 (PanierMalin — OCR fiabilisé + plan B « coller le texte du ticket »)
+> Dernière mise à jour : 2026-07-14 (Fusion — routeur universel `routerDocument`, Brique 6 candidate, sandbox)
+>
+> **Architecture de la fusion gravée dans `SEREIN-PLAN-FUSION.md`** (un geste,
+> trois onglets, des cartes ; le « + » route via `routerDocument`).
 
 ## 1. Le produit
 
@@ -764,6 +767,7 @@ extension annuaire résiliation.
 | 2026-07-14 | PanierMalin — refonte n°1 « saisie intuitive » : le ticket importe tout d'un coup (`ticketToItems` + `normalizeItemName`), fini la validation ligne par ligne ; magasin demandé une fois ; accueil = Ma liste + « J'ai fait mes courses », code-barres en secondaire | Sandbox 569 PASS 0 FAIL (dont `ticket-import`), `node --check` OK, contrat DOM linkedom 15/15, cache SW v24 ; lecture réelle d'un ticket à confirmer sur téléphone |
 | 2026-07-14 | PanierMalin — lecteur de ticket RÉEL (retour terrain « rien de détecté ») : `parseTicketText` gère code TVA en fin de ligne, rayons « >> », promos sur 2 lignes ; vrai ticket Leclerc figé en cas de test | Sandbox 579 PASS 0 FAIL, `paniermalin-ticket-reel.test.ts` 37 produits (avant : 0), non-régression ancien test verte, cache SW v25 |
 | 2026-07-14 | PanierMalin — OCR fiabilisé (« lecture impossible » sur mobile) : CDN Tesseract de secours (jsdelivr→unpkg), vraie raison affichée, + plan B « coller le texte du ticket » (même parseur, `ingestTicketLines`) | Sandbox 579 PASS, IDs plan B (linkedom) + parse texte collé OK, `node --check` OK, cache SW v26 |
+| 2026-07-14 | Fusion — principes gravés (`SEREIN-PLAN-FUSION.md`) + **routeur universel** `routerDocument(texte)→ courses/abonnement/demarche/inconnu` (Brique 6 candidate, `src/lib/router/logic.ts`) : signaux pondérés + garde-fou seuil/marge → `inconnu` si faible/ambigu ; `ROUTE_TO_SERVICE`. Logique pure, AUCUNE UI encore | Sandbox 592 PASS 0 FAIL (`router.test.ts` 13/13, dont le vrai ticket Leclerc), `src` tsc + lint clean, **build prod vert** |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
