@@ -118,6 +118,7 @@
             color:var(--green-dark); text-decoration:none; display:inline-flex; align-items:center; gap:6px; cursor:pointer }
   .tb-btn:active { transform:scale(.97) }
   .tb-icon { font-size:16px; padding:7px 10px }
+  .tb-add { background:var(--green); color:#fff; border-color:var(--green) }
   .tb-sel { border:1.5px solid var(--line); border-radius:10px; padding:7px 9px; font-size:13px; font-weight:700;
             color:var(--green-dark); background:var(--card); max-width:120px }
   /* Propositions de saisie (liste de courses) */
@@ -136,6 +137,7 @@
     <button id="tbBack" class="tb-btn" data-goto="home" type="button" style="display:none">← Accueil</button>
     <span class="tb-spacer"></span>
     <button id="themeToggle" class="tb-btn tb-icon" type="button" aria-label="Basculer clair / sombre" title="Clair / sombre">🌙</button>
+    <a href="/ajouter" class="tb-btn tb-add" aria-label="Ajouter un document (ticket, facture, courrier)" title="Ajouter un document">＋ Ajouter</a>
     <select id="banqueSelect" class="tb-sel" aria-label="Ouvrir le site de ma banque" title="Ma banque">
       <option value="">🏦 Banque</option>
     </select>
