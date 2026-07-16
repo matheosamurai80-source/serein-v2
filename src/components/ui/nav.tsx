@@ -47,6 +47,17 @@ export function SereinNav() {
 
   return (
     <nav className="w-full max-w-[720px] mx-auto px-5 pt-6 flex items-center justify-center gap-2 flex-wrap">
+      {/* Le « + » : porte d'entrée unique (reconnaît et oriente le document) */}
+      <a href="/ajouter" data-testid="nav-ajouter"
+        className={cn(
+          'font-mono text-[11px] tracking-[.13em] uppercase rounded-full px-4 py-2 transition-colors border',
+          pathname === '/ajouter'
+            ? 'bg-sage text-cream border-sage'
+            : 'bg-sage/15 text-moss border-sage/30 hover:bg-sage/25'
+        )}>
+        ＋ Ajouter
+      </a>
+
       {LINKS.map(l => {
         const active = pathname === l.href
         return (

@@ -53,6 +53,21 @@ export default function AnalysePage() {
     })()
   }, [])
 
+  // Document envoyé depuis le « + » : on pré-remplit le texte (l'utilisateur lance).
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('serein.intake')
+      if (!raw) return
+      sessionStorage.removeItem('serein.intake')
+      const { text } = JSON.parse(raw) as { text?: string }
+      if (text && text.trim().length > 20) {
+        setPasted(text)
+        toast.show('Document reçu du « + » — clique « Analyser ce texte ».')
+      }
+    } catch { /* pas de handoff : page normale */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const runAnalysis = (text: string) => {
     const { transactions: txs, unmatchedLines } = parseStatement(text, 'browser')
     setUnmatched(unmatchedLines)

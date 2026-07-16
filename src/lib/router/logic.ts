@@ -77,6 +77,40 @@ export function scoreDocument(texte: string): Record<RoutableType, number> {
   return scores
 }
 
+// ─── ORIENTATION : où atterrit le document, et comment le présenter ─────────
+export interface Destination {
+  type: DocType
+  service: string   // libellé du service ('' si inconnu)
+  emoji: string
+  href: string      // page cible ('' si inconnu → l'utilisateur choisit)
+  headline: string  // ce qu'on a reconnu, en clair
+  cta: string       // libellé du bouton d'action
+}
+
+const DESTINATIONS: Record<DocType, Destination> = {
+  courses: {
+    type: 'courses', service: 'Courses', emoji: '🧺', href: '/paniermalin',
+    headline: 'On dirait un ticket de caisse.', cta: 'Ajouter à mes courses',
+  },
+  abonnement: {
+    type: 'abonnement', service: 'Abonnements', emoji: '💳', href: '/analyse',
+    headline: 'On dirait une facture ou un prélèvement.', cta: 'Détecter l’abonnement',
+  },
+  demarche: {
+    type: 'demarche', service: 'Démarches', emoji: '📮', href: '/resiliation',
+    headline: 'On dirait un courrier à traiter (résiliation, hausse, décès…).', cta: 'Préparer la démarche',
+  },
+  inconnu: {
+    type: 'inconnu', service: '', emoji: '🤔', href: '',
+    headline: 'Je ne suis pas sûr de ce document.', cta: '',
+  },
+}
+
+/** Type → destination (service, page cible, libellés). Pure, pour l'UI du « + ». */
+export function describeDestination(type: DocType): Destination {
+  return DESTINATIONS[type] ?? DESTINATIONS.inconnu
+}
+
 const THRESHOLD = 2 // en dessous : trop faible → inconnu
 const MARGIN = 0.5 // écart mini avec le 2e : sinon trop ambigu → inconnu
 

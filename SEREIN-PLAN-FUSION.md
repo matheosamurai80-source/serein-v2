@@ -54,11 +54,16 @@ Ces principes se **décident** maintenant ; **rien ne se construit avant la
 Brique 1** de la fusion. On avance **une brique à la fois, sandbox d'abord**.
 
 ## Roadmap fusion (candidats)
-- **Brique 6 (candidate) — Routeur universel** : `routerDocument(texte) → type`
-  (`courses` | `abonnement` | `demarche` | `inconnu`). **Fonction pure, testée en
-  bac à sable AVANT toute UI.** C'est la clé de voûte du bouton « + » : sans elle,
-  pas de porte d'entrée unique. → *en cours : logique + sandbox.*
-- Brique suivante — brancher le « + » (upload → OCR → `routerDocument` → carte
-  dans le bon service), une fois le routeur vert et stable.
+- **Brique 6 — Routeur universel** ✅ (2026-07-14) : `routerDocument(texte) → type`
+  + `describeDestination(type)` + `ROUTE_TO_SERVICE`. Fonction pure, sandbox 18/18.
+- **Brique 7 — Brancher le « + »** ✅ (2026-07-14) : page `/ajouter` (dépôt PDF via
+  `extractPdfText` ou collage de texte) → `routerDocument` → carte d'orientation
+  (reconnaît + propose le bon service, override possible, `inconnu` → l'utilisateur
+  choisit). **Relais même origine** : `sessionStorage['serein.intake']` récupéré
+  par `/analyse` (pré-remplit le texte) ; `localStorage['pm.intakeTicket']` récupéré
+  par PanierMalin (ouvre l'écran ticket + lit le texte). « ＋ Ajouter » ajouté à la
+  nav Serein. **Reste à venir** : OCR image (photo) côté Serein, auto-analyse au
+  relais, et le service Démarches (Après) réel.
 - Puis — l'accueil « À faire » (agrégation des échéances de tous les services,
-  tri par urgence) et les 3 onglets verrouillés.
+  tri par urgence) et les **3 onglets verrouillés** (Accueil · + · Mon foyer) qui
+  remplacent la nav actuelle à 6 liens.
