@@ -19,7 +19,10 @@ async function ocrCanvas(canvas: HTMLCanvasElement): Promise<string> {
   // Point d'injection pour les tests (pas de CDN dans le bac à sable)
   const hook = (window as unknown as { __sereinOcr?: (c: HTMLCanvasElement) => Promise<string> }).__sereinOcr
   if (hook) return hook(canvas)
-  const T = await importRuntime('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js')
+  // Module OCR chargé à la volée : CDN principal puis secours (mobile capricieux).
+  let T: Record<string, CallableFunction>
+  try { T = await importRuntime('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.esm.min.js') }
+  catch { T = await importRuntime('https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.esm.min.js') }
   const worker = await (T.createWorker as (l: string) => Promise<{ recognize: (c: HTMLCanvasElement) => Promise<{ data: { text: string } }>; terminate: () => Promise<void> }>)('fra')
   try {
     const { data } = await worker.recognize(canvas)
@@ -99,4 +102,31 @@ export async function extractPdfTextResilient(
     throw new Error(body?.error?.message ?? 'Lecture du PDF impossible.')
   }
   return body.data.text as string
+}
+
+/**
+ * Lecture d'une PHOTO de document (ticket, amende, courrier…) : redimensionnement
+ * + prétraitement noir/blanc (module partagé) → OCR local (Tesseract). L'image ne
+ * quitte JAMAIS l'appareil ; seul le module OCR est téléchargé au premier usage.
+ */
+export async function extractImageText(file: File, onPhase?: (phase: PhaseLecture) => void): Promise<string> {
+  onPhase?.('ocr')
+  const bmp = await createImageBitmap(file)
+  const targetWidth = Math.max(1400, Math.min(2200, bmp.width))
+  const scale = targetWidth / bmp.width
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bmp.width * scale)
+  canvas.height = Math.round(bmp.height * scale)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('Canvas indisponible')
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(bmp, 0, 0, canvas.width, canvas.height)
+  try {
+    const pre = await importRuntime('/shared/pretraitement.mjs')
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    ;(pre.pretraiterRgba as (d: Uint8ClampedArray) => void)(img.data)
+    ctx.putImageData(img, 0, 0)
+  } catch { /* prétraitement indispo : OCR sur l'image brute */ }
+  return ocrCanvas(canvas)
 }

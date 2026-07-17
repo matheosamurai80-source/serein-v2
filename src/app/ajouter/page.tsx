@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
-import { extractPdfTextResilient } from '@/lib/pdf/browser'
+import { extractPdfTextResilient, extractImageText } from '@/lib/pdf/browser'
 import { routerDocument, describeDestination, type DocType } from '@/lib/router/logic'
 import { detectOfficialDoc } from '@/lib/officiel/logic'
 import { extractSubscriptionDraft, looksLikeStatement, type SubscriptionDraft, type SubscriptionFrequency } from '@/lib/subscriptions/extract'
@@ -58,17 +58,25 @@ export default function AjouterPage() {
   const reset = () => { setResult(null); setPasted(''); setDraft(null); setIsStatement(false) }
 
   const handleFile = async (file: File) => {
-    if (file.type !== 'application/pdf') { toast.show('⚠️ Pour l’instant : PDF, ou colle le texte ci-dessous.'); return }
+    const isPdf = file.type === 'application/pdf'
+    const isImage = file.type.startsWith('image/')
+    if (!isPdf && !isImage) { toast.show('Dépose un PDF ou une photo — ou colle le texte ci-dessous.'); return }
     if (file.size > 15 * 1024 * 1024) { toast.show('⚠️ Fichier trop lourd (max 15 Mo)'); return }
     setBusy(true)
     try {
-      const text = await extractPdfTextResilient(file, phase => {
-        if (phase === 'ocr') toast.show('Document scanné — lecture optique (jusqu’à 30 s)…')
-      })
+      let text: string
+      if (isImage) {
+        toast.show('Lecture de la photo… (jusqu’à 30 s au premier usage)')
+        text = await extractImageText(file)
+      } else {
+        text = await extractPdfTextResilient(file, phase => {
+          if (phase === 'ocr') toast.show('Document scanné — lecture optique (jusqu’à 30 s)…')
+        })
+      }
       if (text.trim().length < 40) { toast.show('Rien de lisible — colle plutôt le texte ci-dessous.'); return }
       recognise(text)
     } catch {
-      toast.show('Lecture du PDF impossible — colle plutôt le texte ci-dessous.')
+      toast.show('Lecture impossible — colle plutôt le texte ci-dessous.')
     } finally { setBusy(false) }
   }
 
@@ -115,10 +123,10 @@ export default function AjouterPage() {
               <label htmlFor="doc" className="flex flex-col items-center justify-center gap-2 p-8 cursor-pointer text-center">
                 <span className="text-[28px]">➕</span>
                 <span className="text-sm text-ink leading-[1.6]">
-                  {busy ? 'Lecture en cours…' : <>Dépose un document (PDF)<br />
-                  <small className="text-xs text-ink/45 font-mono">ou cliquez · max 15 Mo</small></>}
+                  {busy ? 'Lecture en cours…' : <>Photo ou PDF d’un document<br />
+                  <small className="text-xs text-ink/45 font-mono">ticket, facture, amende, courrier · max 15 Mo</small></>}
                 </span>
-                <input id="doc" type="file" accept=".pdf,application/pdf" className="hidden"
+                <input id="doc" type="file" accept="image/*,application/pdf,.pdf" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) void handleFile(f) }} />
               </label>
             </div>
@@ -230,10 +238,18 @@ export default function AjouterPage() {
                   <div className="w-full bg-surface border border-sage/30 rounded-2xl p-5 mb-3 text-center" data-testid="official-doc">
                     <div className="text-[15px] text-ink font-semibold mb-1">{official.emoji} {official.label}</div>
                     <p className="text-xs text-ink/60 leading-[1.5] mb-3">{official.note}</p>
-                    <a href={official.url} target="_blank" rel="noopener noreferrer" data-testid="official-link"
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-sage text-cream text-sm font-semibold px-6 py-3 hover:bg-sage-light transition-colors">
-                      {official.action} sur le site officiel ↗
-                    </a>
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      <a href={official.url} target="_blank" rel="noopener noreferrer" data-testid="official-link"
+                        className="inline-flex items-center justify-center gap-2 rounded-full bg-sage text-cream text-sm font-semibold px-6 py-3 hover:bg-sage-light transition-colors">
+                        {official.action} ↗
+                      </a>
+                      {official.url2 && official.action2 && (
+                        <a href={official.url2} target="_blank" rel="noopener noreferrer" data-testid="official-link-2"
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-sage/40 text-moss text-sm font-semibold px-5 py-3 hover:bg-sage/8 transition-colors">
+                          {official.action2} ↗
+                        </a>
+                      )}
+                    </div>
                   </div>
                 )}
                 <Button onClick={() => handoff(result.type, result.text)} data-testid="route-go" variant={official ? 'secondary' : 'primary'}>

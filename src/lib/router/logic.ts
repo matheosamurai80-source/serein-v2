@@ -55,6 +55,11 @@ const SIGNALS: Record<RoutableType, [RegExp, number][]> = {
     [/madame,? monsieur/, 1],
     [/veuillez agreer/, 1.5],
     [/nous vous informons|prend effet le|a compter du/, 0.8],
+    // Documents officiels (administration) → traités comme des démarches.
+    [/\bamende\b|contravention|\bantai\b|forfaitaire majoree?|exces de vitesse|infraction/, 3],
+    [/avis d.?imp[o]t|taxe fonciere|taxe d.?habitation|\bdgfip\b|impots\.gouv|prelevement a la source/, 3],
+    [/\bcaf\b|\burssaf\b|\bameli\b|assurance maladie|france travail|pole emploi/, 2.5],
+    [/\bprefecture\b|service-public|amendes\.gouv|certificat d.?immatriculation|\bants\b/, 1.5],
   ],
 }
 
