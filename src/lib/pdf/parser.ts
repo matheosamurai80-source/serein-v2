@@ -97,11 +97,12 @@ function resolveMerchant(label: string): { name: string; category: TransactionCa
   for (const [key, value] of Object.entries(MERCHANT_MAP)) {
     if (label.includes(key)) return value
   }
-  // Repli : premier mot « utile » du libellé, sans les préfixes bancaires
+  // Repli : premier mot « utile » du libellé, sans les préfixes bancaires ni
+  // les nombres (année, réf de mandat…) qui ne sont JAMAIS un marchand.
   const words = label
-    .replace(/\b(prlv|prelevement|sepa|carte|cb|vir|virement|paiement|achat|echeance|de|du)\b/g, ' ')
+    .replace(/\b(prlv|prelevement|sepa|carte|cb|vir|virement|paiement|achat|echeance|europeen|mandat|ref|de|du|des|la|le|les)\b/g, ' ')
     .split(/\s+/)
-    .filter(w => w.length > 2)
+    .filter(w => w.length > 2 && !/^\d+$/.test(w))
   const name = words[0] ? words[0].charAt(0).toUpperCase() + words[0].slice(1) : 'Inconnu'
   return { name, category: 'other' }
 }
@@ -152,19 +153,35 @@ export function parseTransactionsFromText(
 export function parseStatement(text: string, uploadId: string): ParseReport {
   const rawLines = text.split('\n').map(l => l.trim()).filter(Boolean)
 
-  // Certains PDF coupent une opération sur deux lignes :
-  //   « 04/01 PRLV SEPA »  puis  « NETFLIX INTERNATIONAL B.V. -13,49 »
-  // → on recolle une ligne sans montant avec la suivante.
+  // Regroupement des opérations MULTI-LIGNES. Beaucoup de relevés (Société
+  // Générale, La Banque Postale…) éclatent un prélèvement sur plusieurs lignes :
+  //   « 27/04/2026 27/04/2026 PRELEVEMENT EUROPEEN 2400723572 »  (en-tête daté, sans montant)
+  //   « DE: ORANGE SA-ORANGE »                                    (le créancier = marchand)
+  //   « MOTIF: … » / « REF: … » / « MANDAT … »
+  //   « 22,33 »                                                   (le montant, plusieurs lignes plus bas)
+  // → on agrège l'en-tête daté jusqu'au montant OU la prochaine opération datée.
+  const startsWithDate = (l: string) => /^\d{1,2}[/.\-]\d{1,2}(?:[/.\-]\d{2,4})?/.test(l)
+  const lineHasAmount = (l: string) => { AMOUNT_RE.lastIndex = 0; const r = AMOUNT_RE.test(l); AMOUNT_RE.lastIndex = 0; return r }
+
   const lines: string[] = []
-  for (let i = 0; i < rawLines.length; i++) {
+  let i = 0
+  while (i < rawLines.length) {
     const cur = rawLines[i]!
-    const hasAmount = AMOUNT_RE.test(cur); AMOUNT_RE.lastIndex = 0
-    const next = rawLines[i + 1]
-    if (!hasAmount && next && DATE_RE.test(cur) && !SKIP_RE.test(cur) && !DATE_RE.test(next)) {
-      lines.push(`${cur} ${next}`)
-      i++
+    // Ligne d'opération datée SANS montant : on agrège la suite jusqu'au montant.
+    if (startsWithDate(cur) && !lineHasAmount(cur) && !SKIP_RE.test(cur)) {
+      let block = cur
+      let j = i + 1
+      const MAX = 8 // garde-fou : on ne recolle jamais indéfiniment
+      while (j < rawLines.length && j - i <= MAX && !startsWithDate(rawLines[j]!)) {
+        block += ` ${rawLines[j]}`
+        if (lineHasAmount(rawLines[j]!)) { j++; break }
+        j++
+      }
+      lines.push(block)
+      i = j
     } else {
       lines.push(cur)
+      i++
     }
   }
 
@@ -190,11 +207,18 @@ export function parseStatement(text: string, uploadId: string): ParseReport {
     const dateMatch = line.match(DATE_RE)
     const date = dateMatch?.[1] ? parseDate(dateMatch[1]) : new Date().toISOString().slice(0, 10)
 
-    // Libellé = la ligne sans la date, sans le(s) montant(s), sans la devise
-    let label = line
-    if (dateMatch?.[1]) label = label.replace(dateMatch[1], ' ')
+    // Libellé = la ligne sans TOUTES les dates (certains relevés en ont deux :
+    // Date + Valeur, plus la date d'opération carte), sans le(s) montant(s), la
+    // devise, et les références de carte (« X4179 ») ou longues réfs de mandat.
+    let label = line.replace(/\b\d{1,2}[/.\-]\d{1,2}(?:[/.\-]\d{2,4})?\b/g, ' ')
     for (const m of amounts) label = label.replace(m[0], ' ')
-    label = label.replace(/\b(eur|euros?)\b/gi, ' ').replace(/€/g, ' ').replace(/\s+/g, ' ').trim()
+    label = label
+      .replace(/\b(eur|euros?)\b/gi, ' ')
+      .replace(/€/g, ' ')
+      .replace(/\bX\d{3,}\b/gi, ' ')   // référence de carte, ex. « X4179 »
+      .replace(/\b\d{6,}\b/g, ' ')      // longue référence (mandat / opération)
+      .replace(/\s+/g, ' ')
+      .trim()
     if (!label) { unmatchedLines.push(line); continue }
 
     const normalized = normalizeLabel(label)
