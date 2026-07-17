@@ -1,6 +1,7 @@
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { apiGet, apiPost, apiPatch, apiDelete } from './api'
 import type { DetectedSubscriptionRow } from '@/lib/subscriptions/detect'
+import type { SubscriptionDraft } from '@/lib/subscriptions/extract'
 import { buildLetterRow, mapRegimeToLetterType } from '@/lib/letters/db'
 import type { RegimeResult } from '@/lib/letters/legal'
 import {
@@ -292,6 +293,29 @@ export async function deleteSubscription(id: string): Promise<void> {
   const b = await backend()
   if (b.kind === 'local') { deleteRow(b.kv, LOCAL_KEYS.subscriptions, id); return }
   await apiDelete(`/api/subscriptions/${id}`)
+}
+
+/**
+ * Crée un abonnement MANUEL (depuis le bouton « + »), directement dans la table
+ * `subscriptions` via le socle API. `source: 'manual'` le distingue des
+ * détections de relevé ; `user_id` est posé côté serveur (jamais du client).
+ */
+export async function createSubscription(draft: SubscriptionDraft): Promise<SubscriptionRow> {
+  const payload = {
+    name: draft.name,
+    amount: draft.amount,
+    frequency: draft.frequency,
+    source: 'manual',
+    detected_automatically: false,
+  }
+  const b = await backend()
+  if (b.kind === 'local') {
+    const [row] = insertRows(b.kv, LOCAL_KEYS.subscriptions, [
+      { ...payload, status: 'active', occurrences: null, last_seen: null, confidence: null, dormant: false },
+    ]) as SubscriptionRow[]
+    return row
+  }
+  return apiPost<SubscriptionRow>('/api/subscriptions', payload)
 }
 
 // ─── LETTRES ────────────────────────────────────────────────────────────────

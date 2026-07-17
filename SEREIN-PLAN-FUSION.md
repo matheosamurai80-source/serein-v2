@@ -56,6 +56,13 @@ Brique 1** de la fusion. On avance **une brique à la fois, sandbox d'abord**.
 ## Roadmap fusion (candidats)
 - **Brique 6 — Routeur universel** ✅ (2026-07-14) : `routerDocument(texte) → type`
   + `describeDestination(type)` + `ROUTE_TO_SERVICE`. Fonction pure, sandbox 18/18.
+- **Brique 9 — Le « + » écrit dans `subscriptions`** ✅ (2026-07-14) : quand le
+  document est reconnu « abonnement », `extractSubscriptionDraft(text)` en tire un
+  brouillon (nom + montant + fréquence, `src/lib/subscriptions/extract.ts`, pur,
+  sandbox 10/10) ; l'utilisateur confirme/corrige et `createSubscription()` (store)
+  l'écrit **directement dans la table `subscriptions`** via le socle Brique 1
+  (`POST /api/subscriptions`, `source: 'manual'`) — mode invité : localStorage.
+  Repli « analyser un relevé complet → /analyse » conservé.
 - **Brique 7 — Brancher le « + »** ✅ (2026-07-14) : page `/ajouter` (dépôt PDF via
   `extractPdfText` ou collage de texte) → `routerDocument` → carte d'orientation
   (reconnaît + propose le bon service, override possible, `inconnu` → l'utilisateur
