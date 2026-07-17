@@ -5,7 +5,7 @@ import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
 import { extractPdfText } from '@/lib/pdf/browser'
 import { routerDocument, describeDestination, type DocType } from '@/lib/router/logic'
-import { extractSubscriptionDraft, type SubscriptionDraft, type SubscriptionFrequency } from '@/lib/subscriptions/extract'
+import { extractSubscriptionDraft, looksLikeStatement, type SubscriptionDraft, type SubscriptionFrequency } from '@/lib/subscriptions/extract'
 import { createSubscription } from '@/lib/data/store'
 
 // Le « + » : une seule porte d'entrée. L'utilisateur dépose n'importe quel
@@ -25,14 +25,17 @@ export default function AjouterPage() {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<{ type: DocType; text: string } | null>(null)
   const [draft, setDraft] = useState<SubscriptionDraft | null>(null)
+  const [isStatement, setIsStatement] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const recognise = (text: string) => {
     if (text.trim().length < 15) { toast.show('Colle un peu plus de texte (ou dépose le document).'); return }
-    const type = routerDocument(text)
+    // Un relevé bancaire = plein de prélèvements → à analyser en entier, pas UN abonnement.
+    const statement = looksLikeStatement(text)
+    const type = statement ? 'abonnement' : routerDocument(text)
     setResult({ type, text })
-    // Abonnement reconnu → on tente d'en extraire un brouillon prêt à créer.
-    setDraft(type === 'abonnement' ? extractSubscriptionDraft(text) : null)
+    setIsStatement(statement)
+    setDraft(type === 'abonnement' && !statement ? extractSubscriptionDraft(text) : null)
   }
 
   // Écrit l'abonnement DIRECTEMENT dans la table `subscriptions` (socle API en
@@ -51,7 +54,7 @@ export default function AjouterPage() {
     }
   }
 
-  const reset = () => { setResult(null); setPasted(''); setDraft(null) }
+  const reset = () => { setResult(null); setPasted(''); setDraft(null); setIsStatement(false) }
 
   const handleFile = async (file: File) => {
     if (file.type !== 'application/pdf') { toast.show('⚠️ Pour l’instant : PDF, ou colle le texte ci-dessous.'); return }
@@ -146,7 +149,16 @@ export default function AjouterPage() {
 
             {result.type === 'abonnement' ? (
               <div data-testid="sub-form">
-                {draft ? (
+                {isStatement ? (
+                  <div className="text-center" data-testid="statement">
+                    <p className="text-sm text-ink/70 mb-3">
+                      C’est un <strong>relevé bancaire</strong> — je vais y repérer <strong>tous</strong> tes abonnements d’un coup, pas un seul.
+                    </p>
+                    <Button onClick={() => handoff('abonnement', result.text)} data-testid="route-analyse">
+                      Analyser le relevé →
+                    </Button>
+                  </div>
+                ) : draft ? (
                   <>
                     <div className="w-full bg-surface border border-ink/10 rounded-2xl p-4 mb-4 flex flex-col gap-3">
                       <label className="flex flex-col gap-1">
@@ -177,18 +189,26 @@ export default function AjouterPage() {
                     <Button onClick={saveSubscription} loading={saving} data-testid="sub-create">
                       ➕ Ajouter à mes abonnements
                     </Button>
+                    <div className="mt-3 text-center">
+                      <a href={`/resiliation?service=${encodeURIComponent(draft.name)}`} data-testid="sub-resiliate"
+                        className="font-mono text-[11px] tracking-[.1em] uppercase text-moss underline">
+                        ✉️ Résilier cet abonnement (en ligne ou lettre) →
+                      </a>
+                    </div>
                   </>
                 ) : (
                   <p className="text-sm text-ink/70 text-center mb-3">
                     Je n’ai pas trouvé de montant automatiquement — tu peux l’analyser comme un relevé complet.
                   </p>
                 )}
-                <div className="mt-4 text-center">
-                  <button onClick={() => handoff('abonnement', result.text)}
-                    className="font-mono text-[11px] tracking-[.1em] uppercase text-moss underline">
-                    plutôt analyser un relevé complet →
-                  </button>
-                </div>
+                {!isStatement && (
+                  <div className="mt-4 text-center">
+                    <button onClick={() => handoff('abonnement', result.text)}
+                      className="font-mono text-[11px] tracking-[.1em] uppercase text-moss underline">
+                      plutôt analyser un relevé complet →
+                    </button>
+                  </div>
+                )}
                 <div className="mt-4 text-center">
                   <p className="font-mono text-[11px] text-ink/45 tracking-wider mb-2">Ce n’est pas un abonnement ?</p>
                   <div className="flex items-center justify-center gap-2 flex-wrap">

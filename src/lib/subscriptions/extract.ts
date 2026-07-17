@@ -80,3 +80,22 @@ export function extractSubscriptionDraft(text: string): SubscriptionDraft | null
   if (amount == null) return null
   return { name: extractName(text), amount, frequency: extractFrequency(text) }
 }
+
+/**
+ * Vrai si le document ressemble à un RELEVÉ BANCAIRE (plein de prélèvements),
+ * pas à une facture unique. Dans ce cas le « + » ne crée pas UN abonnement : il
+ * envoie le tout à l'analyse (détection multiple). Heuristique tolérante :
+ *  - plusieurs lignes « date + montant » (opérations), OU
+ *  - plusieurs marqueurs bancaires (PRLV, SEPA, VIR, CB, relevé de compte, solde).
+ */
+export function looksLikeStatement(text: string): boolean {
+  const raw = String(text ?? '')
+  const t = deburr(raw)
+  const markers = (t.match(/\bprlv\b|\bsepa\b|\bvir\b|virement|\bcb\b|releve de compte|solde (crediteur|debiteur|precedent)/g) ?? []).length
+  let txLines = 0
+  for (const line of raw.split('\n')) {
+    if (/\d{1,2}\/\d{1,2}(\/\d{2,4})?/.test(line) && /\d+[.,]\d{2}/.test(line)) txLines++
+  }
+  const amounts = (raw.match(/\d+[.,]\d{2}(?!\d)/g) ?? []).length
+  return txLines >= 4 || markers >= 3 || (amounts >= 8 && markers >= 1)
+}
