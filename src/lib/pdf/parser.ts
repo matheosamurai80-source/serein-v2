@@ -93,9 +93,24 @@ function normalizeLabel(raw: string): string {
     .trim()
 }
 
+// Clé trouvée comme MOT (pas au milieu d'un autre) : évite « sfr » dans le BIC
+// « BOUSFRPP », « mma » dans « MAMMA » (pizzeria), « edf » dans une référence…
+function keyMatches(label: string, key: string): boolean {
+  let from = 0
+  for (;;) {
+    const idx = label.indexOf(key, from)
+    if (idx === -1) return false
+    const before = label[idx - 1]
+    const after = label[idx + key.length]
+    const alnum = (c: string | undefined) => !!c && /[a-z0-9]/.test(c)
+    if (!alnum(before) && !alnum(after)) return true
+    from = idx + 1
+  }
+}
+
 function resolveMerchant(label: string): { name: string; category: TransactionCategory } {
   for (const [key, value] of Object.entries(MERCHANT_MAP)) {
-    if (label.includes(key)) return value
+    if (keyMatches(label, key)) return value
   }
   // Repli : premier mot « utile » du libellé, sans les préfixes bancaires ni
   // les nombres (année, réf de mandat…) qui ne sont JAMAIS un marchand.
@@ -117,7 +132,9 @@ function resolveMerchant(label: string): { name: string; category: TransactionCa
 const DATE_RE = /\b(\d{1,2}[\/.\-]\d{1,2}(?:[\/.\-]\d{2,4})?)\b/
 // Montant : décimales à virgule (avec séparateurs de milliers espace/point)
 // ou à point — sans jamais avaler un fragment de date (« 13.04.26 »).
-const AMOUNT_RE = /[-+]?\d{1,3}(?:[  .]\d{3})*,\d{2}(?!\d)|[-+]?\d+\.\d{2}(?![\d\/.\-])/g
+// `(?<!\d)` : un montant ne DÉMARRE jamais au milieu d'un nombre — sinon la fin
+// d'une réf de mandat « …180002 » collée à « 301,16 » se lirait « 2 301,16 ».
+const AMOUNT_RE = /(?<!\d)[-+]?\d{1,3}(?:[  .]\d{3})*,\d{2}(?!\d)|(?<!\d)[-+]?\d+\.\d{2}(?![\d\/.\-])/g
 
 // Lignes de relevé qui ne sont pas des opérations
 const SKIP_RE = /^(solde|total|encours|ancien|nouveau|date|libell|cumul|frais bancaires annuels|releve|relevé)/i
