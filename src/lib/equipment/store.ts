@@ -32,6 +32,10 @@ export function addEquipment(draft: Omit<EquipmentItem, 'id'>): EquipmentItem {
   return item
 }
 
+export function setEquipmentPhoto(id: string, hasPhoto: boolean): void {
+  write(read().map(i => (i.id === id ? { ...i, has_photo: hasPhoto } : i)))
+}
+
 export function removeEquipment(id: string): void {
   write(read().filter(i => i.id !== id))
 }

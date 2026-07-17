@@ -14,6 +14,20 @@ export interface EquipmentItem {
   price: number | null
   retailer: string | null
   warranty_months: number
+  has_photo?: boolean          // preuve d'achat (ticket/facture) stockée sur l'appareil
+}
+
+// Photo de preuve : on la redimensionne avant stockage (un ticket net à 1400 px
+// de large suffit largement, et ça évite de saturer le stockage local).
+export const MAX_PHOTO_SIDE = 1400
+
+/** Dimensions cibles en gardant le ratio, plafonnées au plus grand côté. */
+export function scaledDimensions(width: number, height: number, max = MAX_PHOTO_SIDE): { width: number; height: number } {
+  if (!(width > 0) || !(height > 0)) return { width: 0, height: 0 }
+  const longest = Math.max(width, height)
+  if (longest <= max) return { width: Math.round(width), height: Math.round(height) }
+  const s = max / longest
+  return { width: Math.round(width * s), height: Math.round(height * s) }
 }
 
 export type WarrantyUrgency = 'expiree' | 'bientot' | 'ok'

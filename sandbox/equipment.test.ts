@@ -3,7 +3,7 @@
  * Fin de garantie, urgence, extraction d'un ticket d'achat. Logique pure.
  * Lancer : npm run test:sandbox
  */
-import { warrantyEnd, warrantyStatus, extractPurchaseInfo, LEGAL_WARRANTY_MONTHS } from '../src/lib/equipment/logic'
+import { warrantyEnd, warrantyStatus, extractPurchaseInfo, scaledDimensions, LEGAL_WARRANTY_MONTHS } from '../src/lib/equipment/logic'
 
 let failures = 0
 function check(name: string, cond: boolean, detail = '') {
@@ -42,6 +42,13 @@ check('Prix = le total (449,99)', info.price === 449.99)
 check('Enseigne inconnue → retailer null (mais date/prix quand même)',
   (() => { const i = extractPurchaseInfo('Magasin du coin\n03/04/2026\nGrille-pain 24,90'); return i.retailer === null && i.date === '2026-04-03' && i.price === 24.90 })())
 check('Rien d\'exploitable → tout null', (() => { const i = extractPurchaseInfo('bonjour'); return !i.retailer && !i.date && !i.price })())
+
+// ─── Redimensionnement de la photo de preuve ───────────────────────────────
+check('Photo 4000×3000 → plafonnée à 1400 de large (ratio gardé)',
+  (() => { const d = scaledDimensions(4000, 3000); return d.width === 1400 && d.height === 1050 })())
+check('Photo portrait 3000×4000 → 1050×1400', (() => { const d = scaledDimensions(3000, 4000); return d.width === 1050 && d.height === 1400 })())
+check('Petite image (800×600) inchangée', (() => { const d = scaledDimensions(800, 600); return d.width === 800 && d.height === 600 })())
+check('Dimensions nulles → 0×0 (pas de crash)', (() => { const d = scaledDimensions(0, 0); return d.width === 0 && d.height === 0 })())
 
 console.log(failures === 0 ? '\n✅ ÉQUIPEMENT & GARANTIES : TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)
