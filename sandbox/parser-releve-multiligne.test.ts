@@ -41,5 +41,22 @@ check('AXA capté depuis son bloc (DE: AXA…)', !!byMerchant('AXA') && byMercha
 check('Carte carrefour lue (montant collé 7,00)', byMerchant('Carrefour')?.amount === 7)
 check('Carte E.Leclerc lue (X#### + 2e date retirés)', !!transactions.find(t => /leclerc/i.test(t.merchant) && t.amount === 33.80))
 
+// ─── FAUX POSITIFS par sous-chaîne (retours Juju) ───────────────────────────
+// « sfr » dans le BIC « BOUSFRPP », « mma » dans « LA MAMMA » (pizzeria).
+const pieges = parseStatement(`27/04/2026   27/04/2026   VIR RECU CHEZ: BOUSFRPPXXX10,00
+26/05/2026   26/05/2026   CARTE X4179 23/05 LA MAMMA PIZZERI9,50`, 'test').transactions
+check('« BOUSFRPP » (BIC) n’est PAS pris pour SFR', !pieges.some(t => t.merchant === 'SFR'), JSON.stringify(pieges.map(t => t.merchant)))
+check('« LA MAMMA » (pizzeria) n’est PAS pris pour MMA', !pieges.some(t => t.merchant === 'MMA'))
+
+// ─── Montant collé à une réf de mandat ──────────────────────────────────────
+// « …MANDAT …180002 » puis « 301,16 » ne doit PAS se lire « 2 301,16 ».
+const edf = parseStatement(`05/05/2026   05/05/2026   PRELEVEMENT EUROPEEN 3027555177
+DE: EDF clients particuliers
+MANDAT MM9750177325180002
+301,16
+06/05/2026   06/05/2026   CARTE X4179 AUTRE1,00`, 'test').transactions
+const edfTx = edf.find(t => t.merchant === 'EDF')
+check('EDF : montant 301,16 (et pas 2301,16 avalé du mandat)', edfTx?.amount === 301.16, JSON.stringify(edf))
+
 console.log(failures === 0 ? '\n✅ RELEVÉ MULTI-LIGNES : TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)
