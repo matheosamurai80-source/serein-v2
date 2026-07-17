@@ -4,7 +4,7 @@
  * Méthode BUILD : logique pure, PASS/FAIL, AVANT l'UI.
  * Lancer : npm run test:sandbox
  */
-import { extractSubscriptionDraft } from '../src/lib/subscriptions/extract'
+import { extractSubscriptionDraft, looksLikeStatement } from '../src/lib/subscriptions/extract'
 
 let failures = 0
 function check(name: string, cond: boolean, detail = '') {
@@ -54,6 +54,19 @@ check('Montant pertinent (24,99) et pas la référence/sous-total', b?.amount ==
 // Aucun montant → null (on n'invente pas)
 check('Sans montant → null', extractSubscriptionDraft('Bonjour, lettre sans aucun prix.') === null)
 check('null → null (pas de crash)', extractSubscriptionDraft(null as unknown as string) === null)
+
+// ─── relevé bancaire : ce n'est PAS un abonnement unique → à analyser en entier
+const releve = `RELEVE DE COMPTE — Juillet 2026
+05/07/2026 PRLV SEPA NETFLIX.COM        -13,49
+09/07/2026 CB CARREFOUR MARKET          -42,10
+12/07/2026 PRLV SEPA SPOTIFY            -10,99
+15/07/2026 VIR SALAIRE                 +2100,00
+20/07/2026 PRLV SEPA ORANGE SA          -39,99
+SOLDE CREDITEUR                         1523,44`
+check('relevé bancaire reconnu comme relevé (multi-opérations)', looksLikeStatement(releve) === true)
+check('facture Orange seule = PAS un relevé', looksLikeStatement(`ORANGE\nFacture du 01/07/2026\nMontant à payer : 39,99 € TTC`) === false)
+check('facture Netflix seule = PAS un relevé', looksLikeStatement(netflix) === false)
+check('texte vide → pas un relevé', looksLikeStatement('') === false)
 
 console.log(failures === 0 ? '\n✅ EXTRACTION ABONNEMENT : TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)
