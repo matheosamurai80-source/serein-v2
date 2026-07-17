@@ -43,7 +43,7 @@ check('2 achats dans l’historique du yaourt', yaourt.purchases.length === 2)
 check('« le moins cher pour toi » = Aldi à 1,59 €', (() => { const b = bestStore(yaourt.purchases); return b?.store === 'Aldi' && b?.price === 1.59 })())
 
 // Robustesse
-check('lignes nulles → rien', ticketToItems(null as any, [], { date: 'x' }).added === 0)
+check('lignes nulles → rien', ticketToItems(null as unknown as [], [], { date: 'x' }).added === 0)
 check('prix invalide ignoré', ticketToItems([{ label: 'TRUC', price: 0 }], [], { date: 'x' }).added === 0)
 check('sans magasin : import quand même (store null)', (() => {
   const r = ticketToItems([{ label: 'PAIN', price: 1 }], [], { date: '2026-07-14' })
