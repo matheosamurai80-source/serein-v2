@@ -89,7 +89,12 @@ Brique 1** de la fusion. On avance **une brique à la fois, sandbox d'abord**.
 - **Palette — prochains pavés candidats** (chacun = document → engagement →
   échéance, informer sans agir, zéro partenariat, UN seul à la fois) :
   **🚗 Véhicule** (contrôle technique tous les 2 ans, entretien — fort, et métier
-  de Juju), **🪪 Papiers** (expiration CNI / passeport / permis), **📋 Documents
-  officiels** (amende → lien ANTAI, avis d'impôt → impots.gouv, etc. : reconnaître
-  le type et donner le **lien officiel vers la solution** ; prolonge Démarches),
-  puis 🩺 Santé, 🔨 Travaux.
+  de Juju), **🪪 Papiers** (expiration CNI / passeport / permis), puis 🩺 Santé,
+  🔨 Travaux.
+- **Brique 11 — Documents officiels** ✅ (2026-07-14, choix Juju) :
+  `src/lib/officiel/logic.ts` `detectOfficialDoc(text)` (pur, sandbox 11/11) →
+  reconnaît amende (ANTAI), impôt/taxes (impots.gouv), CAF, Assurance Maladie
+  (ameli), URSSAF, France Travail, carte grise (ANTS), repli service-public.
+  Intégré au « + » : une démarche reconnue comme doc officiel affiche le **lien
+  officiel vers la solution** (payer/contester/consulter), la lettre restant en
+  secondaire. Liens .gouv uniquement, zéro partenaire, informer sans agir.
