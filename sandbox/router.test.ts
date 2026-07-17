@@ -56,6 +56,12 @@ succession, nous vous prions de bien vouloir résilier le contrat.
 Veuillez agréer nos salutations.`
 check('courrier de décès/succession → demarche', routerDocument(deces) === 'demarche', JSON.stringify(scoreDocument(deces)))
 
+const amende = `AVIS DE CONTRAVENTION
+Le véhicule dont le certificat d'immatriculation est établi à votre nom a fait l'objet d'un contrôle.
+Conduite d'un véhicule à une vitesse excessive. Montant de l'amende forfaitaire : 135 €.
+www.antai.gouv.fr est l'unique site officiel pour vos démarches.`
+check('avis de contravention (amende) → demarche', routerDocument(amende) === 'demarche', JSON.stringify(scoreDocument(amende)))
+
 const demenagement = `Objet : changement d'adresse
 Suite à mon déménagement, je vous adresse ce courrier recommandé afin de
 mettre à jour mon adresse. Le changement prend effet le 15/09.`

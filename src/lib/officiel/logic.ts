@@ -8,9 +8,11 @@ export interface OfficialDoc {
   type: string
   label: string
   emoji: string
-  url: string        // lien OFFICIEL (service public)
-  action: string     // ce que l'utilisateur peut faire
-  note: string       // repère utile (délai, espace en ligne…)
+  url: string         // lien OFFICIEL principal
+  action: string      // action principale
+  url2?: string       // 2e lien officiel (ex. contester vs payer)
+  action2?: string
+  note: string        // repère utile (délai, espace en ligne…)
 }
 
 const deburr = (s: string) =>
@@ -21,8 +23,10 @@ const deburr = (s: string) =>
 const CATALOG: { match: RegExp; doc: OfficialDoc }[] = [
   {
     match: /\bamende|contravention|avis de contravention|\bantai\b|forfaitaire majoree?|exces de vitesse|stationnement (impaye|non paye)|radar/,
-    doc: { type: 'amende', label: 'Amende / contravention', emoji: '🚓', url: 'https://www.antai.gouv.fr',
-      action: 'Payer ou contester en ligne', note: 'Sur le site officiel ANTAI : paiement (souvent minoré si rapide) ou contestation.' },
+    doc: { type: 'amende', label: 'Amende / contravention', emoji: '🚓',
+      url: 'https://www.amendes.gouv.fr', action: 'Payer l’amende',
+      url2: 'https://www.antai.gouv.fr', action2: 'Contester',
+      note: 'Montant souvent minoré si vous payez vite (ex. 90 € sous 15 j). Paiement sur amendes.gouv.fr ; toute contestation sur antai.gouv.fr.' },
   },
   {
     match: /taxe fonciere/,

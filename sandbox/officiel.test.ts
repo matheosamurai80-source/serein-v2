@@ -11,9 +11,9 @@ function check(name: string, cond: boolean, detail = '') {
   if (!cond) failures++
 }
 
-check('Amende → ANTAI', (() => {
-  const d = detectOfficialDoc('AVIS DE CONTRAVENTION\nAmende forfaitaire : 135 €\nExcès de vitesse')
-  return d?.type === 'amende' && d.url.includes('antai.gouv.fr')
+check('Amende → payer amendes.gouv + contester ANTAI', (() => {
+  const d = detectOfficialDoc('AVIS DE CONTRAVENTION\nAmende forfaitaire : 135 €\nExcès de vitesse\nwww.antai.gouv.fr')
+  return d?.type === 'amende' && d.url.includes('amendes.gouv.fr') && (d.url2 ?? '').includes('antai.gouv.fr')
 })())
 check('Avis d’impôt → impots.gouv', (() => {
   const d = detectOfficialDoc('DGFIP\nAvis d’impôt sur le revenu 2026\nMontant à payer : 1 240 €')
