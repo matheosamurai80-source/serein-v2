@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
-import { listEquipment, addEquipment, removeEquipment } from '@/lib/equipment/store'
+import { listEquipment, addEquipment, removeEquipment, setEquipmentPhoto } from '@/lib/equipment/store'
+import { savePhoto, loadPhotoUrl, deletePhoto } from '@/lib/equipment/photos'
 import { warrantyStatus, extractPurchaseInfo, type EquipmentItem, type WarrantyUrgency } from '@/lib/equipment/logic'
 
 // Pavé Équipement & Garanties : tu achètes un appareil, Serein te prévient AVANT
@@ -31,6 +32,9 @@ export default function GarantiesPage() {
   const [price, setPrice] = useState('')
   const [months, setMonths] = useState(24)
   const [paste, setPaste] = useState('')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [viewId, setViewId] = useState<string | null>(null)
+  const [viewUrl, setViewUrl] = useState<string | null>(null)
 
   const refresh = () => setItems(listEquipment())
   useEffect(() => { setItems(listEquipment()) }, [])
@@ -44,22 +48,41 @@ export default function GarantiesPage() {
     toast.show('Ticket lu — vérifie et donne un nom à l’appareil.')
   }
 
-  const add = () => {
+  const add = async () => {
     if (!name.trim()) { toast.show('Donne un nom à l’appareil (ex. Lave-linge Bosch).'); return }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast.show('Indique la date d’achat.'); return }
-    addEquipment({
+    const item = addEquipment({
       name: name.trim(),
       purchase_date: date,
       retailer: retailer.trim() || null,
       price: price ? parseFloat(price.replace(',', '.')) || null : null,
       warranty_months: months,
     })
-    setName(''); setRetailer(''); setPrice(''); setPaste(''); setDate(today()); setMonths(24)
+    if (photo) {
+      try { await savePhoto(item.id, photo); setEquipmentPhoto(item.id, true) }
+      catch { toast.show('Garantie enregistrée, mais la photo n’a pas pu être gardée.') }
+    }
+    setName(''); setRetailer(''); setPrice(''); setPaste(''); setDate(today()); setMonths(24); setPhoto(null)
     refresh()
     toast.show('✓ Garantie enregistrée')
   }
 
-  const del = (id: string) => { removeEquipment(id); refresh() }
+  const del = (id: string) => {
+    removeEquipment(id)
+    void deletePhoto(id)
+    if (viewId === id) { setViewId(null); if (viewUrl) URL.revokeObjectURL(viewUrl); setViewUrl(null) }
+    refresh()
+  }
+
+  const togglePhoto = async (id: string) => {
+    if (viewId === id) { // fermer
+      setViewId(null); if (viewUrl) URL.revokeObjectURL(viewUrl); setViewUrl(null); return
+    }
+    if (viewUrl) URL.revokeObjectURL(viewUrl)
+    const url = await loadPhotoUrl(id)
+    if (!url) { toast.show('Photo introuvable.'); return }
+    setViewUrl(url); setViewId(id)
+  }
 
   // Tri : le plus urgent d'abord (fin la plus proche), les terminées en dernier.
   const withStatus = items
@@ -119,7 +142,15 @@ export default function GarantiesPage() {
               <input inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="€" className={inputCls} />
             </div>
           </div>
-          <Button onClick={add} data-testid="eq-add">➕ Enregistrer la garantie</Button>
+          <div>
+            <label className={labelCls}>Photo du ticket / de la facture (la preuve pour la garantie)</label>
+            <label htmlFor="eq-photo" className="flex items-center justify-center gap-2 border-[1.5px] border-dashed border-sage/50 rounded-xl py-2.5 text-[13px] text-green-dark cursor-pointer text-moss">
+              {photo ? `📷 ${photo.name.slice(0, 28)}` : '📷 Prendre une photo / importer'}
+            </label>
+            <input id="eq-photo" type="file" accept="image/*" capture="environment" className="hidden"
+              onChange={e => setPhoto(e.target.files?.[0] ?? null)} />
+          </div>
+          <Button onClick={() => void add()} data-testid="eq-add">➕ Enregistrer la garantie</Button>
         </div>
 
         {/* Liste */}
@@ -130,20 +161,32 @@ export default function GarantiesPage() {
             {withStatus.map(({ it, st }) => {
               const ui = URGENCY_UI[st.urgency]
               return (
-                <div key={it.id} data-testid="eq-item" className="flex items-start gap-3 bg-surface border border-ink/10 rounded-2xl p-4">
-                  <span className="flex-1 min-w-0">
-                    <span className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-ink text-sm">{it.name}</span>
-                      <span className={`text-[10.5px] font-semibold border rounded-full px-2.5 py-0.5 ${ui.badge}`}>
-                        {st.daysLeft != null ? ui.label(st.daysLeft) : '—'}
+                <div key={it.id} data-testid="eq-item" className="bg-surface border border-ink/10 rounded-2xl p-4">
+                  <div className="flex items-start gap-3">
+                    <span className="flex-1 min-w-0">
+                      <span className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-ink text-sm">{it.name}</span>
+                        <span className={`text-[10.5px] font-semibold border rounded-full px-2.5 py-0.5 ${ui.badge}`}>
+                          {st.daysLeft != null ? ui.label(st.daysLeft) : '—'}
+                        </span>
                       </span>
+                      <span className="block text-xs text-ink/50 mt-0.5">
+                        {[it.retailer, it.price != null ? `${it.price.toLocaleString('fr-FR')} €` : null,
+                          st.end ? `garantie jusqu’au ${frDate(st.end)}` : null].filter(Boolean).join(' · ')}
+                      </span>
+                      {it.has_photo && (
+                        <button onClick={() => void togglePhoto(it.id)} data-testid="eq-photo-view"
+                          className="mt-1.5 font-mono text-[11px] tracking-[.1em] uppercase text-moss underline">
+                          📷 {viewId === it.id ? 'masquer le ticket' : 'voir le ticket'}
+                        </button>
+                      )}
                     </span>
-                    <span className="block text-xs text-ink/50 mt-0.5">
-                      {[it.retailer, it.price != null ? `${it.price.toLocaleString('fr-FR')} €` : null,
-                        st.end ? `garantie jusqu’au ${frDate(st.end)}` : null].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                  <button onClick={() => del(it.id)} aria-label="retirer" className="text-ink/30 hover:text-crimson text-sm mt-0.5">✕</button>
+                    <button onClick={() => del(it.id)} aria-label="retirer" className="text-ink/30 hover:text-crimson text-sm mt-0.5">✕</button>
+                  </div>
+                  {it.has_photo && viewId === it.id && viewUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={viewUrl} alt={`Ticket ${it.name}`} className="mt-3 w-full rounded-xl border border-ink/10" />
+                  )}
                 </div>
               )
             })}

@@ -89,5 +89,7 @@ Brique 1** de la fusion. On avance **une brique à la fois, sandbox d'abord**.
 - **Palette — prochains pavés candidats** (chacun = document → engagement →
   échéance, informer sans agir, zéro partenariat, UN seul à la fois) :
   **🚗 Véhicule** (contrôle technique tous les 2 ans, entretien — fort, et métier
-  de Juju), **🪪 Papiers** (expiration CNI / passeport / permis), puis 🩺 Santé,
-  🔨 Travaux.
+  de Juju), **🪪 Papiers** (expiration CNI / passeport / permis), **📋 Documents
+  officiels** (amende → lien ANTAI, avis d'impôt → impots.gouv, etc. : reconnaître
+  le type et donner le **lien officiel vers la solution** ; prolonge Démarches),
+  puis 🩺 Santé, 🔨 Travaux.
