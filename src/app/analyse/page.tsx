@@ -78,15 +78,18 @@ export default function AnalysePage() {
     const { subscriptions } = scoreSubscriptions(txs, 'browser')
     const sugg = buildSuggestions(subscriptions, existingNames)
     setSuggestions(sugg)
-    setStats(analyseStats(txs, sugg))
-    setChecked(new Set(sugg.filter(s => !s.alreadyTracked).map(s => s.name)))
+    // Par défaut : on ne met en avant (et ne coche) que les abonnements RECONNUS
+    // (enseignes identifiées) ; le bruit « Autre » (achats ponctuels) est masqué.
+    const recognized = sugg.filter(s => s.recognized)
+    setStats(analyseStats(txs, recognized))
+    setChecked(new Set(recognized.filter(s => !s.alreadyTracked).map(s => s.name)))
     setSavedCount(0)
     void persistDetected(subscriptions)
     // Retour positif explicite (le succès ne doit pas être silencieux).
-    const n = subscriptions.length
+    const n = recognized.length
     toast.show(n > 0
-      ? `✓ Relevé analysé — ${txs.length} opérations lues, ${n} abonnement${n > 1 ? 's' : ''} détecté${n > 1 ? 's' : ''}`
-      : `✓ Relevé analysé — ${txs.length} opérations lues, aucun abonnement récurrent repéré`)
+      ? `✓ Relevé analysé — ${txs.length} opérations lues, ${n} abonnement${n > 1 ? 's' : ''} reconnu${n > 1 ? 's' : ''}`
+      : `✓ Relevé analysé — ${txs.length} opérations lues, aucun abonnement reconnu`)
   }
 
   const handleFile = async (file: File) => {
@@ -135,6 +138,28 @@ export default function AnalysePage() {
       setAdding(false)
     }
   }
+
+  const renderSuggestion = (s: CommitmentSuggestion) => (
+    <label key={s.name} data-testid="suggestion"
+      className={`flex items-start gap-3 bg-surface border rounded-2xl p-4 cursor-pointer transition-colors ${checked.has(s.name) && !s.alreadyTracked ? 'border-sage/50' : 'border-ink/10'} ${s.alreadyTracked ? 'opacity-60' : ''}`}>
+      <input type="checkbox" className="mt-1 accent-[#557A59]" disabled={s.alreadyTracked}
+        checked={s.alreadyTracked || checked.has(s.name)} onChange={() => toggle(s.name)} />
+      <span className="flex-1 min-w-0">
+        <span className="flex items-center gap-2 flex-wrap">
+          <span className="font-semibold text-ink text-sm">{s.name}</span>
+          {s.alreadyTracked
+            ? <span className="text-[10.5px] font-semibold border rounded-full px-2.5 py-0.5 bg-ink/8 text-ink/50 border-ink/12">Déjà suivi</span>
+            : <span className={`text-[10.5px] font-semibold border rounded-full px-2.5 py-0.5 ${RISK_UI[s.risk_level]}`}>{RISK_LABEL[s.risk_level]}</span>}
+        </span>
+        <span className="block text-xs text-ink/50 mt-0.5">
+          {s.amount.toLocaleString('fr-FR')} €/mois · vu {s.occurrences} fois · {s.why}
+        </span>
+      </span>
+    </label>
+  )
+
+  const recognized = (suggestions ?? []).filter(s => s.recognized)
+  const others = (suggestions ?? []).filter(s => !s.recognized)
 
   return (
     <>
@@ -203,25 +228,23 @@ export default function AnalysePage() {
             </div>
 
             <div className="flex flex-col gap-2.5 mb-4">
-              {suggestions.map(s => (
-                <label key={s.name} data-testid="suggestion"
-                  className={`flex items-start gap-3 bg-surface border rounded-2xl p-4 cursor-pointer transition-colors ${checked.has(s.name) && !s.alreadyTracked ? 'border-sage/50' : 'border-ink/10'} ${s.alreadyTracked ? 'opacity-60' : ''}`}>
-                  <input type="checkbox" className="mt-1 accent-[#557A59]" disabled={s.alreadyTracked}
-                    checked={s.alreadyTracked || checked.has(s.name)} onChange={() => toggle(s.name)} />
-                  <span className="flex-1 min-w-0">
-                    <span className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-ink text-sm">{s.name}</span>
-                      {s.alreadyTracked
-                        ? <span className="text-[10.5px] font-semibold border rounded-full px-2.5 py-0.5 bg-ink/8 text-ink/50 border-ink/12">Déjà suivi</span>
-                        : <span className={`text-[10.5px] font-semibold border rounded-full px-2.5 py-0.5 ${RISK_UI[s.risk_level]}`}>{RISK_LABEL[s.risk_level]}</span>}
-                    </span>
-                    <span className="block text-xs text-ink/50 mt-0.5">
-                      {s.amount.toLocaleString('fr-FR')} €/mois · vu {s.occurrences} fois · {s.why}
-                    </span>
-                  </span>
-                </label>
-              ))}
+              {recognized.length > 0
+                ? recognized.map(renderSuggestion)
+                : <p className="text-sm text-ink/60 text-center py-2">Aucun abonnement d’enseigne connue repéré sur ce relevé.</p>}
             </div>
+
+            {/* Bruit « Autre » (achats ponctuels, courses…) : masqué par défaut,
+                 accessible si l'utilisateur veut quand même en suivre un. */}
+            {others.length > 0 && (
+              <details className="w-full mb-4">
+                <summary className="cursor-pointer font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 hover:text-ink/70">
+                  + Voir {others.length} autre{others.length > 1 ? 's' : ''} opération{others.length > 1 ? 's' : ''} repérée{others.length > 1 ? 's' : ''} (achats ponctuels, courses…)
+                </summary>
+                <div className="flex flex-col gap-2.5 mt-3">
+                  {others.map(renderSuggestion)}
+                </div>
+              </details>
+            )}
 
             {unmatched.length > 0 && (
               <div className="w-full bg-surface border border-ink/10 rounded-2xl p-4 mb-4" data-testid="unmatched">

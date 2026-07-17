@@ -51,6 +51,9 @@ check('Déjà suivi : Netflix marqué alreadyTracked (insensible à la casse)',
 check('Catégorie → type de service : streaming → streaming',
   sugg.find(s => s.name === 'Netflix')?.service_type === 'streaming')
 check('Montant = coût mensualisé positif', sugg.every(s => s.amount > 0))
+check('Netflix/Spotify = marchands RECONNUS (affichés par défaut)',
+  sugg.find(s => s.name === 'Netflix')?.recognized === true
+  && sugg.find(s => s.name === 'Spotify')?.recognized === true)
 
 const stats = analyseStats(txs, sugg)
 check('Stats : compteurs cohérents (2 abonnements dont 1 nouveau)',
