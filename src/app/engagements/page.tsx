@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { SereinNav } from '@/components/ui/nav'
+import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
 import {
   listCommitments, addCommitments, updateCommitment, deleteCommitment,
@@ -217,7 +217,7 @@ export default function EngagementsPage() {
 
   return (
     <>
-    <SereinNav />
+    <FoyerTabs />
     <main className="min-h-screen max-w-[640px] mx-auto px-5 py-8 flex flex-col items-center animate-fade-up">
       <p className="font-mono text-[11px] tracking-[.17em] uppercase text-moss mb-5 flex items-center gap-2.5">
         <span className="w-6 h-px bg-moss" />Engagements<span className="w-6 h-px bg-moss" />

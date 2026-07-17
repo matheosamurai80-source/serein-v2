@@ -64,6 +64,11 @@ Brique 1** de la fusion. On avance **une brique à la fois, sandbox d'abord**.
   par PanierMalin (ouvre l'écran ticket + lit le texte). « ＋ Ajouter » ajouté à la
   nav Serein. **Reste à venir** : OCR image (photo) côté Serein, auto-analyse au
   relais, et le service Démarches (Après) réel.
-- Puis — l'accueil « À faire » (agrégation des échéances de tous les services,
-  tri par urgence) et les **3 onglets verrouillés** (Accueil · + · Mon foyer) qui
-  remplacent la nav actuelle à 6 liens.
+- **Brique 8 — Les 3 onglets verrouillés** ✅ (2026-07-14) : `FoyerTabs`
+  (Accueil `/dashboard` · ＋ `/ajouter` · Mon foyer `/foyer`) remplace la nav à
+  6 liens sur toutes les pages de l'app. Les 6 sections deviennent des **cartes**
+  dans `/foyer` (`foyerSections()`, pur, sandbox 10/10), groupées par famille
+  (Contrats & abonnements · Démarches · Documents · Courses · Compte). L'Accueil
+  reste `/dashboard` (déjà l'agrégateur d'urgence). **Reste à venir** : reframer
+  l'Accueil en pur flux « À faire » (cartes par urgence) et, éventuellement,
+  passer les onglets en barre basse (app feel).
