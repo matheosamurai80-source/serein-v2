@@ -12,7 +12,7 @@ function check(name: string, cond: boolean, detail = '') {
   if (!cond) failures++
 }
 
-let list = addItem([], 'Lait')
+const list = addItem([], 'Lait')
 check('Article présent reconnu', isOnList(list, 'Lait'))
 check('Insensible à la casse/espaces', isOnList(list, '  LAIT '))
 check('Article absent → false', !isOnList(list, 'Pain'))

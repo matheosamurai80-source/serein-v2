@@ -1,7 +1,7 @@
 # SEREIN — Dossier de référence
 
 > Document à consulter en premier avant toute intervention sur ce dépôt.
-> Dernière mise à jour : 2026-07-14 (Fusion — les 3 onglets verrouillés : Accueil · ＋ · Mon foyer)
+> Dernière mise à jour : 2026-07-14 (Brique 1 socle API — revérifié sur schéma live + livrable `test-validation.mjs`)
 >
 > **Architecture de la fusion gravée dans `SEREIN-PLAN-FUSION.md`** (un geste,
 > trois onglets, des cartes ; le « + » route via `routerDocument`).
@@ -769,6 +769,7 @@ extension annuaire résiliation.
 | 2026-07-14 | PanierMalin — OCR fiabilisé (« lecture impossible » sur mobile) : CDN Tesseract de secours (jsdelivr→unpkg), vraie raison affichée, + plan B « coller le texte du ticket » (même parseur, `ingestTicketLines`) | Sandbox 579 PASS, IDs plan B (linkedom) + parse texte collé OK, `node --check` OK, cache SW v26 |
 | 2026-07-14 | Fusion — principes gravés (`SEREIN-PLAN-FUSION.md`) + **routeur universel** `routerDocument(texte)→ courses/abonnement/demarche/inconnu` (Brique 6 candidate, `src/lib/router/logic.ts`) : signaux pondérés + garde-fou seuil/marge → `inconnu` si faible/ambigu ; `ROUTE_TO_SERVICE`. Logique pure, AUCUNE UI encore | Sandbox 592 PASS 0 FAIL (`router.test.ts` 13/13, dont le vrai ticket Leclerc), `src` tsc + lint clean, **build prod vert** |
 | 2026-07-14 | Fusion — **le « + » branché** : page `/ajouter` (dépôt PDF/OCR ou collage) → `routerDocument` + `describeDestination` → carte d'orientation (override + `inconnu`→choix) ; relais même origine (`sessionStorage` → `/analyse`, `localStorage` → PanierMalin ouvre le ticket) ; « ＋ Ajouter » dans la nav | Sandbox 597 PASS 0 FAIL (`router.test.ts` 18/18 avec orientation), **build prod vert** (route `/ajouter`), `node --check` PanierMalin OK, cache SW v27 |
+| 2026-07-14 | Brique 1 socle API — **revérifié** contre le schéma Supabase live (subscriptions/reminders/uploads/cancellation_letters + CHECK) : response.ts (10 codes), 4 schémas Zod alignés, services CRUD (auth+propriété), routes route→Zod→auth→service→réponse. Déjà en place, aucune reconstruction. Ajout du livrable nommé `sandbox/test-validation.mjs` (25/25) | lint 0 erreur, typecheck `src` propre, **build prod vert**, sandbox 640 PASS 0 FAIL |
 | 2026-07-14 | Fusion — **les 3 onglets verrouillés** (`FoyerTabs` : Accueil `/dashboard` · ＋ `/ajouter` · Mon foyer `/foyer`) remplacent la nav à 6 liens sur toute l'app ; les sections deviennent des cartes dans `/foyer` (`foyerSections()` pur) | Sandbox 614 PASS 0 FAIL (`foyer.test.ts` 10/10), **build prod vert** (27 pages, `/foyer` générée), nav swap sur 8 pages sans erreur |
 | 2026-07-14 | Fix terrain (retour Juju) — ① `parseTicketText` gère le **copier-coller aplati** (tout sur une ligne : réinsertion de sauts après « prix+TVA » et autour des rayons `>>`) ; ② label de promo nettoyé ; ③ « ＋ Ajouter » ajouté à la **barre PanierMalin** (le « + » n'était que dans le menu Serein) | Sandbox 604 PASS 0 FAIL (ton copier-coller réel = **47 produits**, avant : 1), non-régression tickets classiques verte, `node --check` OK, cache SW v28 |
 
