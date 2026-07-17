@@ -5,6 +5,7 @@ import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
 import { extractPdfTextResilient } from '@/lib/pdf/browser'
 import { routerDocument, describeDestination, type DocType } from '@/lib/router/logic'
+import { detectOfficialDoc } from '@/lib/officiel/logic'
 import { extractSubscriptionDraft, looksLikeStatement, type SubscriptionDraft, type SubscriptionFrequency } from '@/lib/subscriptions/extract'
 import { createSubscription } from '@/lib/data/store'
 
@@ -84,6 +85,8 @@ export default function AjouterPage() {
   }
 
   const dest = result ? describeDestination(result.type) : null
+  // Démarche = courrier : est-ce un document officiel connu (amende, impôt…) ?
+  const official = result && result.type === 'demarche' ? detectOfficialDoc(result.text, { withFallback: true }) : null
 
   return (
     <>
@@ -223,8 +226,18 @@ export default function AjouterPage() {
               </div>
             ) : result.type !== 'inconnu' ? (
               <>
-                <Button onClick={() => handoff(result.type, result.text)} data-testid="route-go">
-                  {dest.cta} →
+                {official && (
+                  <div className="w-full bg-surface border border-sage/30 rounded-2xl p-5 mb-3 text-center" data-testid="official-doc">
+                    <div className="text-[15px] text-ink font-semibold mb-1">{official.emoji} {official.label}</div>
+                    <p className="text-xs text-ink/60 leading-[1.5] mb-3">{official.note}</p>
+                    <a href={official.url} target="_blank" rel="noopener noreferrer" data-testid="official-link"
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-sage text-cream text-sm font-semibold px-6 py-3 hover:bg-sage-light transition-colors">
+                      {official.action} sur le site officiel ↗
+                    </a>
+                  </div>
+                )}
+                <Button onClick={() => handoff(result.type, result.text)} data-testid="route-go" variant={official ? 'secondary' : 'primary'}>
+                  {official ? 'Plutôt écrire un courrier →' : `${dest.cta} →`}
                 </Button>
                 <div className="mt-4 text-center">
                   <p className="font-mono text-[11px] text-ink/45 tracking-wider mb-2">Ce n’est pas ça ?</p>
