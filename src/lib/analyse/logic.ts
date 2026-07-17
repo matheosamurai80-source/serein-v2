@@ -44,6 +44,12 @@ export interface CommitmentSuggestion {
   risk_level: Subscription['risk_level']
   why: string
   alreadyTracked: boolean
+  /**
+   * Marchand RECONNU (enseigne d'abonnement identifiée : Netflix, Orange, EDF…),
+   * par opposition à une opération « Autre » (achat ponctuel, commerçant inconnu).
+   * Sert à ne montrer que les vrais abonnements par défaut, et à masquer le bruit.
+   */
+  recognized: boolean
 }
 
 /**
@@ -63,6 +69,7 @@ export function buildSuggestions(
     risk_level: s.risk_level,
     why: s.why,
     alreadyTracked: existing.has(s.merchant.trim().toLowerCase()),
+    recognized: s.category !== 'other', // catégorie précise = enseigne identifiée
   }))
 }
 
