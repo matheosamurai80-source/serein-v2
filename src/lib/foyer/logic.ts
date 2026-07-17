@@ -39,6 +39,12 @@ export function foyerSections(): FoyerSection[] {
       ],
     },
     {
+      title: 'Équipement',
+      links: [
+        { href: '/garanties', label: 'Mes garanties', icon: '📦', desc: 'Tes appareils : Serein te prévient avant la fin de garantie.' },
+      ],
+    },
+    {
       title: 'Courses',
       links: [
         { href: '/paniermalin', label: 'PanierMalin', icon: '🧺', desc: 'Tes courses, tes prix, ton placard.' },

@@ -79,3 +79,15 @@ Brique 1** de la fusion. On avance **une brique à la fois, sandbox d'abord**.
   reste `/dashboard` (déjà l'agrégateur d'urgence). **Reste à venir** : reframer
   l'Accueil en pur flux « À faire » (cartes par urgence) et, éventuellement,
   passer les onglets en barre basse (app feel).
+- **Brique 10 — Pavé Équipement / Garanties** ✅ (2026-07-14) : `src/lib/equipment/logic.ts`
+  (`warrantyEnd`, `warrantyStatus`, `extractPurchaseInfo` — pur, sandbox 14/14) +
+  store localStorage + page `/garanties` (ajout manuel ou par collage de ticket,
+  liste triée par urgence, alerte avant la fin de garantie légale de 2 ans) +
+  carte dans Mon foyer. Preuve du principe « un service = un détecteur + des
+  cartes, zéro onglet ». À venir : brancher le « + » (ticket d'équipement →
+  garantie) + rappels avant expiration.
+- **Palette — prochains pavés candidats** (chacun = document → engagement →
+  échéance, informer sans agir, zéro partenariat, UN seul à la fois) :
+  **🚗 Véhicule** (contrôle technique tous les 2 ans, entretien — fort, et métier
+  de Juju), **🪪 Papiers** (expiration CNI / passeport / permis), puis 🩺 Santé,
+  🔨 Travaux.
