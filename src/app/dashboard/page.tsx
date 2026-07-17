@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { SereinNav } from '@/components/ui/nav'
+import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { listCommitments, listReminders } from '@/lib/data/store'
 import { serviceTypeToCategory, type ServiceType, type CommitmentFrequency, type Urgency } from '@/lib/commitments/logic'
 import { buildDashboardSummary, type DashCommitment, type DashReminder } from '@/lib/dashboard/logic'
@@ -58,7 +58,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <SereinNav />
+      <FoyerTabs />
       <main className="min-h-screen max-w-[720px] mx-auto px-5 py-8 flex flex-col items-center animate-fade-up">
         <p className="font-mono text-[11px] tracking-[.17em] uppercase text-moss mb-4 flex items-center gap-2.5">
           <span className="w-6 h-px bg-moss" />Tableau de bord<span className="w-6 h-px bg-moss" />
