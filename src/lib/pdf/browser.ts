@@ -73,3 +73,30 @@ export async function extractPdfText(
   }
   return morceaux.join('\n')
 }
+
+/**
+ * Lecture PDF ROBUSTE : d'abord dans le navigateur (le fichier ne quitte pas
+ * l'appareil) ; si pdf.js échoue ou ne rend rien de lisible — cas fréquent sur
+ * mobile — SECOURS serveur (pdf-parse, lecture en mémoire, aucun stockage).
+ * C'est ce qui fait qu'un relevé « illisible » sur téléphone finit par se lire.
+ */
+export async function extractPdfTextResilient(
+  file: File,
+  onPhase?: (phase: PhaseLecture) => void
+): Promise<string> {
+  try {
+    const t = await extractPdfText(file, onPhase)
+    if (t && t.trim().length >= 40) return t
+  } catch { /* pdf.js indisponible (mobile) → on tente le secours serveur */ }
+
+  const res = await fetch('/api/pdf/extract', {
+    method: 'POST',
+    headers: { 'content-type': 'application/pdf' },
+    body: await file.arrayBuffer(),
+  })
+  const body = await res.json().catch(() => null)
+  if (!res.ok || !body?.ok) {
+    throw new Error(body?.error?.message ?? 'Lecture du PDF impossible.')
+  }
+  return body.data.text as string
+}

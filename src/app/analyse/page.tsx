@@ -8,7 +8,7 @@ import { parseStatement } from '@/lib/pdf/parser'
 import { scoreSubscriptions } from '@/lib/scoring/engine'
 import { buildSuggestions, analyseStats, type CommitmentSuggestion } from '@/lib/analyse/logic'
 import { buildDetectedRows } from '@/lib/subscriptions/detect'
-import { extractPdfText } from '@/lib/pdf/browser'
+import { extractPdfTextResilient } from '@/lib/pdf/browser'
 
 // Analyse de relevé : Serein détecte et suggère ; le client choisit ce qu'il
 // ajoute. Le traitement du document est décrit dans /confidentialite.
@@ -94,7 +94,7 @@ export default function AnalysePage() {
     if (file.size > 15 * 1024 * 1024) { toast.show('⚠️ Fichier trop lourd (max 15 Mo)'); return }
     setBusy(true)
     try {
-      const text = await extractPdfText(file, phase => {
+      const text = await extractPdfTextResilient(file, phase => {
         if (phase === 'ocr') toast.show('Document scanné détecté — analyse en cours (jusqu\'à 30 s)…')
       })
       if (text.trim().length < 40) {

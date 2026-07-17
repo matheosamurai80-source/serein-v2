@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
-import { extractPdfText } from '@/lib/pdf/browser'
+import { extractPdfTextResilient } from '@/lib/pdf/browser'
 import { routerDocument, describeDestination, type DocType } from '@/lib/router/logic'
 import { extractSubscriptionDraft, looksLikeStatement, type SubscriptionDraft, type SubscriptionFrequency } from '@/lib/subscriptions/extract'
 import { createSubscription } from '@/lib/data/store'
@@ -61,7 +61,7 @@ export default function AjouterPage() {
     if (file.size > 15 * 1024 * 1024) { toast.show('⚠️ Fichier trop lourd (max 15 Mo)'); return }
     setBusy(true)
     try {
-      const text = await extractPdfText(file, phase => {
+      const text = await extractPdfTextResilient(file, phase => {
         if (phase === 'ocr') toast.show('Document scanné — lecture optique (jusqu’à 30 s)…')
       })
       if (text.trim().length < 40) { toast.show('Rien de lisible — colle plutôt le texte ci-dessous.'); return }
