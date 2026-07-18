@@ -46,7 +46,7 @@ const SIGNALS: Record<RoutableType, [RegExp, number][]> = {
     [/\bttc\b/, 0.3],
   ],
   demarche: [
-    [/resiliation|resilier/, 2],
+    [/resiliation|resilier/, 2.5],
     [/\bpreavis\b/, 2.5],
     [/revalorisation|augmentation (tarifaire|de (votre )?cotisation)|hausse (de|des) (tarif|prix|cotisation)/, 2.5],
     [/\bdeces\b|succession|\bdefunt\b|ayants? droit/, 3],

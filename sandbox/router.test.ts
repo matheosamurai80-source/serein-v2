@@ -76,6 +76,12 @@ check('note quelconque sans signal → inconnu', routerDocument('Penser à rappe
 check('scoreDocument expose les 3 classes routables',
   ['courses', 'abonnement', 'demarche'].every(k => k in scoreDocument('x')))
 
+// ─── 4bis. SAISIE COURTE (« en 2-3 mots » — le chemin fiable du « + ») ──────
+check('« amende » seul → demarche', routerDocument('amende') === 'demarche')
+check('« taxe fonciere » → demarche', routerDocument('taxe fonciere') === 'demarche')
+check('« facture Netflix » → abonnement', routerDocument('facture Netflix') === 'abonnement')
+check('« resiliation Orange » → demarche', routerDocument('resiliation Orange') === 'demarche')
+
 // ─── 5. ORIENTATION (type → destination pour le bouton « + ») ───────────────
 check('courses → destination PanierMalin', describeDestination('courses').href === '/paniermalin' && describeDestination('courses').service === 'Courses')
 check('abonnement → destination /analyse', describeDestination('abonnement').href === '/analyse')
