@@ -58,8 +58,9 @@ const SIGNALS: Record<RoutableType, [RegExp, number][]> = {
     // Documents officiels (administration) → traités comme des démarches.
     [/\bamende\b|contravention|\bantai\b|forfaitaire majoree?|exces de vitesse|infraction/, 3],
     [/avis d.?imp[o]t|taxe fonciere|taxe d.?habitation|\bdgfip\b|impots\.gouv|prelevement a la source/, 3],
-    [/\bcaf\b|\burssaf\b|\bameli\b|assurance maladie|france travail|pole emploi/, 2.5],
-    [/\bprefecture\b|service-public|amendes\.gouv|certificat d.?immatriculation|\bants\b/, 1.5],
+    [/\bcaf\b|\burssaf\b|\bameli\b|assurance maladie|carte vitale|france travail|pole emploi/, 2.5],
+    [/carte grise|certificat d.?immatriculation|permis de conduire|passeport|carte (nationale )?d.?identite|\bcni\b/, 2.5],
+    [/\bprefecture\b|service-public|amendes\.gouv|\bants\b/, 1.5],
   ],
 }
 
