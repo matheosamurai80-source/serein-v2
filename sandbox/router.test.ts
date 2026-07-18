@@ -81,6 +81,8 @@ check('« amende » seul → demarche', routerDocument('amende') === 'demarche')
 check('« taxe fonciere » → demarche', routerDocument('taxe fonciere') === 'demarche')
 check('« facture Netflix » → abonnement', routerDocument('facture Netflix') === 'abonnement')
 check('« resiliation Orange » → demarche', routerDocument('resiliation Orange') === 'demarche')
+check('« carte vitale » → demarche', routerDocument('carte vitale') === 'demarche')
+check('« passeport » → demarche', routerDocument('passeport') === 'demarche')
 
 // ─── 5. ORIENTATION (type → destination pour le bouton « + ») ───────────────
 check('courses → destination PanierMalin', describeDestination('courses').href === '/paniermalin' && describeDestination('courses').service === 'Courses')

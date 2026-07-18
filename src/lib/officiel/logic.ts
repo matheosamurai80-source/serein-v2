@@ -22,7 +22,7 @@ const deburr = (s: string) =>
 // SFR/MMA : jamais au milieu d'un mot).
 const CATALOG: { match: RegExp; doc: OfficialDoc }[] = [
   {
-    match: /\bamende|contravention|avis de contravention|\bantai\b|forfaitaire majoree?|exces de vitesse|stationnement (impaye|non paye)|radar/,
+    match: /\bamende|contravention|avis de contravention|\bantai\b|forfaitaire majoree?|exces de vitesse|stationnement (impaye|non paye)|radar|proces[- ]?verbal|\bpv\b/,
     doc: { type: 'amende', label: 'Amende / contravention', emoji: '🚓',
       url: 'https://www.amendes.gouv.fr', action: 'Payer l’amende',
       url2: 'https://www.antai.gouv.fr', action2: 'Contester',
@@ -49,9 +49,9 @@ const CATALOG: { match: RegExp; doc: OfficialDoc }[] = [
       action: 'Consulter / répondre en ligne', note: 'Déclarations et messages dans votre espace caf.fr.' },
   },
   {
-    match: /assurance maladie|\bcpam\b|\bameli\b|feuille de soins|remboursement de soins/,
-    doc: { type: 'ameli', label: 'Assurance Maladie', emoji: '🩺', url: 'https://www.ameli.fr',
-      action: 'Consulter vos remboursements', note: 'Suivi et démarches dans votre compte ameli.fr.' },
+    match: /assurance maladie|\bcpam\b|\bameli\b|carte vitale|feuille de soins|remboursement de soins|arret de travail|indemnites journalieres|attestation de droits/,
+    doc: { type: 'ameli', label: 'Assurance Maladie / carte Vitale', emoji: '🩺', url: 'https://www.ameli.fr',
+      action: 'Gérer sur ameli.fr', note: 'Remboursements, attestation de droits et commande/mise à jour de la carte Vitale dans votre compte ameli.fr.' },
   },
   {
     match: /\burssaf\b|cotisations sociales/,
@@ -62,6 +62,16 @@ const CATALOG: { match: RegExp; doc: OfficialDoc }[] = [
     match: /france travail|pole emploi|actualisation mensuelle/,
     doc: { type: 'france_travail', label: 'France Travail', emoji: '💼', url: 'https://www.francetravail.fr',
       action: 'Actualisation / démarches', note: 'Actualisez-vous et échangez depuis votre espace.' },
+  },
+  {
+    match: /permis de conduire|\bnepph\b|retrait de points|solde de points/,
+    doc: { type: 'permis', label: 'Permis de conduire', emoji: '🚗', url: 'https://permisdeconduire.ants.gouv.fr',
+      action: 'Démarches permis (ANTS)', note: 'Fabrication, perte, solde de points : uniquement sur le site officiel ANTS.' },
+  },
+  {
+    match: /passeport|carte (nationale )?d.?identite|\bcni\b/,
+    doc: { type: 'papiers', label: 'Papiers d’identité', emoji: '🪪', url: 'https://www.service-public.fr/particuliers/vosdroits/N19810',
+      action: 'Faire / renouveler (service-public)', note: 'Passeport et carte d’identité : pré-demande et rendez-vous via service-public.fr.' },
   },
   {
     match: /carte grise|certificat d.?immatriculation|\bants\b/,

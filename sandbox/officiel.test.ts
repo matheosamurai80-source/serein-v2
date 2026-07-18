@@ -26,6 +26,9 @@ check('Taxe foncière → libellé dédié, impots.gouv', (() => {
 check('CAF → caf.fr', detectOfficialDoc('CAF de la Somme\nVos allocations familiales')?.url.includes('caf.fr') === true)
 check('Assurance Maladie → ameli.fr', detectOfficialDoc('Assurance Maladie\nfeuille de soins')?.url.includes('ameli.fr') === true)
 check('Carte grise → ANTS', detectOfficialDoc('Certificat d’immatriculation - ANTS')?.url.includes('ants.gouv.fr') === true)
+check('Carte vitale → ameli.fr', detectOfficialDoc('Ma carte vitale à mettre à jour')?.url.includes('ameli.fr') === true)
+check('Passeport / CNI → service-public', detectOfficialDoc('Renouvellement passeport et carte d’identité')?.url.includes('service-public.fr') === true)
+check('Permis de conduire → ANTS permis', detectOfficialDoc('Solde de points du permis de conduire')?.url.includes('ants.gouv.fr') === true)
 
 // Chaque doc a un lien officiel (gouv/officiel), une action et une note
 check('Amende : action + note présentes', (() => {
