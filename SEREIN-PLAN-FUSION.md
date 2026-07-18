@@ -98,3 +98,13 @@ Brique 1** de la fusion. On avance **une brique à la fois, sandbox d'abord**.
   Intégré au « + » : une démarche reconnue comme doc officiel affiche le **lien
   officiel vers la solution** (payer/contester/consulter), la lettre restant en
   secondaire. Liens .gouv uniquement, zéro partenaire, informer sans agir.
+- **Brique A — Accueil « À faire » + barre d'onglets basse** ✅ (2026-07-14) :
+  `construireAFaire(donnees, aujourdhui)` (pur, `src/lib/accueil/logic.ts`,
+  sandbox `test-afaire.mjs` 14/14) agrège commitments (fenêtre de résiliation),
+  factures_ponctuelles (échéance), reminders, garanties (localStorage — **pas de
+  table**, alimenté côté client) → 5 cartes max, tri criticité×proximité (retard
+  en tête, horizon 30 j), chacune vers sa page existante. Page `/accueil`
+  (atterrissage après connexion, état vide « Rien d'urgent »). `FoyerTabs` passe
+  en **barre BASSE fixe** (Accueil `/accueil` · ＋ · Mon foyer) sur les pages
+  connectées. Aucune table créée, aucun module métier touché, données via la
+  couche services.

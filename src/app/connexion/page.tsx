@@ -29,11 +29,11 @@ export default function ConnexionPage() {
       const n = await migrateGuestData()
       if (n > 0) {
         toast.show(`${n} élément${n > 1 ? 's' : ''} de cet appareil transféré${n > 1 ? 's' : ''} dans votre espace ✓`)
-        setTimeout(() => { window.location.href = '/dashboard' }, 900)
+        setTimeout(() => { window.location.href = '/accueil' }, 900)
         return
       }
     } catch { /* la connexion reste valable même si la migration échoue */ }
-    window.location.href = '/dashboard'
+    window.location.href = '/accueil'
   }
 
   const submit = async () => {
