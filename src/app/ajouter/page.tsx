@@ -30,7 +30,7 @@ export default function AjouterPage() {
   const [saving, setSaving] = useState(false)
 
   const recognise = (text: string) => {
-    if (text.trim().length < 15) { toast.show('Colle un peu plus de texte (ou dépose le document).'); return }
+    if (text.trim().length < 3) { toast.show('Écris au moins un mot (ex. amende, Netflix, taxe foncière).'); return }
     // Un relevé bancaire = plein de prélèvements → à analyser en entier, pas UN abonnement.
     const statement = looksLikeStatement(text)
     const type = statement ? 'abonnement' : routerDocument(text)
@@ -107,42 +107,44 @@ export default function AjouterPage() {
           Un document, <em className="text-moss">une seule porte.</em>
         </h1>
         <p className="text-sm text-ink/70 leading-[1.6] mb-8 text-center max-w-[460px]">
-          Ticket de caisse, facture, prélèvement, courrier… Dépose-le ici : Serein
-          reconnaît de quoi il s’agit et l’envoie au bon endroit. Tu ne choisis rien.
+          Dis en <strong>deux mots</strong> ce que c’est (« amende », « facture Netflix »,
+          « taxe foncière »…) — ou dépose le document. Serein reconnaît et t’envoie
+          au bon endroit. Tu ne choisis rien.
         </p>
 
         {!result && (
           <>
-            {/* Zone dépôt PDF */}
+            {/* Saisie rapide (le chemin le plus fiable) */}
+            <div className="w-full mb-4">
+              <label htmlFor="paste" className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-1.5 block">
+                ✍️ De quoi s’agit-il ? (quelques mots, ou colle le texte)
+              </label>
+              <textarea id="paste" rows={3} value={pasted} onChange={e => setPasted(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && pasted.trim().length >= 3) { e.preventDefault(); recognise(pasted) } }}
+                placeholder={'ex. amende · facture Netflix · taxe foncière · résiliation Orange…'}
+                className="w-full bg-surface border border-ink/12 rounded-xl px-4 py-3 text-[13px] text-ink placeholder:text-ink/30 focus:outline-none focus:border-sage/60 transition-colors" />
+              <Button size="md" className="mt-2" disabled={pasted.trim().length < 3}
+                onClick={() => recognise(pasted)} data-testid="recognise">
+                Reconnaître
+              </Button>
+            </div>
+
+            {/* Ou déposer une photo / un PDF (lecture auto, best-effort) */}
             <div
-              className="w-full rounded-2xl border-2 border-dashed border-sage/40 bg-surface mb-4 transition-colors"
+              className="w-full rounded-2xl border-2 border-dashed border-sage/40 bg-surface mb-6 transition-colors"
               onDragOver={e => { e.preventDefault(); e.currentTarget.classList.add('border-sage', 'bg-sage/7') }}
               onDragLeave={e => e.currentTarget.classList.remove('border-sage', 'bg-sage/7')}
               onDrop={e => { e.preventDefault(); e.currentTarget.classList.remove('border-sage', 'bg-sage/7'); const f = e.dataTransfer.files[0]; if (f) void handleFile(f) }}
             >
-              <label htmlFor="doc" className="flex flex-col items-center justify-center gap-2 p-8 cursor-pointer text-center">
-                <span className="text-[28px]">➕</span>
-                <span className="text-sm text-ink leading-[1.6]">
-                  {busy ? 'Lecture en cours…' : <>Photo ou PDF d’un document<br />
-                  <small className="text-xs text-ink/45 font-mono">ticket, facture, amende, courrier · max 15 Mo</small></>}
+              <label htmlFor="doc" className="flex flex-col items-center justify-center gap-1.5 p-6 cursor-pointer text-center">
+                <span className="text-[24px]">📷</span>
+                <span className="text-[13px] text-ink/70 leading-[1.5]">
+                  {busy ? 'Lecture en cours…' : <>ou dépose une <strong>photo</strong> / un <strong>PDF</strong><br />
+                  <small className="text-xs text-ink/40 font-mono">lecture auto — sur photo, moins fiable qu’un PDF</small></>}
                 </span>
                 <input id="doc" type="file" accept="image/*,application/pdf,.pdf" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) void handleFile(f) }} />
               </label>
-            </div>
-
-            {/* Ou coller le texte */}
-            <div className="w-full mb-6">
-              <label htmlFor="paste" className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-1.5 block">
-                …ou colle le texte du document (ticket, facture, courrier…)
-              </label>
-              <textarea id="paste" rows={5} value={pasted} onChange={e => setPasted(e.target.value)}
-                placeholder={'Colle ici le texte de ton ticket, ta facture, ton courrier…'}
-                className="w-full bg-surface border border-ink/12 rounded-xl px-4 py-3 text-[13px] font-mono text-ink placeholder:text-ink/30 focus:outline-none focus:border-sage/60 transition-colors" />
-              <Button size="md" className="mt-2" disabled={pasted.trim().length < 15}
-                onClick={() => recognise(pasted)} data-testid="recognise">
-                Reconnaître ce document
-              </Button>
             </div>
           </>
         )}
