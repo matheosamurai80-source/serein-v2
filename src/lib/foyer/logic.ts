@@ -54,6 +54,7 @@ export function foyerSections(): FoyerSection[] {
       title: 'Mon compte',
       links: [
         { href: '/compte', label: 'Compte & confidentialité', icon: '👤', desc: 'Connexion, tes données, déconnexion.' },
+        { href: '/transparence', label: 'Ce que le serveur voit', icon: '🔒', desc: 'La preuve, en direct : tes données sensibles sont chiffrées sur ton appareil.' },
       ],
     },
   ]

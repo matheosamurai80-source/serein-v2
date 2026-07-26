@@ -86,6 +86,19 @@ Brique 1** de la fusion. On avance **une brique à la fois, sandbox d'abord**.
   carte dans Mon foyer. Preuve du principe « un service = un détecteur + des
   cartes, zéro onglet ». À venir : brancher le « + » (ticket d'équipement →
   garantie) + rappels avant expiration.
+- **Coffre chiffré (socle posé, PAS encore branché — 2026-07-14)** : module
+  `src/lib/vault/` fourni par Juju, validé et intégré en socle. `crypto.ts` =
+  chiffrement à enveloppe (DEK aléatoire AES-GCM, emballée par la phrase de passe
+  ET par une clé de secours imprimable ; PBKDF2 600k ; rotation de phrase sans
+  re-chiffrer ; base64 rendu isomorphe Node/navigateur). `tiers.ts` = classement
+  des champs **coffre / serveur / transitoire** (fail-safe : inconnu → coffre) +
+  `serverProjection`. Page **`/transparence`** = démo « ce que le serveur voit »
+  (chiffrement réel, données d'exemple), liée depuis Mon foyer. Sandbox
+  `vault.test.ts` 22/22. **Décision (option 1)** : on ancre le socle + la démo ;
+  l'intégration aux vraies données (chiffrer fournisseur/montant/n° contrat/notes
+  des engagements, flux de déverrouillage) sera une brique dédiée. **Compromis
+  acceptés** : zéro-connaissance = irrécupérable si phrase + clé perdues ;
+  déverrouillage par session ; alertes génériques (le serveur ignore le détail).
 - **Palette — prochains pavés candidats** (chacun = document → engagement →
   échéance, informer sans agir, zéro partenariat, UN seul à la fois) :
   **🚗 Véhicule** (contrôle technique tous les 2 ans, entretien — fort, et métier
