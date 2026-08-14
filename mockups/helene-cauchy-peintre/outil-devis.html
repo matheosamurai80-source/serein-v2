@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cockpit devis — Hélène Cauchy (outil privé)</title>
+
+<!-- ============================================================
+  OUTIL PRIVÉ — Simulateur de devis & marge pour Hélène Cauchy.
+  NE PAS mettre en ligne publiquement : affiche la marge (confidentiel).
+  Logique de calcul testée en sandbox (test-devis.js — 4/4 PASS).
+============================================================= -->
+
+<style>
+  :root{
+    --ocre:#c8712d;--ocre-fonce:#a4551c;--ocre-clair:#e8a56b;
+    --sauge:#6b7d5e;--creme:#f7f1e8;--creme-2:#efe6d6;
+    --charbon:#2b2622;--charbon-doux:#4a423b;--blanc:#fffdf9;
+    --vert:#2f7d4f;--orange:#c77d17;--rouge:#c0442a;
+    --ombre:0 18px 40px -18px rgba(43,38,34,.35);--rayon:16px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    color:var(--charbon);background:var(--creme);line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;letter-spacing:-.01em;line-height:1.15}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 20px}
+  .topbar{background:var(--charbon);color:var(--creme);padding:1rem 0}
+  .topbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  .topbar b{font-family:Georgia,serif;font-size:1.15rem;color:#fff}
+  .topbar .tag{background:var(--ocre);color:#fff;font-size:.72rem;font-weight:700;padding:.25rem .6rem;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
+  .lead{max-width:70ch;color:var(--charbon-doux);margin:1.4rem auto .4rem;text-align:center}
+  h1.title{text-align:center;font-size:clamp(1.6rem,4vw,2.3rem);margin:1.6rem 0 .2rem}
+
+  .grid{display:grid;grid-template-columns:1fr 1.05fr;gap:1.6rem;margin:1.6rem 0 2rem;align-items:start}
+  .panel{background:var(--blanc);border:1px solid var(--creme-2);border-radius:var(--rayon);padding:1.5rem;box-shadow:var(--ombre)}
+  .panel h2{font-size:1.2rem;margin:0 0 1rem}
+  .field{margin-bottom:1.1rem}
+  label{display:block;font-weight:700;font-size:.9rem;margin-bottom:.35rem}
+  .hint{font-weight:400;color:var(--charbon-doux);font-size:.82rem}
+  input[type=number]{width:100%;padding:.7rem .8rem;border:1.5px solid var(--creme-2);border-radius:10px;font:inherit;background:var(--creme)}
+  input[type=number]:focus{outline:none;border-color:var(--ocre)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}
+  .segs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem}
+  .seg{position:relative}
+  .seg input{position:absolute;opacity:0}
+  .seg label{display:block;text-align:center;border:1.5px solid var(--creme-2);border-radius:10px;padding:.6rem .3rem;cursor:pointer;font-size:.85rem;margin:0;background:var(--creme);transition:.15s}
+  .seg label small{display:block;font-weight:400;color:var(--charbon-doux);font-size:.72rem}
+  .seg input:checked + label{border-color:var(--ocre);background:#fff;box-shadow:0 0 0 2px rgba(200,113,45,.15)}
+  .check{display:flex;align-items:center;gap:.6rem;background:var(--creme);border:1.5px solid var(--creme-2);border-radius:10px;padding:.7rem .8rem;cursor:pointer}
+  .check input{width:20px;height:20px;accent-color:var(--ocre)}
+
+  /* Résultats */
+  .kpi{border-radius:var(--rayon);padding:1.3rem;text-align:center;margin-bottom:1rem;color:#fff}
+  .kpi .lbl{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;opacity:.9}
+  .kpi .big{font-family:Georgia,serif;font-size:2.6rem;font-weight:700;line-height:1.1;margin:.2rem 0}
+  .kpi.annonce{background:linear-gradient(135deg,var(--ocre),var(--ocre-fonce))}
+  .kpi.reste{background:var(--sauge)}
+  .verdict{font-weight:700;font-size:.95rem;padding:.5rem;border-radius:8px;margin-top:.4rem;display:inline-block}
+  .row{display:flex;justify-content:space-between;padding:.5rem 0;border-bottom:1px dashed rgba(43,38,34,.15);font-size:.95rem}
+  .row.total{font-weight:700;border-bottom:2px solid var(--charbon);border-top:1px solid var(--charbon)}
+  .row.minus span:last-child{color:var(--rouge)}
+  .row b{font-family:Georgia,serif}
+  .meta{display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem;font-size:.85rem;color:var(--charbon-doux)}
+  .meta div{background:var(--creme);border-radius:10px;padding:.6rem .8rem;flex:1;text-align:center}
+  .meta b{display:block;font-family:Georgia,serif;font-size:1.3rem;color:var(--charbon)}
+
+  .compare{background:var(--creme-2);border-radius:var(--rayon);padding:1.2rem;margin-top:1.2rem;font-size:.92rem}
+  .compare h3{margin:0 0 .5rem;font-size:1.05rem}
+  .compare .gain{color:var(--vert);font-weight:700;font-family:Georgia,serif;font-size:1.3rem}
+
+  .notes{background:#fff8ef;border:1px solid var(--ocre-clair);border-radius:var(--rayon);padding:1.2rem;margin:0 0 2.5rem;font-size:.86rem;color:var(--charbon-doux)}
+  .notes b{color:var(--charbon)}
+  .notes ul{margin:.5rem 0 0;padding-left:1.2rem}
+  .notes li{margin:.3rem 0}
+  .advanced{margin-top:.6rem;font-size:.85rem}
+  .advanced summary{cursor:pointer;font-weight:700}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <b>🎨 Cockpit devis — Hélène Cauchy</b>
+    <span class="tag">Outil privé · ne pas publier</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1 class="title">Chiffrer juste, en 2 minutes</h1>
+  <p class="lead">Renseigne le chantier : l'outil calcule le prix à annoncer, la préparation, ta marge réelle et surtout <b>ce qui te reste par jour de travail</b>. Objectif : ne plus jamais oublier la prépa ni travailler à perte.</p>
+
+  <div class="grid">
+    <!-- ENTRÉES -->
+    <div class="panel">
+      <h2>Le chantier</h2>
+
+      <div class="field two">
+        <div>
+          <label>Tarif mur <span class="hint">€/m²</span></label>
+          <input type="number" id="tMur" value="20" min="0" step="1" />
+        </div>
+        <div>
+          <label>Tarif plafond <span class="hint">€/m²</span></label>
+          <input type="number" id="tPlafond" value="28" min="0" step="1" />
+        </div>
+      </div>
+
+      <div class="field two">
+        <div>
+          <label>Surface murs <span class="hint">m²</span></label>
+          <input type="number" id="murs" value="30" min="0" step="1" />
+        </div>
+        <div>
+          <label>Surface plafond <span class="hint">m²</span></label>
+          <input type="number" id="plafond" value="12" min="0" step="1" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label>État du support <span class="hint">(= temps de préparation, facturé à part)</span></label>
+        <div class="segs">
+          <div class="seg">
+            <input type="radio" name="etat" id="e1" value="bon" />
+            <label for="e1">Bon<small>0 €/m²</small></label>
+          </div>
+          <div class="seg">
+            <input type="radio" name="etat" id="e2" value="moyen" checked />
+            <label for="e2">Moyen<small>+6 €/m²</small></label>
+          </div>
+          <div class="seg">
+            <input type="radio" name="etat" id="e3" value="ancien" />
+            <label for="e3">Ancien<small>+12 €/m²</small></label>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="check">
+          <input type="checkbox" id="fourniture" />
+          <span>Je fournis la peinture <span class="hint">(+ marge sur la fourniture)</span></span>
+        </label>
+      </div>
+
+      <details class="advanced">
+        <summary>Réglages avancés</summary>
+        <div class="field two" style="margin-top:.7rem">
+          <div>
+            <label>Cotisations micro <span class="hint">%</span></label>
+            <input type="number" id="cotisPct" value="22" min="0" step="0.1" />
+          </div>
+          <div>
+            <label>Rendement <span class="hint">m²/jour</span></label>
+            <input type="number" id="rendement" value="30" min="1" step="1" />
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- RÉSULTATS -->
+    <div class="panel">
+      <h2>Le résultat</h2>
+
+      <div class="kpi annonce">
+        <div class="lbl">Prix à annoncer au client</div>
+        <div class="big" id="rAnnonce">—</div>
+        <div class="lbl">TVA non applicable (micro, art. 293 B du CGI)</div>
+      </div>
+
+      <div class="kpi reste">
+        <div class="lbl">Ce qui te reste (après cotisations & peinture)</div>
+        <div class="big" id="rReste">—</div>
+        <div class="verdict" id="rVerdict" style="background:rgba(255,255,255,.2)">—</div>
+      </div>
+
+      <div class="meta">
+        <div><b id="rJours">—</b>jours de travail</div>
+        <div><b id="rJour">—</b>par jour pour toi</div>
+      </div>
+
+      <div style="margin-top:1.2rem">
+        <div class="row"><span>Main-d'œuvre peinture</span><span id="rMo">—</span></div>
+        <div class="row"><span>Préparation des supports</span><span id="rPrep">—</span></div>
+        <div class="row" id="rowFourn"><span>Fourniture peinture</span><span id="rFourn">—</span></div>
+        <div class="row total"><span>Prix annoncé (CA)</span><b id="rCa">—</b></div>
+        <div class="row minus"><span>− Cotisations sociales</span><span id="rCotis">—</span></div>
+        <div class="row minus" id="rowCost"><span>− Coût de la peinture achetée</span><span id="rCost">—</span></div>
+        <div class="row total"><span>= Ta marge réelle</span><b id="rReste2">—</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="compare">
+    <h3>💡 Le levier « hausse de tarif »</h3>
+    <div id="compareTxt">—</div>
+  </div>
+
+  <div class="notes" style="margin-top:1.6rem">
+    <b>À lire (important) :</b>
+    <ul>
+      <li>Ce sont des <b>estimations indicatives</b> pour t'aider à cadrer — le prix final reste ton choix, selon le chantier réel et l'accès.</li>
+      <li><b>Cotisations ~22 %</b> = ordre de grandeur micro-entreprise artisanale ; ajuste le % réel dans « réglages avancés » (URSSAF).</li>
+      <li>En micro tu ne factures <b>pas de TVA</b>, mais tu ne la récupères pas non plus sur la peinture : c'est pris en compte dans « coût de la peinture ».</li>
+      <li>Plafond de CA micro artisanale : <b>77 700 €/an</b>. Surveille-le avec ton comptable.</li>
+      <li>La <b>préparation</b> est la clé : sur une maison ancienne, c'est là que tu perdais de l'argent en l'offrant. Elle a maintenant sa ligne.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  function calc(i){
+    const surface = i.murs + i.plafond;
+    const mo = i.murs * i.tMur + i.plafond * i.tPlafond;
+    const prepRate = {bon:0, moyen:6, ancien:12}[i.etat];
+    const prep = surface * prepRate;
+    const fBilledRate = 4, fCostRate = 2.8;
+    const fourniture = i.fourniture ? surface * fBilledRate : 0;
+    const fournCost = i.fourniture ? surface * fCostRate : 0;
+    const ca = mo + prep + fourniture;
+    const cotis = ca * (i.cotisPct/100);
+    const reste = ca - cotis - fournCost;
+    const jApp = surface / i.rendement;
+    const jPrep = i.etat==='bon' ? 0 : i.etat==='moyen' ? surface/(i.rendement*2) : surface/i.rendement;
+    const jours = Math.max(jApp + jPrep, 0.5);
+    const resteJour = reste / jours;
+    return {surface, mo, prep, fourniture, fournCost, ca, cotis, reste, jours, resteJour};
+  }
+
+  const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
+  const $ = id => document.getElementById(id);
+
+  function read(){
+    return {
+      tMur:      +$('tMur').value || 0,
+      tPlafond:  +$('tPlafond').value || 0,
+      murs:      +$('murs').value || 0,
+      plafond:   +$('plafond').value || 0,
+      etat:      document.querySelector('input[name=etat]:checked').value,
+      fourniture:$('fourniture').checked,
+      cotisPct:  +$('cotisPct').value || 0,
+      rendement: +$('rendement').value || 30,
+    };
+  }
+
+  function render(){
+    const i = read();
+    const o = calc(i);
+
+    $('rAnnonce').textContent = eur(o.ca);
+    $('rReste').textContent   = eur(o.reste);
+    $('rJours').textContent   = (Math.round(o.jours*10)/10).toString().replace('.',',');
+    $('rJour').textContent    = eur(o.resteJour);
+
+    $('rMo').textContent    = eur(o.mo);
+    $('rPrep').textContent  = eur(o.prep);
+    $('rCa').textContent    = eur(o.ca);
+    $('rCotis').textContent = '− ' + eur(o.cotis);
+    $('rReste2').textContent= eur(o.reste);
+
+    $('rowFourn').style.display = i.fourniture ? 'flex' : 'none';
+    $('rowCost').style.display  = i.fourniture ? 'flex' : 'none';
+    $('rFourn').textContent = eur(o.fourniture);
+    $('rCost').textContent  = '− ' + eur(o.fournCost);
+
+    // Verdict couleur sur le reste/jour
+    const v = $('rVerdict');
+    if(o.resteJour < 250){ v.textContent = 'Trop juste — remonte le tarif'; v.style.background='var(--rouge)'; }
+    else if(o.resteJour < 350){ v.textContent = 'Correct'; v.style.background='var(--orange)'; }
+    else { v.textContent = 'Bonne marge 👍'; v.style.background='var(--vert)'; }
+
+    // Comparateur : même chantier à l'ancien réflexe 15/22, prépa offerte, sans fourniture
+    const anc = calc({...i, tMur:15, tPlafond:22, etat:'bon', fourniture:false});
+    const gainTotal = o.reste - anc.reste;
+    const gainJour  = o.resteJour - anc.resteJour;
+    $('compareTxt').innerHTML =
+      `Sur ce chantier, à ton ancien réflexe (<b>15/22, prépa offerte</b>) tu aurais annoncé ${eur(anc.ca)} et gardé ${eur(anc.reste)}.<br>` +
+      `Avec ta nouvelle façon de chiffrer, tu gardes <span class="gain">${gainTotal>=0?'+':''}${eur(gainTotal)}</span> ` +
+      `(${gainJour>=0?'+':''}${eur(gainJour)} par jour) — même travail.`;
+  }
+
+  document.querySelectorAll('input').forEach(el => el.addEventListener('input', render));
+  render();
+</script>
+</body>
+</html>
