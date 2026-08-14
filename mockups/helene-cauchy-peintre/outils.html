@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cockpit d'Hélène</title>
+<meta name="description" content="Outils privés d'Hélène Cauchy : simulateur de devis/marge et comparateur de statuts juridiques." />
+
+<!-- ============================================================
+  COCKPIT PRIVÉ — Hélène Cauchy, peintre en bâtiment (82370 Varennes)
+  Deux outils : (1) Devis & marge  (2) Comparateur de statuts.
+  Logique testée en sandbox : test-devis.js (4/4) + test-statuts.js (4/4).
+  ⚠️ Usage privé — affiche la marge : ne pas diffuser aux clients.
+============================================================= -->
+
+<style>
+  /* ---- Thème : tokens light par défaut, dark via media + [data-theme] ---- */
+  :root{
+    --bg:#f1ece2; --surface:#fbf8f2; --surface-2:#ece3d4; --border:#e2d8c6;
+    --text:#241f1a; --muted:#6f665b;
+    --accent:#b5641f; --accent-2:#8f4d16; --accent-soft:rgba(181,100,31,.12);
+    --good:#2f7d4f; --good-soft:rgba(47,125,79,.14);
+    --warn:#b0761a; --warn-soft:rgba(176,118,26,.16);
+    --bad:#bb4326;  --bad-soft:rgba(187,67,38,.14);
+    --shadow:0 16px 34px -20px rgba(36,31,26,.45);
+    --r:14px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#1b1714; --surface:#251f19; --surface-2:#2e2720; --border:#3a3128;
+      --text:#f0e9df; --muted:#a99e8f;
+      --accent:#e0904c; --accent-2:#eaa869; --accent-soft:rgba(224,144,76,.16);
+      --good:#6cc08a; --good-soft:rgba(108,192,138,.15);
+      --warn:#e0b062; --warn-soft:rgba(224,176,98,.16);
+      --bad:#e08a6e;  --bad-soft:rgba(224,138,110,.16);
+      --shadow:0 16px 34px -20px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1b1714; --surface:#251f19; --surface-2:#2e2720; --border:#3a3128;
+    --text:#f0e9df; --muted:#a99e8f;
+    --accent:#e0904c; --accent-2:#eaa869; --accent-soft:rgba(224,144,76,.16);
+    --good:#6cc08a; --good-soft:rgba(108,192,138,.15);
+    --warn:#e0b062; --warn-soft:rgba(224,176,98,.16);
+    --bad:#e08a6e;  --bad-soft:rgba(224,138,110,.16);
+    --shadow:0 16px 34px -20px rgba(0,0,0,.6);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
+  }
+  .wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+  h1,h2,h3{margin:0;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+  /* ---- Barre supérieure ---- */
+  .top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .top .wrap{display:flex;align-items:center;gap:1rem;padding:.7rem 18px}
+  .logo{display:flex;align-items:center;gap:.6rem;font-weight:800}
+  .logo .m{width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:900}
+  .logo small{display:block;font-weight:600;font-size:.7rem;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .grow{flex:1}
+  .chip{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    padding:.28rem .6rem;border-radius:999px;background:var(--bad-soft);color:var(--bad);white-space:nowrap}
+  .tglt{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:999px;
+    width:38px;height:34px;cursor:pointer;font-size:1rem}
+  .tglt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---- Onglets ---- */
+  .tabs{display:flex;gap:.4rem;padding:.9rem 0 0}
+  .tab{flex:1;max-width:220px;text-align:center;padding:.7rem 1rem;border-radius:11px 11px 0 0;
+    border:1px solid transparent;border-bottom:none;background:transparent;color:var(--muted);
+    font:inherit;font-weight:700;cursor:pointer}
+  .tab[aria-selected="true"]{background:var(--surface);color:var(--text);border-color:var(--border)}
+  .tab:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .panelwrap{background:var(--surface);border:1px solid var(--border);border-radius:0 var(--r) var(--r) var(--r);
+    box-shadow:var(--shadow);padding:clamp(1rem,3vw,1.8rem);margin-bottom:1.4rem}
+  h1.title{font-size:clamp(1.4rem,3.6vw,2rem);margin-bottom:.3rem}
+  .sub{color:var(--muted);max-width:64ch;margin:0 0 1.4rem}
+
+  /* ---- Grilles / cartes ---- */
+  .cols{display:grid;grid-template-columns:1fr 1.05fr;gap:1.3rem;align-items:start}
+  .card{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:1.2rem}
+  .card h3{font-size:1.02rem;margin-bottom:.9rem}
+  label{display:block;font-weight:700;font-size:.85rem;margin-bottom:.32rem}
+  .hint{font-weight:500;color:var(--muted);font-size:.8rem}
+  input[type=number]{width:100%;padding:.65rem .75rem;border:1.5px solid var(--border);border-radius:9px;
+    font:inherit;background:var(--surface);color:var(--text)}
+  input[type=number]:focus{outline:none;border-color:var(--accent)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+  .field{margin-bottom:1rem}
+  .segs{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem}
+  .seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg label{margin:0;text-align:center;border:1.5px solid var(--border);border-radius:9px;
+    padding:.55rem .3rem;cursor:pointer;background:var(--surface);font-size:.82rem;font-weight:700}
+  .seg label small{display:block;font-weight:500;color:var(--muted);font-size:.7rem}
+  .seg input:checked + label{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+  .seg input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
+  .check{display:flex;gap:.6rem;align-items:center;background:var(--surface);border:1.5px solid var(--border);
+    border-radius:9px;padding:.65rem .75rem;cursor:pointer;font-weight:600}
+  .check input{width:20px;height:20px;accent-color:var(--accent)}
+
+  /* ---- KPI ---- */
+  .kpi{border-radius:var(--r);padding:1.1rem;margin-bottom:.9rem;border:1px solid transparent}
+  .kpi .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  .kpi .v{font-size:2.1rem;font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:.15rem 0}
+  .kpi.accent{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+  .kpi.accent .v{color:var(--accent)}
+  .kpi.money{background:var(--good-soft);border-color:color-mix(in srgb,var(--good) 30%,transparent)}
+  .kpi.money .v{color:var(--good)}
+  .verdict{display:inline-block;font-weight:800;font-size:.82rem;padding:.28rem .6rem;border-radius:7px;margin-top:.2rem}
+  .metaline{display:flex;gap:.7rem;margin-bottom:1rem}
+  .metaline div{flex:1;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:.6rem}
+  .metaline b{display:block;font-size:1.25rem;font-weight:800}
+  .metaline span{font-size:.75rem;color:var(--muted)}
+
+  .row{display:flex;justify-content:space-between;gap:1rem;padding:.42rem 0;border-bottom:1px dashed var(--border);font-size:.92rem}
+  .row.total{font-weight:800;border-bottom:none;border-top:2px solid var(--text);margin-top:.2rem;padding-top:.5rem}
+  .row .minus{color:var(--bad)}
+
+  /* ---- Statuts ---- */
+  .stcards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:.4rem}
+  .st{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:1.1rem;position:relative}
+  .st.best{border-color:var(--good);box-shadow:0 0 0 2px var(--good-soft)}
+  .st .name{font-weight:800;font-size:1.05rem}
+  .st .tagbest{position:absolute;top:-10px;right:12px;background:var(--good);color:#fff;font-size:.66rem;
+    font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:.2rem .5rem;border-radius:999px}
+  .st .big{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin:.5rem 0 .1rem}
+  .st .cap{font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .st .line{display:flex;justify-content:space-between;font-size:.86rem;padding:.3rem 0;border-top:1px dashed var(--border);margin-top:.5rem}
+  .retr{display:inline-flex;gap:.2rem;margin-top:.5rem}
+  .retr i{width:22px;height:7px;border-radius:3px;background:var(--border);font-style:normal}
+  .retr i.on{background:var(--accent)}
+  .retrlbl{font-size:.78rem;color:var(--muted);font-weight:700;margin-top:.35rem}
+
+  .banner{border-radius:var(--r);padding:1rem 1.1rem;margin:1.3rem 0 0;font-size:.9rem;border:1px solid}
+  .banner.key{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+  .banner.per{background:var(--good-soft);border-color:color-mix(in srgb,var(--good) 30%,transparent)}
+  .banner b{color:var(--text)}
+  .banner .amt{font-weight:800;color:var(--good)}
+
+  .disclaimer{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);
+    padding:1rem 1.1rem;font-size:.82rem;color:var(--muted);margin-top:1.3rem}
+  .disclaimer b{color:var(--text)}
+  .disclaimer ul{margin:.5rem 0 0;padding-left:1.1rem}
+  .disclaimer li{margin:.25rem 0}
+  details.adv{margin-top:.4rem;font-size:.85rem}
+  details.adv summary{cursor:pointer;font-weight:700;color:var(--muted)}
+  .hidden{display:none}
+  footer{text-align:center;color:var(--muted);font-size:.78rem;padding:0 0 2rem}
+  @media (max-width:800px){
+    .cols{grid-template-columns:1fr}
+    .stcards{grid-template-columns:1fr}
+    .tab{max-width:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wrap">
+    <div class="logo">
+      <span class="m">HC</span>
+      <span>Cockpit d'Hélène<small>Peintre en bâtiment · outils privés</small></span>
+    </div>
+    <span class="grow"></span>
+    <span class="chip">Privé · ne pas partager aux clients</span>
+    <button class="tglt" id="theme" aria-label="Changer de thème">◐</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-devis" aria-controls="p-devis" aria-selected="true">💶 Devis &amp; marge</button>
+    <button class="tab" role="tab" id="tab-statuts" aria-controls="p-statuts" aria-selected="false">🏛️ Comparer les statuts</button>
+  </div>
+
+  <!-- =================== ONGLET 1 : DEVIS =================== -->
+  <section class="panelwrap" id="p-devis" role="tabpanel" aria-labelledby="tab-devis">
+    <h1 class="title">Chiffrer un chantier, marge comprise</h1>
+    <p class="sub">Renseigne le chantier : l'outil sort le prix à annoncer, la préparation, ta marge réelle et surtout <b>ce qui te reste par jour de travail</b>. Objectif : ne plus jamais offrir la prépa ni travailler à perte.</p>
+
+    <div class="cols">
+      <div class="card">
+        <h3>Le chantier</h3>
+        <div class="field two">
+          <div><label>Tarif mur <span class="hint">€/m²</span></label><input type="number" id="tMur" value="20" min="0" step="1" /></div>
+          <div><label>Tarif plafond <span class="hint">€/m²</span></label><input type="number" id="tPlafond" value="28" min="0" step="1" /></div>
+        </div>
+        <div class="field two">
+          <div><label>Surface murs <span class="hint">m²</span></label><input type="number" id="murs" value="30" min="0" step="1" /></div>
+          <div><label>Surface plafond <span class="hint">m²</span></label><input type="number" id="plafond" value="12" min="0" step="1" /></div>
+        </div>
+        <div class="field">
+          <label>État du support <span class="hint">= préparation, facturée à part</span></label>
+          <div class="segs">
+            <div class="seg"><input type="radio" name="etat" id="e1" value="bon" /><label for="e1">Bon<small>+0 €/m²</small></label></div>
+            <div class="seg"><input type="radio" name="etat" id="e2" value="moyen" checked /><label for="e2">Moyen<small>+6 €/m²</small></label></div>
+            <div class="seg"><input type="radio" name="etat" id="e3" value="ancien" /><label for="e3">Ancien<small>+12 €/m²</small></label></div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="check"><input type="checkbox" id="fourniture" /><span>Je fournis la peinture <span class="hint">(+ marge)</span></span></label>
+        </div>
+        <details class="adv">
+          <summary>Réglages avancés</summary>
+          <div class="field two" style="margin-top:.6rem">
+            <div><label>Cotisations <span class="hint">%</span></label><input type="number" id="cotisPct" value="22" min="0" step="0.1" /></div>
+            <div><label>Rendement <span class="hint">m²/jour</span></label><input type="number" id="rendement" value="30" min="1" step="1" /></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <h3>Le résultat</h3>
+        <div class="kpi accent">
+          <div class="l">Prix à annoncer au client</div>
+          <div class="v num" id="rAnnonce">—</div>
+          <div class="l">TVA non applicable (micro, art. 293 B du CGI)</div>
+        </div>
+        <div class="kpi money">
+          <div class="l">Ce qui te reste (après cotisations &amp; peinture)</div>
+          <div class="v num" id="rReste">—</div>
+          <span class="verdict" id="rVerdict">—</span>
+        </div>
+        <div class="metaline">
+          <div><b class="num" id="rJours">—</b><span>jours de travail</span></div>
+          <div><b class="num" id="rJour">—</b><span>par jour pour toi</span></div>
+        </div>
+        <div class="row"><span>Main-d'œuvre peinture</span><span class="num" id="rMo">—</span></div>
+        <div class="row"><span>Préparation des supports</span><span class="num" id="rPrep">—</span></div>
+        <div class="row" id="rowFourn"><span>Fourniture peinture</span><span class="num" id="rFourn">—</span></div>
+        <div class="row total"><span>Prix annoncé (CA)</span><span class="num" id="rCa">—</span></div>
+        <div class="row"><span>Cotisations sociales</span><span class="num minus" id="rCotis">—</span></div>
+        <div class="row" id="rowCost"><span>Coût de la peinture achetée</span><span class="num minus" id="rCost">—</span></div>
+        <div class="row total"><span>= Ta marge réelle</span><span class="num" id="rReste2">—</span></div>
+      </div>
+    </div>
+
+    <div class="banner key" id="compareTxt">—</div>
+    <div class="disclaimer">
+      <b>À garder en tête :</b> estimations indicatives pour cadrer ton prix — la <b>préparation</b> a désormais sa ligne (c'est là que tu perdais de l'argent sur le bâti ancien). Ajuste tes tarifs et le % de cotisations selon ta réalité (URSSAF).
+    </div>
+  </section>
+
+  <!-- =================== ONGLET 2 : STATUTS =================== -->
+  <section class="panelwrap hidden" id="p-statuts" role="tabpanel" aria-labelledby="tab-statuts">
+    <h1 class="title">Micro, réel ou société ?</h1>
+    <p class="sub">Entre ton chiffre d'affaires et tes charges réelles de l'année (véhicule, matériel, assurance décennale, peinture, compta…). L'outil compare, en euros, ce qu'il te reste et la qualité de ta retraite selon 3 statuts.</p>
+
+    <div class="cols">
+      <div class="card">
+        <h3>Tes chiffres de l'année</h3>
+        <div class="field">
+          <label>Chiffre d'affaires annuel <span class="hint">€ / an</span></label>
+          <input type="number" id="ca" value="40000" min="0" step="500" />
+        </div>
+        <div class="field">
+          <label>Charges réelles annuelles <span class="hint">€ / an (hors ta rémunération)</span></label>
+          <input type="number" id="charges" value="8000" min="0" step="500" />
+          <span class="hint">Véhicule, essence, matériel, peinture, assurance décennale, comptable…</span>
+        </div>
+        <div class="banner key" style="margin-top:.4rem">
+          <b>💡 Le vrai levier n'est pas le statut.</b> D'abord relève tes tarifs et ouvre un PER. Le statut n'est qu'un réglage secondaire — utile surtout quand tes charges ou ton bénéfice grossissent.
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Ce que ça donne <span class="hint">(avant impôt sur le revenu)</span></h3>
+        <div class="stcards" id="stcards"><!-- injecté --></div>
+        <div class="banner per" id="perTxt">—</div>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      <b>⚠️ Estimation pédagogique — à valider avec un expert-comptable.</b>
+      <ul>
+        <li>Chiffres <b>avant impôt sur le revenu</b> (l'IR dépend de ta situation familiale, non modélisée ici).</li>
+        <li>Taux moyens : micro ~23 % du CA · réel ~42 % du bénéfice · SASU ~48 % de l'enveloppe (cotisations + IS + flat tax). Ordres de grandeur.</li>
+        <li><b>Retraite</b> : micro/réel/EURL = régime des indépendants (SSI) ; <b>SASU = régime général</b>, la meilleure — mais seulement si tu te verses un vrai salaire.</li>
+        <li>Plafond CA micro artisanale : <b>77 700 €/an</b>. 1er rendez-vous expert-comptable souvent gratuit ; conseils gratuits à la <b>CMA 82</b>.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<footer>Cockpit privé d'Hélène Cauchy · outils d'aide à la décision · ne remplace pas un conseil comptable.</footer>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const fmt = new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+  const eur = n => fmt.format(Math.round(n));
+
+  /* ---------- Thème ---------- */
+  (function(){
+    const root=document.documentElement, btn=$('theme');
+    btn.addEventListener('click',()=>{
+      const dark = root.getAttribute('data-theme')==='dark'
+        || (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme:dark)').matches);
+      root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    });
+  })();
+
+  /* ---------- Onglets ---------- */
+  (function(){
+    const tabs=[['tab-devis','p-devis'],['tab-statuts','p-statuts']];
+    tabs.forEach(([t,p])=>$(t).addEventListener('click',()=>{
+      tabs.forEach(([tt,pp])=>{
+        const on = tt===t;
+        $(tt).setAttribute('aria-selected', on?'true':'false');
+        $(pp).classList.toggle('hidden', !on);
+      });
+    }));
+  })();
+
+  /* ---------- Outil 1 : Devis (logique testée : test-devis.js) ---------- */
+  function calcDevis(i){
+    const surface=i.murs+i.plafond;
+    const mo=i.murs*i.tMur + i.plafond*i.tPlafond;
+    const prep=surface*({bon:0,moyen:6,ancien:12}[i.etat]);
+    const fourniture=i.fourniture?surface*4:0, fournCost=i.fourniture?surface*2.8:0;
+    const ca=mo+prep+fourniture;
+    const cotis=ca*(i.cotisPct/100);
+    const reste=ca-cotis-fournCost;
+    const jApp=surface/i.rendement;
+    const jPrep=i.etat==='bon'?0:i.etat==='moyen'?surface/(i.rendement*2):surface/i.rendement;
+    const jours=Math.max(jApp+jPrep,0.5);
+    return {surface,mo,prep,fourniture,fournCost,ca,cotis,reste,jours,resteJour:reste/jours};
+  }
+  function readDevis(){
+    return {tMur:+$('tMur').value||0,tPlafond:+$('tPlafond').value||0,
+      murs:+$('murs').value||0,plafond:+$('plafond').value||0,
+      etat:document.querySelector('input[name=etat]:checked').value,
+      fourniture:$('fourniture').checked,cotisPct:+$('cotisPct').value||0,
+      rendement:+$('rendement').value||30};
+  }
+  function renderDevis(){
+    const i=readDevis(), o=calcDevis(i);
+    $('rAnnonce').textContent=eur(o.ca);
+    $('rReste').textContent=eur(o.reste);
+    $('rJours').textContent=(Math.round(o.jours*10)/10).toString().replace('.',',');
+    $('rJour').textContent=eur(o.resteJour);
+    $('rMo').textContent=eur(o.mo);
+    $('rPrep').textContent=eur(o.prep);
+    $('rCa').textContent=eur(o.ca);
+    $('rCotis').textContent='− '+eur(o.cotis);
+    $('rReste2').textContent=eur(o.reste);
+    $('rowFourn').style.display=i.fourniture?'flex':'none';
+    $('rowCost').style.display=i.fourniture?'flex':'none';
+    $('rFourn').textContent=eur(o.fourniture);
+    $('rCost').textContent='− '+eur(o.fournCost);
+    const v=$('rVerdict');
+    if(o.resteJour<250){v.textContent='Trop juste — remonte le tarif';v.style.background='var(--bad-soft)';v.style.color='var(--bad)';}
+    else if(o.resteJour<350){v.textContent='Correct';v.style.background='var(--warn-soft)';v.style.color='var(--warn)';}
+    else{v.textContent='Bonne marge 👍';v.style.background='var(--good-soft)';v.style.color='var(--good)';}
+    const anc=calcDevis({...i,tMur:15,tPlafond:22,etat:'bon',fourniture:false});
+    const g=o.reste-anc.reste, gj=o.resteJour-anc.resteJour;
+    $('compareTxt').innerHTML=`<b>Le levier « prix + prépa » :</b> sur ce chantier, à ton ancien réflexe (15/22, prépa offerte) tu gardais ${eur(anc.reste)}. Là tu gardes <span class="amt">${g>=0?'+':''}${eur(g)}</span> (${gj>=0?'+':''}${eur(gj)}/jour) — même travail.`;
+  }
+
+  /* ---------- Outil 2 : Statuts (logique testée : test-statuts.js) ---------- */
+  function calcStatuts(CA, charges){
+    charges=Math.min(Math.max(charges,0),CA);
+    const micro={cotis:CA*0.23, reste:CA-CA*0.23-charges, retraite:1};
+    const benef=Math.max(CA-charges,0);
+    const reel={cotis:benef*0.42, reste:benef-benef*0.42, retraite:2};
+    const env=Math.max(CA-charges,0);
+    const sasu={cotis:env*0.48, reste:env-env*0.48, retraite:3};
+    return {micro,reel,sasu,benef};
+  }
+  const RETR=['','Faible','Correcte','Meilleure'];
+  function stCard(name,desc,o,best){
+    const bars=[1,2,3].map(n=>`<i class="${n<=o.retraite?'on':''}"></i>`).join('');
+    return `<div class="st${best?' best':''}">
+      ${best?'<span class="tagbest">+ de cash</span>':''}
+      <div class="name">${name}</div>
+      <div class="cap">${desc}</div>
+      <div class="big num">${eur(o.reste)}</div>
+      <div class="cap">te reste (avant IR)</div>
+      <div class="line"><span>Cotisations / prélèv.</span><span class="num">${eur(o.cotis)}</span></div>
+      <div class="retr">${bars}</div>
+      <div class="retrlbl">Retraite : ${RETR[o.retraite]}</div>
+    </div>`;
+  }
+  function renderStatuts(){
+    const CA=+$('ca').value||0, charges=+$('charges').value||0;
+    const o=calcStatuts(CA,charges);
+    const max=Math.max(o.micro.reste,o.reel.reste,o.sasu.reste);
+    $('stcards').innerHTML=
+      stCard('Micro','Simple · cotis. sur le CA',o.micro,o.micro.reste===max)+
+      stCard('EI au réel','Charges déductibles',o.reel,o.reel.reste===max)+
+      stCard('SASU','Régime général · dividendes',o.sasu,o.sasu.reste===max);
+    const per=Math.round(o.benef*0.10);
+    $('perTxt').innerHTML=`<b>🎯 Ta retraite, tout de suite :</b> ouvre un <b>PER</b> et verse ~<span class="amt">${eur(per)}/an</span> (10 % de ton bénéfice). C'est déductible de tes impôts <b>et</b> ça marche dans n'importe quel statut.`;
+  }
+
+  /* ---------- Init ---------- */
+  document.querySelectorAll('#p-devis input').forEach(el=>el.addEventListener('input',renderDevis));
+  document.querySelectorAll('#p-statuts input').forEach(el=>el.addEventListener('input',renderStatuts));
+  renderDevis(); renderStatuts();
+</script>
+</body>
+</html>
