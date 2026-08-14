@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Hélène Cauchy — Peintre en bâtiment à Varennes (82)</title>
-<meta name="description" content="Hélène Cauchy, artisan peintre en bâtiment à Varennes (Tarn-et-Garonne). Peinture intérieure, rénovation de maisons anciennes, murs, plafonds, boiseries. Devis gratuit." />
+<title>Cauchy peinture</title>
+<meta name="description" content="Cauchy peinture — Hélène Cauchy, peintre &amp; décoration à Varennes (Tarn-et-Garonne). Peinture intérieure, rénovation de maisons anciennes, papiers peints panoramiques et décoration. Devis gratuit." />
 
 <!-- ============================================================
   MAQUETTE SITE — Hélène Cauchy, peintre en bâtiment (82370 Varennes)
@@ -258,6 +258,32 @@
     .sticky-call{display:block}
     body{padding-bottom:56px}
   }
+
+  /* ---------- Galerie & section artiste ---------- */
+  .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+  .shot{position:relative;border-radius:var(--rayon);overflow:hidden;aspect-ratio:4/5;
+    box-shadow:var(--ombre);display:flex;align-items:flex-end;color:#fff;background-size:cover;background-position:center}
+  .shot .cap{position:relative;z-index:2;padding:.9rem;font-size:.85rem;font-weight:600;line-height:1.35;
+    width:100%;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+  .shot .cat{display:inline-block;font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;
+    background:var(--ocre);padding:.16rem .5rem;border-radius:999px;margin-bottom:.4rem;font-weight:700}
+  .shot .ph{position:absolute;inset:0;z-index:1;display:grid;place-items:center;text-align:center;
+    padding:1rem;font-size:.78rem;color:rgba(255,255,255,.9)}
+  .bg-pano{background:linear-gradient(160deg,#22405a,#33566b)}
+  .bg-art{background:linear-gradient(160deg,#57683f,#3f4d35)}
+  .bg-paint{background:linear-gradient(160deg,var(--ocre-clair),var(--ocre-fonce))}
+  .artist{background:var(--charbon);color:var(--creme)}
+  .artist h2{color:#fff}
+  .artist .eyebrow{color:var(--ocre-clair)}
+  .artist-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:center}
+  .artist p{color:rgba(247,241,232,.85)}
+  .artist .frame{aspect-ratio:1/1;border-radius:var(--rayon);overflow:hidden;box-shadow:var(--ombre);
+    background:linear-gradient(160deg,#4a423b,#2b2622);display:grid;place-items:center;text-align:center;
+    padding:1.5rem;color:rgba(255,255,255,.8);font-size:.82rem;border:1px solid rgba(255,255,255,.12)}
+  @media(max-width:880px){
+    .gallery{grid-template-columns:1fr 1fr}
+    .artist-grid{grid-template-columns:1fr;gap:2rem}
+  }
 </style>
 </head>
 <body>
@@ -266,10 +292,10 @@
 <header>
   <nav class="nav">
     <a class="brand" href="#top" aria-label="Accueil">
-      <span class="mark">HC</span>
+      <span class="mark">CP</span>
       <span>
-        <b>Hélène Cauchy</b>
-        <span>Peintre en bâtiment · Varennes</span>
+        <b>Cauchy peinture</b>
+        <span>Hélène Cauchy · Peintre &amp; décoration</span>
       </span>
     </a>
     <div class="nav-links" id="menu">
@@ -293,23 +319,23 @@
 <section class="hero">
   <div class="wrap hero-grid">
     <div>
-      <p class="eyebrow">Artisan peintre · Tarn-et-Garonne (82)</p>
-      <h1>Redonnez vie à vos murs, <em>en toute sérénité.</em></h1>
-      <p class="lead">Peinture intérieure soignée et rénovation de maisons anciennes à Varennes et alentours. Un travail propre, des conseils couleur, des délais tenus.</p>
+      <p class="eyebrow">Peinture · Papiers peints panoramiques · Décoration · Varennes (82)</p>
+      <h1>La peinture, avec <em>un œil d'artiste.</em></h1>
+      <p class="lead">Cauchy peinture — peinture intérieure, rénovation de maisons anciennes et papiers peints panoramiques à Varennes et alentours. Le soin d'une artisane, la sensibilité d'une artiste.</p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="#contact">Demander mon devis gratuit</a>
         <a class="btn btn-ghost" href="tel:+33600000000">📞 Appeler Hélène</a>
       </div>
       <div class="badges">
         <span>Devis gratuit</span>
-        <span>Artisane locale</span>
+        <span>Papiers peints panoramiques</span>
+        <span>Œil d'artiste</span>
         <span>Chantier propre</span>
-        <span>Conseil couleur offert</span>
       </div>
     </div>
     <div class="hero-visual">
       <div class="hero-card">
-        <div class="hero-photo-note">📷 Emplacement photo — une belle réalisation d'Hélène (pièce fraîchement peinte).</div>
+        <div class="hero-photo-note">📷 Emplacement — Hélène au travail (photo « Cauchy peinture »).</div>
       </div>
       <div class="float-badge"><b>2022</b><small>Depuis</small></div>
     </div>
@@ -335,13 +361,28 @@
       <p>De la simple mise en peinture à la rénovation complète d'une pièce, je m'occupe de tout, du premier coup de pinceau au dernier nettoyage.</p>
     </div>
     <div class="cards">
-      <div class="card"><div class="ic">🎨</div><h3>Peinture intérieure</h3><p>Murs, plafonds, cages d'escalier. Finitions mates, satinées ou veloutées selon vos envies.</p></div>
-      <div class="card"><div class="ic">🏠</div><h3>Rénovation maisons anciennes</h3><p>Dépose de l'ancien, réparation des supports abîmés et remise en peinture dans le respect du bâti.</p></div>
-      <div class="card"><div class="ic">🧱</div><h3>Enduits &amp; préparation</h3><p>Rebouchage, ponçage, enduits de lissage : la base d'un résultat impeccable et durable.</p></div>
+      <div class="card"><div class="ic">🌴</div><h3>Papiers peints panoramiques</h3><p>Fresques murales et décors panoramiques (paysages, végétal…) posés au millimètre, raccords invisibles.</p></div>
+      <div class="card"><div class="ic">🎨</div><h3>Peinture intérieure</h3><p>Murs, plafonds, cages d'escalier. Finitions mates, satinées ou veloutées, découpes nettes à la main.</p></div>
+      <div class="card"><div class="ic">🏠</div><h3>Rénovation &amp; maisons anciennes</h3><p>De la dépose complète (« tout cassé ») à la remise à neuf : préparation lourde et respect du bâti.</p></div>
+      <div class="card"><div class="ic">🖌️</div><h3>Décoration &amp; patines</h3><p>Effets décoratifs, patines, harmonies de couleurs pensées par une véritable artiste peintre.</p></div>
       <div class="card"><div class="ic">🚪</div><h3>Boiseries &amp; menuiseries</h3><p>Portes, plinthes, volets et fenêtres : dégrisage, protection et peinture soignée.</p></div>
-      <div class="card"><div class="ic">🖼️</div><h3>Papier peint &amp; revêtements</h3><p>Pose de papier peint, toile de verre et revêtements muraux, avec un rendu net et régulier.</p></div>
-      <div class="card"><div class="ic">💡</div><h3>Conseil couleur</h3><p>Vous hésitez ? Je vous aide à choisir les teintes et harmonies adaptées à votre lumière.</p></div>
+      <div class="card"><div class="ic">🧱</div><h3>Enduits &amp; préparation</h3><p>Rebouchage, ponçage, enduits de lissage : la base d'un résultat impeccable et durable.</p></div>
     </div>
+  </div>
+</section>
+
+<!-- ============ ŒIL D'ARTISTE ============ -->
+<section class="artist">
+  <div class="wrap artist-grid">
+    <div>
+      <p class="eyebrow">La différence Cauchy peinture</p>
+      <h2>Un métier d'artisane, un œil d'artiste</h2>
+      <p>Avant de peindre vos murs, Hélène dessine et peint : portraits au fusain, aquarelles, fresques. Cette sensibilité d'artiste, elle la met au service de votre intérieur — un sens des couleurs, du détail et des finitions que peu d'artisans maîtrisent.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#contact">Parler de votre projet déco</a>
+      </div>
+    </div>
+    <div class="frame">📷 Emplacement — œuvres d'Hélène (portraits au fusain, aquarelles signées).</div>
   </div>
 </section>
 
@@ -349,7 +390,7 @@
 <section id="pourquoi" class="why">
   <div class="wrap why-grid">
     <div class="why-portrait">
-      <span>📷 Emplacement portrait — Hélène sur un chantier (crée un vrai lien de confiance).</span>
+      <span>📷 Emplacement portrait — Hélène « Cauchy peinture » sur un chantier.</span>
     </div>
     <div>
       <p class="eyebrow">Pourquoi me choisir</p>
@@ -368,20 +409,36 @@
 <section id="realisations">
   <div class="wrap">
     <div class="section-head">
-      <p class="eyebrow">Mes réalisations</p>
-      <h2>Le résultat parle de lui-même</h2>
-      <p>Glissez le curseur pour comparer l'avant et l'après. <em>(Ici un exemple ; Hélène remplacera par ses vraies photos.)</em></p>
+      <p class="eyebrow">Réalisations</p>
+      <h2>Du chantier brut à la fresque murale</h2>
+      <p>Peinture, rénovation, papiers peints panoramiques et créations : un aperçu du travail de Cauchy peinture. <em>(Photos réelles à intégrer.)</em></p>
     </div>
-    <div class="ba-wrap">
+
+    <div class="gallery">
+      <figure class="shot bg-pano">
+        <div class="ph">📷 Papier peint panoramique « palmiers »<br />(chambre bleu nuit)</div>
+        <figcaption class="cap"><span class="cat">Papier peint panoramique</span><br />Fresque tropicale, mur entier</figcaption>
+      </figure>
+      <figure class="shot bg-art">
+        <div class="ph">📷 Papier peint panoramique « oliviers »<br />(gravure ancienne)</div>
+        <figcaption class="cap"><span class="cat">Décor mural</span><br />Panoramique paysage, raccords soignés</figcaption>
+      </figure>
+      <figure class="shot bg-paint">
+        <div class="ph">📷 Hélène au travail<br />« Cauchy peinture »</div>
+        <figcaption class="cap"><span class="cat">Peinture intérieure</span><br />Finitions nettes, découpes à la main</figcaption>
+      </figure>
+    </div>
+
+    <div class="ba-wrap" style="margin-top:1.4rem">
       <div class="ba" id="ba">
-        <div class="layer avant">AVANT</div>
-        <div class="layer apres" id="apres">APRÈS</div>
+        <div class="layer avant">TOUT CASSÉ</div>
+        <div class="layer apres" id="apres">REFAIT À NEUF</div>
         <span class="tag l">Avant</span>
         <span class="tag r">Après</span>
         <div class="handle" id="handle"></div>
         <input type="range" min="0" max="100" value="50" id="slider" aria-label="Comparer avant après" />
       </div>
-      <p class="ba-note">💡 Conseil com : 3 à 6 vraies photos avant/après valent mille arguments. C'est LE contenu qui déclenche les appels.</p>
+      <p class="ba-note">🔨 De la dépose complète (« tout cassé ») à la pièce finie — glissez pour comparer. <em>À remplacer par une vraie photo avant/après.</em></p>
     </div>
   </div>
 </section>
@@ -481,7 +538,7 @@
 <footer>
   <div class="wrap">
     <div>
-      <b style="color:#fff;font-family:Georgia,serif">Hélène Cauchy</b> — Peintre en bâtiment<br />
+      <b style="color:#fff;font-family:Georgia,serif">Cauchy peinture</b> — Hélène Cauchy, peintre &amp; décoration<br />
       1846 route de la Gayre, 82370 Varennes · SIRET 898 540 737 00019
     </div>
     <div style="text-align:right">
