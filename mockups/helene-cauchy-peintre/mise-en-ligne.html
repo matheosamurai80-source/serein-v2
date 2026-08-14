@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Feuille de route Cauchy peinture</title>
+<meta name="description" content="Feuille de route pas à pas pour mettre le site Cauchy peinture en ligne et créer la fiche Google Business." />
+
+<!-- ============================================================
+  FEUILLE DE ROUTE — Cauchy peinture
+  1) Mettre le site en ligne (domaine + hébergement)
+  2) Créer & optimiser la fiche Google Business
+  Cases à cocher mémorisées (localStorage). Page autonome, thème clair/sombre.
+============================================================= -->
+
+<style>
+  :root{
+    --bg:#f3eee4; --surface:#fbf8f2; --surface-2:#efe6d5; --border:#e3d9c7;
+    --text:#262019; --muted:#6f665b;
+    --accent:#b5641f; --accent-2:#8f4d16; --accent-soft:rgba(181,100,31,.12);
+    --done:#2f7d4f; --done-soft:rgba(47,125,79,.14); --sage:#6b7d5e;
+    --shadow:0 16px 34px -22px rgba(38,32,25,.5); --r:14px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#1b1714; --surface:#251f19; --surface-2:#2e2720; --border:#3a3128;
+      --text:#f0e9df; --muted:#a99e8f;
+      --accent:#e0904c; --accent-2:#eaa869; --accent-soft:rgba(224,144,76,.16);
+      --done:#6cc08a; --done-soft:rgba(108,192,138,.15); --sage:#9fb08b;
+      --shadow:0 16px 34px -22px rgba(0,0,0,.6);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#1b1714; --surface:#251f19; --surface-2:#2e2720; --border:#3a3128;
+    --text:#f0e9df; --muted:#a99e8f;
+    --accent:#e0904c; --accent-2:#eaa869; --accent-soft:rgba(224,144,76,.16);
+    --done:#6cc08a; --done-soft:rgba(108,192,138,.15); --sage:#9fb08b;
+    --shadow:0 16px 34px -22px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);line-height:1.6;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:0 18px}
+  h1,h2,h3{margin:0;font-family:Georgia,"Times New Roman",serif;letter-spacing:-.01em;line-height:1.18}
+
+  .top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .top .wrap{display:flex;align-items:center;gap:.8rem;padding:.7rem 18px}
+  .logo{display:flex;align-items:center;gap:.55rem;font-weight:800;font-family:Georgia,serif}
+  .logo .m{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;font-weight:900;font-family:inherit}
+  .grow{flex:1}
+  .tglt{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:999px;width:38px;height:34px;cursor:pointer;font-size:1rem}
+  .tglt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .progress{margin:1.4rem 0 .4rem;background:var(--surface);border:1px solid var(--border);border-radius:999px;height:14px;overflow:hidden}
+  .progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--sage),var(--done));transition:width .3s ease}
+  .progress-lbl{font-size:.85rem;color:var(--muted);font-weight:700;text-align:right}
+
+  .intro{font-size:1.05rem;color:var(--muted);margin:.3rem 0 2rem}
+  h1.title{font-size:clamp(1.7rem,4.5vw,2.4rem);margin:1.8rem 0 .5rem}
+
+  .part{margin:2.4rem 0}
+  .part-head{display:flex;align-items:center;gap:.8rem;margin-bottom:.4rem}
+  .part-num{width:38px;height:38px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;
+    background:var(--accent);color:#fff;font-family:Georgia,serif;font-weight:800;font-size:1.2rem}
+  .part h2{font-size:1.45rem}
+  .part-sub{color:var(--muted);margin:0 0 1.2rem}
+
+  .step{display:flex;gap:.9rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+    padding:1.1rem;margin-bottom:.9rem;box-shadow:var(--shadow);transition:.15s}
+  .step.done{background:var(--done-soft);border-color:color-mix(in srgb,var(--done) 35%,transparent)}
+  .step .box{flex:0 0 auto;margin-top:.15rem}
+  .step .box input{position:absolute;opacity:0;width:0;height:0}
+  .step .box label{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;cursor:pointer;
+    border:2px solid var(--border);background:var(--bg);color:transparent;font-weight:900;transition:.15s;font-size:.9rem}
+  .step .box input:checked + label{background:var(--done);border-color:var(--done);color:#fff}
+  .step .box input:focus-visible + label{outline:2px solid var(--accent);outline-offset:2px}
+  .step .body{flex:1;min-width:0}
+  .step h3{font-family:inherit;font-size:1.05rem;font-weight:800;margin:0 0 .3rem}
+  .step.done h3{text-decoration:line-through;text-decoration-color:var(--muted);opacity:.75}
+  .step p{margin:.2rem 0}
+  .step .body>p,.step li{font-size:.94rem;color:var(--muted)}
+  .step ul{margin:.4rem 0 0;padding-left:1.1rem}
+  .step li{margin:.25rem 0}
+  .step a{color:var(--accent);font-weight:700}
+  .chips{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.6rem}
+  .chip{font-size:.72rem;font-weight:700;padding:.22rem .55rem;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+  .chip.free{background:var(--done-soft);color:var(--done)}
+  .chip.cost{background:var(--accent-soft);color:var(--accent-2)}
+
+  .callout{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+    border-radius:var(--r);padding:1rem 1.1rem;font-size:.92rem;margin:1.2rem 0}
+  .callout b{color:var(--text)}
+  .tip{border-left:3px solid var(--sage);padding:.2rem 0 .2rem .8rem;margin:.6rem 0 0;font-size:.9rem;color:var(--muted)}
+  footer{text-align:center;color:var(--muted);font-size:.8rem;padding:2rem 0 3rem}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="wrap">
+    <div class="logo"><span class="m">CP</span> Cauchy peinture</div>
+    <span class="grow"></span>
+    <button class="tglt" id="theme" aria-label="Changer de thème">◐</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1 class="title">Feuille de route : exister sur internet</h1>
+  <p class="intro">Deux démarches, dans l'ordre. Coche chaque étape au fur et à mesure — ta progression est sauvegardée automatiquement sur cet appareil.</p>
+
+  <div class="progress"><i id="bar"></i></div>
+  <div class="progress-lbl" id="plbl">0 / 0 étape</div>
+
+  <!-- ============ PARTIE 1 : SITE EN LIGNE ============ -->
+  <section class="part">
+    <div class="part-head"><span class="part-num">1</span><h2>Mettre le site en ligne</h2></div>
+    <p class="part-sub">Objectif : que <b>cauchy-peinture.fr</b> affiche ton site. Deux briques : un hébergement (gratuit) et un nom de domaine (~12 €/an).</p>
+
+    <div class="step" data-id="s-prep">
+      <span class="box"><input type="checkbox" id="s-prep" /><label for="s-prep">✓</label></span>
+      <div class="body">
+        <h3>Avant de publier : compléter le site</h3>
+        <p>Remplace les 3 derniers vides pour qu'il soit prêt à recevoir des clients :</p>
+        <ul>
+          <li><b>Téléphone</b> et <b>e-mail</b> (aujourd'hui « à compléter »)</li>
+          <li><b>2-3 vrais avis</b> clients (bouche-à-oreille)</li>
+          <li>Brancher le <b>formulaire</b> (compte gratuit sur <a href="https://formspree.io" target="_blank" rel="noopener">Formspree</a>, coller l'identifiant)</li>
+        </ul>
+        <p class="tip">💬 Envoie-moi ces infos, je les intègre et je republie en 2 minutes.</p>
+        <div class="chips"><span class="chip">⏱️ 20 min</span><span class="chip free">Gratuit</span></div>
+      </div>
+    </div>
+
+    <div class="step" data-id="s-host">
+      <span class="box"><input type="checkbox" id="s-host" /><label for="s-host">✓</label></span>
+      <div class="body">
+        <h3>Publier le site gratuitement</h3>
+        <p>Va sur <a href="https://app.netlify.com/drop" target="_blank" rel="noopener">Netlify Drop</a> et <b>glisse le fichier <code>index.html</code></b> dans la zone. C'est tout : le site est en ligne sur une adresse type <code>cauchy-peinture.netlify.app</code>.</p>
+        <p class="tip">Alternatives équivalentes : Cloudflare Pages, Vercel. Netlify Drop reste le plus simple, sans même créer de compte au départ.</p>
+        <div class="chips"><span class="chip">⏱️ 5 min</span><span class="chip free">Gratuit</span></div>
+      </div>
+    </div>
+
+    <div class="step" data-id="s-domain">
+      <span class="box"><input type="checkbox" id="s-domain" /><label for="s-domain">✓</label></span>
+      <div class="body">
+        <h3>Acheter le nom de domaine</h3>
+        <p>Chez un fournisseur français comme <a href="https://www.ovhcloud.com/fr/domains/" target="_blank" rel="noopener">OVH</a>, Gandi ou Ionos, cherche <b>cauchy-peinture.fr</b> et achète-le.</p>
+        <ul>
+          <li>Un <b>.fr</b> coûte ~7 à 12 €/an.</li>
+          <li>S'il est pris : <code>cauchypeinture.fr</code>, <code>cauchy-peinture-varennes.fr</code>…</li>
+        </ul>
+        <div class="chips"><span class="chip">⏱️ 10 min</span><span class="chip cost">💶 ~12 €/an</span></div>
+      </div>
+    </div>
+
+    <div class="step" data-id="s-connect">
+      <span class="box"><input type="checkbox" id="s-connect" /><label for="s-connect">✓</label></span>
+      <div class="body">
+        <h3>Relier le domaine au site</h3>
+        <p>Dans Netlify : <b>Domain settings → Add custom domain → cauchy-peinture.fr</b>. Netlify indique des réglages DNS à recopier chez OVH. Le <b>cadenas HTTPS</b> se met en place tout seul, gratuitement.</p>
+        <p class="tip">🔧 C'est la seule étape un peu technique — fais-la avec moi, on la déroule ensemble écran par écran.</p>
+        <div class="chips"><span class="chip">⏱️ 15 min</span><span class="chip free">Gratuit</span></div>
+      </div>
+    </div>
+
+    <div class="callout"><b>💰 Coût total : ~12 €/an</b> (juste le domaine). L'hébergement et le HTTPS sont gratuits. Pour mettre à jour le site plus tard (photos, avis), il suffit de re-glisser le fichier dans Netlify.</div>
+  </section>
+
+  <!-- ============ PARTIE 2 : GOOGLE ============ -->
+  <section class="part">
+    <div class="part-head"><span class="part-num">2</span><h2>Créer la fiche Google Business</h2></div>
+    <p class="part-sub">Le levier n°1 en local : quand quelqu'un tape « peintre Varennes » ou « peintre Montauban », ta fiche apparaît sur Google et Maps. Gratuit, et souvent plus puissant que le site.</p>
+
+    <div class="step" data-id="g-create">
+      <span class="box"><input type="checkbox" id="g-create" /><label for="g-create">✓</label></span>
+      <div class="body">
+        <h3>Créer la fiche</h3>
+        <p>Va sur <a href="https://www.google.com/business/" target="_blank" rel="noopener">Google Business Profile</a>, connecte-toi avec un compte Google (crées-en un pro : <code>cauchy.peinture@gmail.com</code>).</p>
+        <ul>
+          <li><b>Nom</b> : Cauchy peinture · <b>Catégorie</b> : Peintre en bâtiment</li>
+          <li>Catégories en plus : Entreprise de rénovation, Décorateur</li>
+          <li>Tu interviens chez les clients (pas de boutique) → choisis « <b>Je me déplace</b> » et définis la <b>zone</b> (Varennes + 25 km). Tu peux masquer ton adresse perso.</li>
+        </ul>
+        <div class="chips"><span class="chip">⏱️ 15 min</span><span class="chip free">Gratuit</span></div>
+      </div>
+    </div>
+
+    <div class="step" data-id="g-verify">
+      <span class="box"><input type="checkbox" id="g-verify" /><label for="g-verify">✓</label></span>
+      <div class="body">
+        <h3>Valider la fiche</h3>
+        <p>Google envoie un code (par courrier, téléphone ou vidéo) pour vérifier que l'entreprise est bien à toi. Saisis le code reçu.</p>
+        <p class="tip">Le courrier peut prendre 5 à 14 jours — lance cette étape tôt.</p>
+        <div class="chips"><span class="chip">⏱️ 5 min + attente</span><span class="chip free">Gratuit</span></div>
+      </div>
+    </div>
+
+    <div class="step" data-id="g-optim">
+      <span class="box"><input type="checkbox" id="g-optim" /><label for="g-optim">✓</label></span>
+      <div class="body">
+        <h3>Remplir et optimiser</h3>
+        <ul>
+          <li><b>10 à 15 photos</b> : tes panoramiques, réalisations, portrait (les mêmes que le site).</li>
+          <li><b>Description</b> avec les bons mots : « peinture intérieure, papiers peints panoramiques, rénovation, décoration — Varennes, Tarn-et-Garonne ».</li>
+          <li>Horaires, zone d'intervention, lien vers le site, messagerie activée.</li>
+        </ul>
+        <div class="chips"><span class="chip">⏱️ 30 min</span><span class="chip free">Gratuit</span></div>
+      </div>
+    </div>
+
+    <div class="step" data-id="g-reviews">
+      <span class="box"><input type="checkbox" id="g-reviews" /><label for="g-reviews">✓</label></span>
+      <div class="body">
+        <h3>Récolter des avis (le plus important)</h3>
+        <p>Après chaque chantier réussi, demande un avis Google : envoie le lien direct de ta fiche par SMS. Vise <b>5 à 10 avis</b> rapidement — c'est ce qui fait remonter la fiche dans les résultats.</p>
+        <ul>
+          <li>Réponds à chaque avis (Google valorise ça).</li>
+          <li>Les mêmes avis peuvent servir sur le site.</li>
+        </ul>
+        <div class="chips"><span class="chip">🔁 En continu</span><span class="chip free">Gratuit</span></div>
+      </div>
+    </div>
+
+    <div class="callout"><b>🎯 Priorité absolue :</b> la fiche Google + les avis, c'est ~80 % de la visibilité locale d'un artisan. À faire même avant que le site soit parfait.</div>
+  </section>
+
+  <button class="tglt" id="reset" style="width:auto;padding:.5rem 1rem;border-radius:10px;font-size:.85rem">↺ Réinitialiser ma progression</button>
+</div>
+
+<footer>Feuille de route Cauchy peinture · coche au fur et à mesure · progression sauvegardée sur cet appareil.</footer>
+
+<script>
+  const root=document.documentElement;
+  document.getElementById('theme').addEventListener('click',()=>{
+    const dark = root.getAttribute('data-theme')==='dark'
+      || (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme:dark)').matches);
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+  });
+
+  const KEY='cauchy-roadmap';
+  const boxes=[...document.querySelectorAll('.step input[type=checkbox]')];
+  const bar=document.getElementById('bar'), plbl=document.getElementById('plbl');
+
+  function load(){
+    let saved={};
+    try{ saved=JSON.parse(localStorage.getItem(KEY)||'{}'); }catch(e){}
+    boxes.forEach(b=>{ b.checked=!!saved[b.id]; syncStep(b); });
+    update();
+  }
+  function save(){
+    const o={}; boxes.forEach(b=>o[b.id]=b.checked);
+    try{ localStorage.setItem(KEY,JSON.stringify(o)); }catch(e){}
+  }
+  function syncStep(b){ b.closest('.step').classList.toggle('done', b.checked); }
+  function update(){
+    const done=boxes.filter(b=>b.checked).length;
+    bar.style.width=(done/boxes.length*100)+'%';
+    plbl.textContent=`${done} / ${boxes.length} étapes`;
+  }
+  boxes.forEach(b=>b.addEventListener('change',()=>{ syncStep(b); save(); update(); }));
+  document.getElementById('reset').addEventListener('click',()=>{
+    boxes.forEach(b=>{ b.checked=false; syncStep(b); }); save(); update();
+  });
+  load();
+</script>
+</body>
+</html>
