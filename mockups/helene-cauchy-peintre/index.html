@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hélène Cauchy — Peintre en bâtiment à Varennes (82)</title>
+<meta name="description" content="Hélène Cauchy, artisan peintre en bâtiment à Varennes (Tarn-et-Garonne). Peinture intérieure, rénovation de maisons anciennes, murs, plafonds, boiseries. Devis gratuit." />
+
+<!-- ============================================================
+  MAQUETTE SITE — Hélène Cauchy, peintre en bâtiment (82370 Varennes)
+  Fichier autonome (HTML + CSS + un peu de JS). Aucune dépendance externe.
+  Les zones [À COMPLÉTER] sont à remplir par Hélène (tél, e-mail, photos, avis).
+============================================================= -->
+
+<style>
+  :root{
+    --ocre:#c8712d;          /* terracotta / ocre — chaleur, matière */
+    --ocre-fonce:#a4551c;
+    --ocre-clair:#e8a56b;
+    --sauge:#6b7d5e;         /* vert sauge — nature, calme */
+    --creme:#f7f1e8;         /* fond crème / lin */
+    --creme-2:#efe6d6;
+    --charbon:#2b2622;       /* texte / contrastes */
+    --charbon-doux:#4a423b;
+    --blanc:#fffdf9;
+    --ombre:0 18px 40px -18px rgba(43,38,34,.35);
+    --rayon:16px;
+    --max:1120px;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--charbon);
+    background:var(--creme);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:Georgia,"Times New Roman",serif;line-height:1.15;font-weight:700;letter-spacing:-.01em}
+  h2{font-size:clamp(1.7rem,3.5vw,2.5rem);margin:0 0 .6rem}
+  p{margin:0 0 1rem}
+  a{color:inherit}
+  img{max-width:100%;display:block}
+  .wrap{width:100%;max-width:var(--max);margin:0 auto;padding:0 22px}
+  .eyebrow{
+    text-transform:uppercase;letter-spacing:.18em;font-size:.75rem;font-weight:700;
+    color:var(--ocre-fonce);margin:0 0 .5rem;font-family:inherit
+  }
+
+  /* ---------- Boutons ---------- */
+  .btn{
+    display:inline-flex;align-items:center;gap:.5rem;
+    padding:.85rem 1.5rem;border-radius:999px;font-weight:700;font-size:1rem;
+    text-decoration:none;border:2px solid transparent;cursor:pointer;transition:.2s ease;white-space:nowrap
+  }
+  .btn-primary{background:var(--ocre);color:#fff;box-shadow:var(--ombre)}
+  .btn-primary:hover{background:var(--ocre-fonce);transform:translateY(-2px)}
+  .btn-ghost{background:transparent;color:var(--charbon);border-color:var(--charbon)}
+  .btn-ghost:hover{background:var(--charbon);color:#fff}
+  .btn-white{background:#fff;color:var(--charbon)}
+  .btn-white:hover{background:var(--creme-2)}
+
+  /* ---------- Header ---------- */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(247,241,232,.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--creme-2)
+  }
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:.7rem 22px;max-width:var(--max);margin:0 auto;gap:1rem}
+  .brand{display:flex;align-items:center;gap:.6rem;text-decoration:none;font-weight:700}
+  .brand .mark{
+    width:40px;height:40px;border-radius:10px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--ocre),var(--ocre-clair));
+    display:grid;place-items:center;color:#fff;font-family:Georgia,serif;font-size:1.2rem;box-shadow:var(--ombre)
+  }
+  .brand b{font-family:Georgia,serif;font-size:1.1rem;line-height:1;display:block}
+  .brand span{font-size:.72rem;color:var(--charbon-doux);letter-spacing:.05em;text-transform:uppercase}
+  .nav-links{display:flex;align-items:center;gap:1.5rem}
+  .nav-links a{text-decoration:none;font-weight:600;font-size:.95rem;color:var(--charbon-doux)}
+  .nav-links a:hover{color:var(--ocre-fonce)}
+  .nav-cta{display:flex;align-items:center;gap:.8rem}
+  .tel-link{font-weight:700;text-decoration:none;color:var(--charbon);white-space:nowrap}
+  .tel-link:hover{color:var(--ocre-fonce)}
+  .burger{display:none;background:none;border:0;cursor:pointer;padding:.4rem;flex:0 0 auto}
+  .burger span{display:block;width:24px;height:2px;background:var(--charbon);margin:5px 0;transition:.2s}
+
+  /* ---------- Hero ---------- */
+  .hero{position:relative;overflow:hidden;background:var(--creme)}
+  .hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:3rem;align-items:center;padding:3.5rem 0 3rem}
+  .hero h1{font-size:clamp(2.2rem,5vw,3.6rem);margin:0 0 1rem}
+  .hero h1 em{color:var(--ocre-fonce);font-style:normal}
+  .hero p.lead{font-size:1.15rem;color:var(--charbon-doux);max-width:38ch}
+  .hero-cta{display:flex;flex-wrap:wrap;gap:.8rem;margin:1.6rem 0 1.4rem}
+  .badges{display:flex;flex-wrap:wrap;gap:.6rem .9rem;font-size:.9rem;color:var(--charbon-doux)}
+  .badges span{display:inline-flex;align-items:center;gap:.4rem;font-weight:600}
+  .badges span::before{content:"✓";color:var(--sauge);font-weight:900}
+
+  .hero-visual{position:relative}
+  .hero-card{
+    border-radius:22px;overflow:hidden;box-shadow:var(--ombre);
+    aspect-ratio:4/5;position:relative;
+    background:
+      linear-gradient(135deg,#d98b4a 0%, #c8712d 45%, #a4551c 100%);
+  }
+  /* effet "coups de rouleau" sur le visuel placeholder */
+  .hero-card::after{
+    content:"";position:absolute;inset:0;opacity:.28;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,.18) 0 14px, transparent 14px 46px),
+      repeating-linear-gradient(25deg, rgba(0,0,0,.06) 0 22px, transparent 22px 60px);
+  }
+  .hero-photo-note{
+    position:absolute;left:14px;bottom:14px;right:14px;z-index:2;
+    background:rgba(255,253,249,.94);border-radius:12px;padding:.7rem .9rem;
+    font-size:.78rem;color:var(--charbon-doux);font-weight:600
+  }
+  .float-badge{
+    position:absolute;top:-14px;right:-8px;z-index:3;background:#fff;border-radius:14px;
+    padding:.7rem 1rem;box-shadow:var(--ombre);text-align:center;line-height:1.1
+  }
+  .float-badge b{display:block;font-family:Georgia,serif;font-size:1.6rem;color:var(--ocre-fonce)}
+  .float-badge small{font-size:.7rem;color:var(--charbon-doux);text-transform:uppercase;letter-spacing:.08em}
+
+  /* ---------- Bandeau confiance ---------- */
+  .trust{background:var(--charbon);color:var(--creme)}
+  .trust .wrap{display:grid;grid-template-columns:repeat(4,1fr);gap:1.5rem;padding:1.6rem 22px}
+  .trust div{text-align:center}
+  .trust b{display:block;font-family:Georgia,serif;font-size:1.6rem;color:var(--ocre-clair)}
+  .trust small{font-size:.85rem;opacity:.85}
+
+  /* ---------- Sections ---------- */
+  section{padding:4rem 0}
+  .section-head{max-width:60ch;margin:0 auto 2.4rem;text-align:center}
+  .section-head p{color:var(--charbon-doux)}
+
+  /* Services */
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1.3rem}
+  .card{
+    background:var(--blanc);border:1px solid var(--creme-2);border-radius:var(--rayon);
+    padding:1.6rem;transition:.2s ease
+  }
+  .card:hover{transform:translateY(-4px);box-shadow:var(--ombre);border-color:var(--ocre-clair)}
+  .card .ic{
+    width:52px;height:52px;border-radius:12px;display:grid;place-items:center;font-size:1.5rem;
+    background:var(--creme-2);margin-bottom:1rem
+  }
+  .card h3{font-size:1.2rem;margin:0 0 .4rem}
+  .card p{font-size:.95rem;color:var(--charbon-doux);margin:0}
+
+  /* Pourquoi moi */
+  .why{background:var(--creme-2)}
+  .why-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:center}
+  .why ul{list-style:none;padding:0;margin:1.2rem 0 0}
+  .why li{display:flex;gap:.9rem;padding:.7rem 0;border-bottom:1px dashed rgba(43,38,34,.15)}
+  .why li b{display:block}
+  .why li .dot{
+    flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--sauge);color:#fff;
+    display:grid;place-items:center;font-weight:900
+  }
+  .why-portrait{
+    border-radius:22px;aspect-ratio:1/1;box-shadow:var(--ombre);position:relative;overflow:hidden;
+    background:linear-gradient(135deg,var(--sauge),#4f5f43)
+  }
+  .why-portrait span{
+    position:absolute;inset:auto 14px 14px 14px;background:rgba(255,253,249,.94);border-radius:12px;
+    padding:.7rem .9rem;font-size:.78rem;font-weight:600;color:var(--charbon-doux)
+  }
+
+  /* Avant / Après */
+  .ba-wrap{max-width:760px;margin:0 auto}
+  .ba{
+    position:relative;border-radius:var(--rayon);overflow:hidden;box-shadow:var(--ombre);
+    aspect-ratio:16/10;user-select:none
+  }
+  .ba .layer{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;color:#fff;font-family:Georgia,serif;font-size:1.3rem}
+  .ba .avant{background:linear-gradient(135deg,#8f8578,#6e665b)}
+  .ba .apres{background:linear-gradient(135deg,var(--ocre-clair),var(--ocre));clip-path:inset(0 0 0 50%)}
+  .ba .tag{position:absolute;top:12px;padding:.3rem .7rem;border-radius:999px;font-size:.75rem;background:rgba(0,0,0,.45);color:#fff;font-weight:700}
+  .ba .tag.l{left:12px}.ba .tag.r{right:12px}
+  .ba .handle{position:absolute;top:0;bottom:0;left:50%;width:3px;background:#fff;transform:translateX(-50%);box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+  .ba .handle::after{content:"↔";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:38px;height:38px;background:#fff;color:var(--charbon);border-radius:50%;display:grid;place-items:center;font-weight:900;box-shadow:var(--ombre)}
+  .ba input[type=range]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:ew-resize;margin:0}
+  .ba-note{text-align:center;font-size:.85rem;color:var(--charbon-doux);margin-top:.9rem}
+
+  /* Processus */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem;counter-reset:s}
+  .step{position:relative;padding:1.4rem;background:var(--blanc);border-radius:var(--rayon);border:1px solid var(--creme-2)}
+  .step::before{
+    counter-increment:s;content:counter(s);font-family:Georgia,serif;font-size:2.2rem;color:var(--ocre-clair);font-weight:700;display:block;margin-bottom:.3rem
+  }
+  .step h3{font-size:1.05rem;margin:0 0 .3rem}
+  .step p{font-size:.9rem;color:var(--charbon-doux);margin:0}
+
+  /* Témoignages */
+  .quotes{display:grid;grid-template-columns:repeat(3,1fr);gap:1.3rem}
+  .quote{background:var(--blanc);border-radius:var(--rayon);padding:1.6rem;border:1px solid var(--creme-2)}
+  .quote .stars{color:var(--ocre);letter-spacing:.15em;margin-bottom:.5rem}
+  .quote p{font-style:italic;color:var(--charbon-doux)}
+  .quote b{font-style:normal;font-size:.9rem}
+  .placeholder-note{font-size:.75rem;color:#b9451f;font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+
+  /* Zone */
+  .zone{background:var(--sauge);color:#fff}
+  .zone .wrap{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem;align-items:center}
+  .zone h2{color:#fff}
+  .zone .communes{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:1rem}
+  .zone .communes span{background:rgba(255,255,255,.16);padding:.4rem .8rem;border-radius:999px;font-size:.9rem;font-weight:600}
+  .zone .map{
+    aspect-ratio:4/3;border-radius:var(--rayon);background:rgba(255,255,255,.1);
+    display:grid;place-items:center;text-align:center;padding:1.5rem;border:1px dashed rgba(255,255,255,.4)
+  }
+
+  /* Contact */
+  .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:2.5rem}
+  form{display:grid;gap:.9rem}
+  label{font-weight:600;font-size:.9rem;display:block;margin-bottom:.25rem}
+  input,textarea{
+    width:100%;padding:.8rem .9rem;border:1.5px solid var(--creme-2);border-radius:10px;
+    font:inherit;background:var(--blanc)
+  }
+  input:focus,textarea:focus{outline:none;border-color:var(--ocre)}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:.9rem}
+  .contact-info{background:var(--charbon);color:var(--creme);border-radius:var(--rayon);padding:1.8rem}
+  .contact-info h3{color:#fff;margin-top:0}
+  .contact-info a{color:var(--ocre-clair);font-weight:700;text-decoration:none}
+  .info-line{display:flex;gap:.8rem;padding:.7rem 0;border-bottom:1px solid rgba(255,255,255,.12)}
+  .info-line .ic{font-size:1.2rem}
+  .fill{color:var(--ocre-clair);font-weight:700}
+
+  /* Footer */
+  footer{background:#211d1a;color:#b9b0a4;font-size:.85rem;padding:2.2rem 0}
+  footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:1rem}
+  footer a{color:#d8cdbf}
+
+  .sticky-call{
+    position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;
+    background:var(--ocre);color:#fff;text-align:center;padding:.9rem;font-weight:700;text-decoration:none;box-shadow:0 -8px 24px rgba(0,0,0,.25)
+  }
+
+  /* ---------- Responsive ---------- */
+  @media(max-width:880px){
+    .nav-links{
+      position:absolute;top:100%;left:0;right:0;background:var(--creme);flex-direction:column;
+      align-items:flex-start;padding:1rem 22px;gap:.4rem;border-bottom:1px solid var(--creme-2);display:none
+    }
+    .nav-links.open{display:flex}
+    .nav-links a{padding:.5rem 0;width:100%}
+    .burger{display:block}
+    .nav-cta .tel-link{display:none}
+    .hero-grid,.why-grid,.zone .wrap,.contact-grid{grid-template-columns:1fr;gap:2rem}
+    .hero-visual{order:-1;max-width:360px;margin:0 auto}
+    .cards,.quotes{grid-template-columns:1fr}
+    .steps{grid-template-columns:1fr 1fr}
+    .trust .wrap{grid-template-columns:1fr 1fr;gap:1.2rem}
+    .field-row{grid-template-columns:1fr}
+    .sticky-call{display:block}
+    body{padding-bottom:56px}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header>
+  <nav class="nav">
+    <a class="brand" href="#top" aria-label="Accueil">
+      <span class="mark">HC</span>
+      <span>
+        <b>Hélène Cauchy</b>
+        <span>Peintre en bâtiment · Varennes</span>
+      </span>
+    </a>
+    <div class="nav-links" id="menu">
+      <a href="#services">Prestations</a>
+      <a href="#pourquoi">Pourquoi moi</a>
+      <a href="#realisations">Réalisations</a>
+      <a href="#zone">Zone d'intervention</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div class="nav-cta">
+      <a class="tel-link" href="tel:+33600000000">📞 06 XX XX XX XX</a>
+      <a class="btn btn-primary" href="#contact">Devis gratuit</a>
+      <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
+    </div>
+  </nav>
+</header>
+
+<a id="top"></a>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Artisan peintre · Tarn-et-Garonne (82)</p>
+      <h1>Redonnez vie à vos murs, <em>en toute sérénité.</em></h1>
+      <p class="lead">Peinture intérieure soignée et rénovation de maisons anciennes à Varennes et alentours. Un travail propre, des conseils couleur, des délais tenus.</p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="#contact">Demander mon devis gratuit</a>
+        <a class="btn btn-ghost" href="tel:+33600000000">📞 Appeler Hélène</a>
+      </div>
+      <div class="badges">
+        <span>Devis gratuit</span>
+        <span>Artisane locale</span>
+        <span>Chantier propre</span>
+        <span>Conseil couleur offert</span>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-card">
+        <div class="hero-photo-note">📷 Emplacement photo — une belle réalisation d'Hélène (pièce fraîchement peinte).</div>
+      </div>
+      <div class="float-badge"><b>2022</b><small>Depuis</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BANDEAU CONFIANCE ============ -->
+<div class="trust">
+  <div class="wrap">
+    <div><b>100%</b><small>Devis gratuits &amp; sans engagement</small></div>
+    <div><b>Local</b><small>Varennes &amp; 25 km alentour</small></div>
+    <div><b>Soigné</b><small>Protection &amp; nettoyage inclus</small></div>
+    <div><b>À l'écoute</b><small>Un seul interlocuteur : Hélène</small></div>
+  </div>
+</div>
+
+<!-- ============ SERVICES ============ -->
+<section id="services">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Mes prestations</p>
+      <h2>Tout pour embellir votre intérieur</h2>
+      <p>De la simple mise en peinture à la rénovation complète d'une pièce, je m'occupe de tout, du premier coup de pinceau au dernier nettoyage.</p>
+    </div>
+    <div class="cards">
+      <div class="card"><div class="ic">🎨</div><h3>Peinture intérieure</h3><p>Murs, plafonds, cages d'escalier. Finitions mates, satinées ou veloutées selon vos envies.</p></div>
+      <div class="card"><div class="ic">🏠</div><h3>Rénovation maisons anciennes</h3><p>Dépose de l'ancien, réparation des supports abîmés et remise en peinture dans le respect du bâti.</p></div>
+      <div class="card"><div class="ic">🧱</div><h3>Enduits &amp; préparation</h3><p>Rebouchage, ponçage, enduits de lissage : la base d'un résultat impeccable et durable.</p></div>
+      <div class="card"><div class="ic">🚪</div><h3>Boiseries &amp; menuiseries</h3><p>Portes, plinthes, volets et fenêtres : dégrisage, protection et peinture soignée.</p></div>
+      <div class="card"><div class="ic">🖼️</div><h3>Papier peint &amp; revêtements</h3><p>Pose de papier peint, toile de verre et revêtements muraux, avec un rendu net et régulier.</p></div>
+      <div class="card"><div class="ic">💡</div><h3>Conseil couleur</h3><p>Vous hésitez ? Je vous aide à choisir les teintes et harmonies adaptées à votre lumière.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ POURQUOI MOI ============ -->
+<section id="pourquoi" class="why">
+  <div class="wrap why-grid">
+    <div class="why-portrait">
+      <span>📷 Emplacement portrait — Hélène sur un chantier (crée un vrai lien de confiance).</span>
+    </div>
+    <div>
+      <p class="eyebrow">Pourquoi me choisir</p>
+      <h2>Une artisane de confiance, près de chez vous</h2>
+      <ul>
+        <li><span class="dot">✓</span><div><b>Un interlocuteur unique</b>Vous parlez directement à la personne qui réalise le travail. Pas d'intermédiaire.</div></li>
+        <li><span class="dot">✓</span><div><b>Un chantier propre et protégé</b>Meubles et sols bâchés, poussière maîtrisée, nettoyage en fin de journée.</div></li>
+        <li><span class="dot">✓</span><div><b>Le respect de votre maison</b>Spécialiste des bâtis anciens : je travaille avec soin et sans dénaturer l'existant.</div></li>
+        <li><span class="dot">✓</span><div><b>Des délais annoncés et tenus</b>Un planning clair dès le devis, et je m'y tiens.</div></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RÉALISATIONS / AVANT-APRÈS ============ -->
+<section id="realisations">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Mes réalisations</p>
+      <h2>Le résultat parle de lui-même</h2>
+      <p>Glissez le curseur pour comparer l'avant et l'après. <em>(Ici un exemple ; Hélène remplacera par ses vraies photos.)</em></p>
+    </div>
+    <div class="ba-wrap">
+      <div class="ba" id="ba">
+        <div class="layer avant">AVANT</div>
+        <div class="layer apres" id="apres">APRÈS</div>
+        <span class="tag l">Avant</span>
+        <span class="tag r">Après</span>
+        <div class="handle" id="handle"></div>
+        <input type="range" min="0" max="100" value="50" id="slider" aria-label="Comparer avant après" />
+      </div>
+      <p class="ba-note">💡 Conseil com : 3 à 6 vraies photos avant/après valent mille arguments. C'est LE contenu qui déclenche les appels.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROCESSUS ============ -->
+<section class="why" style="background:var(--creme-2)">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Comment ça se passe</p>
+      <h2>Simple, du premier appel à la dernière retouche</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><h3>On échange</h3><p>Vous m'appelez ou remplissez le formulaire. On parle de votre projet.</p></div>
+      <div class="step"><h3>Devis gratuit</h3><p>Je me déplace, je mesure, et vous recevez un devis clair et détaillé.</p></div>
+      <div class="step"><h3>Réalisation</h3><p>Protection, préparation, peinture. Un chantier propre, aux dates convenues.</p></div>
+      <div class="step"><h3>Finitions</h3><p>On fait le tour ensemble. Je ne pars qu'une fois que vous êtes satisfait(e).</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TÉMOIGNAGES ============ -->
+<section id="avis">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Ils m'ont fait confiance</p>
+      <h2>Ce que disent mes clients</h2>
+      <p class="placeholder-note">⚠️ Emplacements — à remplacer par de vrais avis (Google, bouche-à-oreille). Ne jamais inventer.</p>
+    </div>
+    <div class="quotes">
+      <div class="quote"><div class="stars">★★★★★</div><p>« [Avis client à venir — ex. « Travail impeccable, très à l'écoute, ma chambre est méconnaissable. » ] »</p><b>— Prénom, commune</b></div>
+      <div class="quote"><div class="stars">★★★★★</div><p>« [Avis client à venir — ex. « Chantier propre et délais respectés, je recommande. » ] »</p><b>— Prénom, commune</b></div>
+      <div class="quote"><div class="stars">★★★★★</div><p>« [Avis client à venir — ex. « De bons conseils pour les couleurs, un vrai plus. » ] »</p><b>— Prénom, commune</b></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ZONE D'INTERVENTION ============ -->
+<section id="zone" class="zone">
+  <div class="wrap">
+    <div>
+      <p class="eyebrow" style="color:#fff">Où j'interviens</p>
+      <h2>Varennes et tout le secteur</h2>
+      <p>Basée à Varennes (82370), je me déplace dans un rayon d'environ 25 km, entre Montauban et la Garonne.</p>
+      <div class="communes">
+        <span>Varennes</span><span>Montauban</span><span>Verdun-sur-Garonne</span>
+        <span>Grisolles</span><span>Montech</span><span>Dieupentale</span>
+        <span>Bessens</span><span>Canals</span><span>Campsas</span><span>Nohic</span>
+      </div>
+      <p style="margin-top:1.2rem;font-size:.9rem;opacity:.9">Votre commune n'est pas listée&nbsp;? Contactez-moi, c'est peut-être possible.</p>
+    </div>
+    <div class="map">
+      <div>🗺️<br /><strong>Emplacement carte</strong><br /><small>Intégrer une carte Google Maps centrée sur Varennes (82370).</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CONTACT ============ -->
+<section id="contact">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Parlons de votre projet</p>
+      <h2>Demandez votre devis gratuit</h2>
+      <p>Réponse rapide et sans engagement. Décrivez-moi votre projet, je vous rappelle.</p>
+    </div>
+    <div class="contact-grid">
+      <form onsubmit="event.preventDefault();alert('Formulaire de démonstration — à connecter (e-mail ou Formspree) lors de la mise en ligne.');">
+        <div class="field-row">
+          <div><label for="nom">Nom</label><input id="nom" name="nom" required placeholder="Votre nom" /></div>
+          <div><label for="tel">Téléphone</label><input id="tel" name="tel" type="tel" required placeholder="06 …" /></div>
+        </div>
+        <div><label for="mail">E-mail</label><input id="mail" name="mail" type="email" placeholder="vous@exemple.fr" /></div>
+        <div><label for="msg">Votre projet</label><textarea id="msg" name="msg" rows="4" placeholder="Ex. : repeindre 2 chambres et un couloir dans une maison ancienne à Varennes."></textarea></div>
+        <button class="btn btn-primary" type="submit">Envoyer ma demande</button>
+        <small style="color:var(--charbon-doux)">En envoyant, vous acceptez d'être recontacté(e) au sujet de votre demande.</small>
+      </form>
+      <div class="contact-info">
+        <h3>Me contacter directement</h3>
+        <div class="info-line"><span class="ic">📞</span><div>Téléphone<br /><a href="tel:+33600000000" class="fill">06 XX XX XX XX</a> <span class="placeholder-note">[à compléter]</span></div></div>
+        <div class="info-line"><span class="ic">✉️</span><div>E-mail<br /><a href="mailto:contact@exemple.fr" class="fill">contact@… </a> <span class="placeholder-note">[à compléter]</span></div></div>
+        <div class="info-line"><span class="ic">📍</span><div>Atelier<br />1846 route de la Gayre, 82370 Varennes</div></div>
+        <div class="info-line"><span class="ic">🕐</span><div>Disponibilité<br />Du lundi au samedi — <span class="fill">[horaires à préciser]</span></div></div>
+        <p style="margin:1.2rem 0 0;font-size:.85rem;opacity:.85">Astuce : ajoutez ici un lien vers votre <b>fiche Google Business</b> et vos réseaux, une fois créés.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap">
+    <div>
+      <b style="color:#fff;font-family:Georgia,serif">Hélène Cauchy</b> — Peintre en bâtiment<br />
+      1846 route de la Gayre, 82370 Varennes · SIRET 898 540 737 00019
+    </div>
+    <div style="text-align:right">
+      <a href="#top">Retour en haut ↑</a><br />
+      <small>Maquette de démonstration · Mentions légales à compléter avant mise en ligne.</small>
+    </div>
+  </div>
+</footer>
+
+<a class="sticky-call" href="tel:+33600000000">📞 Appeler pour un devis gratuit</a>
+
+<script>
+  // Menu mobile
+  var burger = document.getElementById('burger');
+  var menu = document.getElementById('menu');
+  burger.addEventListener('click', function(){ menu.classList.toggle('open'); });
+  menu.querySelectorAll('a').forEach(function(a){
+    a.addEventListener('click', function(){ menu.classList.remove('open'); });
+  });
+
+  // Comparateur avant / après
+  var slider = document.getElementById('slider');
+  var apres = document.getElementById('apres');
+  var handle = document.getElementById('handle');
+  function sync(v){
+    apres.style.clipPath = 'inset(0 0 0 ' + v + '%)';
+    handle.style.left = v + '%';
+  }
+  slider.addEventListener('input', function(){ sync(this.value); });
+  sync(50);
+</script>
+</body>
+</html>
