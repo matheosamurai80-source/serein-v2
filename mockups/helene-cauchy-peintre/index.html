@@ -447,13 +447,21 @@
       <p>Réponse rapide et sans engagement. Décrivez-moi votre projet, je vous rappelle.</p>
     </div>
     <div class="contact-grid">
-      <form onsubmit="event.preventDefault();alert('Formulaire de démonstration — à connecter (e-mail ou Formspree) lors de la mise en ligne.');">
+      <!--
+        FORMULAIRE FONCTIONNEL via Formspree (gratuit) :
+        1) Créer un compte sur https://formspree.io (avec l'e-mail d'Hélène)
+        2) Créer un formulaire, copier son identifiant (ex. "xdkzabcd")
+        3) Remplacer VOTRE_ID_FORMSPREE ci-dessous par cet identifiant.
+        Les demandes arriveront alors directement dans la boîte mail d'Hélène.
+      -->
+      <form action="https://formspree.io/f/VOTRE_ID_FORMSPREE" method="POST">
+        <input type="hidden" name="_subject" value="Nouvelle demande de devis — site Hélène Cauchy" />
         <div class="field-row">
           <div><label for="nom">Nom</label><input id="nom" name="nom" required placeholder="Votre nom" /></div>
-          <div><label for="tel">Téléphone</label><input id="tel" name="tel" type="tel" required placeholder="06 …" /></div>
+          <div><label for="tel">Téléphone</label><input id="tel" name="telephone" type="tel" required placeholder="06 …" /></div>
         </div>
-        <div><label for="mail">E-mail</label><input id="mail" name="mail" type="email" placeholder="vous@exemple.fr" /></div>
-        <div><label for="msg">Votre projet</label><textarea id="msg" name="msg" rows="4" placeholder="Ex. : repeindre 2 chambres et un couloir dans une maison ancienne à Varennes."></textarea></div>
+        <div><label for="mail">E-mail</label><input id="mail" name="email" type="email" placeholder="vous@exemple.fr" /></div>
+        <div><label for="msg">Votre projet</label><textarea id="msg" name="message" rows="4" placeholder="Ex. : repeindre 2 chambres et un couloir dans une maison ancienne à Varennes."></textarea></div>
         <button class="btn btn-primary" type="submit">Envoyer ma demande</button>
         <small style="color:var(--charbon-doux)">En envoyant, vous acceptez d'être recontacté(e) au sujet de votre demande.</small>
       </form>
