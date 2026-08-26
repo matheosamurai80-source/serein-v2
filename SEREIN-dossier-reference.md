@@ -120,6 +120,34 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Testé : `sandbox/letters.test.ts` (25 cas) + `sandbox/providers.test.ts`
   (15 cas) + parcours navigateur réel sans Supabase (18 cas).
 
+### Moteur résiliation server-side + DATE BUTOIR (livré 2026-08-26)
+- **Le manque comblé** : les 3 briques du moteur (régime `legal.ts`, date butoir
+  `commitments/logic.ts:effectiveDeadline`, courrier `generator.ts`) existaient
+  en pièces détachées, mais (1) aucune **route API serveur** ne les composait
+  et (2) la **date butoir n'était jamais affichée**. Objectif Juju en une phrase :
+  « une route API et une page qui prennent type de contrat + dates, appellent le
+  moteur existant regimes/deadline/letter, et affichent date butoir + courrier ».
+- `src/lib/resiliation/logic.ts` — `computeResiliation(input)` : fonction PURE
+  qui branche ensemble régime + date butoir + courrier. `today` **injectable**
+  → déterministe et testable. Statuts renvoyés : `a_tout_moment` (télécom /
+  énergie / Hamon / Chatel non avisé : pas de fenêtre à rater) · `ok` (> 30 j) ·
+  `bientot` (≤ 30 j) · `critique` (≤ 7 j) · `depassee` · `inconnue` (échéance
+  ou préavis manquant). Date butoir = échéance − préavis (préavis du contrat si
+  fourni, sinon préavis légal du régime).
+- `src/lib/validation/resiliation.ts` — schéma Zod (socle). La date de calcul
+  (`today`) n'est **jamais** acceptée du client : c'est le serveur qui la fixe.
+- `src/app/api/resiliation/route.ts` — route POST **stateless** (rien stocké) :
+  Zod → moteur → réponse standard `{ ok, data:{ regime, deadline,
+  daysUntilDeadline, status, letter } }`.
+- Page `/resiliation` enrichie : champs **Échéance / renouvellement** + **Préavis
+  contractuel (jours)** ; « Générer » appelle désormais la route API (le moteur
+  tourne côté serveur) ; **carte « Date butoir »** au-dessus du courrier, colorée
+  selon l'urgence (moss/amber/crimson). Le reste (annuaire, lecture PDF, copie /
+  téléchargement / sauvegarde) inchangé. Limite ORIAS intacte : c'est le client
+  qui envoie.
+- Testé : `sandbox/resiliation.test.ts` (16 cas, `today` injecté) — ajouté au
+  chaînage `test:sandbox`.
+
 ### Page Engagements — `/engagements` (le cœur du schéma v5)
 - `src/lib/commitments/logic.ts` — logique testée : coût mensualisé (hebdo/
   mensuel/trimestriel/annuel/ponctuel), échéance effective (date explicite ou
@@ -784,6 +812,7 @@ extension annuaire résiliation.
 | 2026-07-14 | Brique 1 socle API — **revérifié** contre le schéma Supabase live (subscriptions/reminders/uploads/cancellation_letters + CHECK) : response.ts (10 codes), 4 schémas Zod alignés, services CRUD (auth+propriété), routes route→Zod→auth→service→réponse. Déjà en place, aucune reconstruction. Ajout du livrable nommé `sandbox/test-validation.mjs` (25/25) | lint 0 erreur, typecheck `src` propre, **build prod vert**, sandbox 640 PASS 0 FAIL |
 | 2026-07-14 | Fusion — **les 3 onglets verrouillés** (`FoyerTabs` : Accueil `/dashboard` · ＋ `/ajouter` · Mon foyer `/foyer`) remplacent la nav à 6 liens sur toute l'app ; les sections deviennent des cartes dans `/foyer` (`foyerSections()` pur) | Sandbox 614 PASS 0 FAIL (`foyer.test.ts` 10/10), **build prod vert** (27 pages, `/foyer` générée), nav swap sur 8 pages sans erreur |
 | 2026-07-14 | Fix terrain (retour Juju) — ① `parseTicketText` gère le **copier-coller aplati** (tout sur une ligne : réinsertion de sauts après « prix+TVA » et autour des rayons `>>`) ; ② label de promo nettoyé ; ③ « ＋ Ajouter » ajouté à la **barre PanierMalin** (le « + » n'était que dans le menu Serein) | Sandbox 604 PASS 0 FAIL (ton copier-coller réel = **47 produits**, avant : 1), non-régression tickets classiques verte, `node --check` OK, cache SW v28 |
+| 2026-08-26 | **Moteur résiliation server-side + DATE BUTOIR** (objectif Juju : « une route API et une page qui prennent type de contrat + dates, appellent le moteur regimes/deadline/letter, et affichent date butoir + courrier ») : `computeResiliation` pur (`src/lib/resiliation/logic.ts`, `today` injecté) compose régime + date butoir (échéance − préavis) + courrier ; schéma Zod (`today` jamais reçu du client) ; route **stateless** `POST /api/resiliation` ; page `/resiliation` enrichie (champs Échéance + Préavis, appel API, carte « Date butoir » colorée par urgence). Limite ORIAS intacte | Sandbox `resiliation.test.ts` 16/16, suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (route `/api/resiliation`) |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
