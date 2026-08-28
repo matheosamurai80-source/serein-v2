@@ -105,6 +105,11 @@ export default function ResiliationPage() {
     if (c && CATEGORIES.some(x => x.value === c)) setCategory(c as TransactionCategory)
     const cid = q.get('commitment')
     if (cid) setCommitmentId(cid)
+    // Échéance + préavis transmis depuis un engagement → date butoir calculée d'emblée
+    const ech = q.get('echeance')
+    if (ech) setEcheanceDate(ech)
+    const notice = q.get('notice')
+    if (notice) setNoticeDays(notice)
     // Nom et adresse mémorisés sur l'appareil : plus besoin de les retaper
     try {
       const raw = localStorage.getItem(SENDER_KEY)

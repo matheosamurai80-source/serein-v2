@@ -14,7 +14,7 @@ import {
 } from '@/lib/factures/logic'
 import {
   monthlyEquivalent, effectiveDeadline, urgencyOf, sortCommitments,
-  totalMonthly, serviceTypeToCategory,
+  totalMonthly, resiliationLinkParams,
   type ServiceType, type CommitmentFrequency, type Urgency,
 } from '@/lib/commitments/logic'
 import { unikAdviceFor } from '@/lib/unik/logic'
@@ -332,7 +332,7 @@ export default function EngagementsPage() {
                 </p>
               )}
               <div className="flex flex-wrap gap-2 mt-3">
-                <a href={`/resiliation?service=${encodeURIComponent(c.name)}&category=${serviceTypeToCategory(c.service_type)}&commitment=${c.id}`}
+                <a href={`/resiliation?${new URLSearchParams({ ...resiliationLinkParams(c), commitment: c.id }).toString()}`}
                   className="text-[13px] font-semibold bg-sage text-cream rounded-full px-4 py-2 hover:bg-sage-light transition-colors">
                   {letteredIds.has(c.id) ? 'Revoir la lettre →' : 'Générer la lettre →'}
                 </a>

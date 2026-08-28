@@ -160,7 +160,15 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   Fonctionne connecté (Supabase) comme sans compte (stockage local).
 - **« Générer la lettre → » transmet `commitment_id`** ; une fois la lettre
   sauvegardée, l'engagement affiche « Revoir la lettre » (boucle fermée).
-- Testé : 18 cas sandbox PASS + 14 cas navigateur PASS (dont le lien lettre).
+- **Échéance pré-remplie vers la date butoir (2026-08-26)** :
+  `resiliationLinkParams(c)` (pur, `commitments/logic.ts`) construit les
+  paramètres d'URL — `service`, `category`, `echeance`, `notice` — reproduisant
+  exactement l'échéance affichée sur `/engagements` (anniversaire + préavis, ou
+  date butoir explicite avec `notice=0`). `/resiliation` lit `echeance`/`notice`
+  → la **date butoir s'affiche calculée d'emblée**, sans ressaisie. Aucun écran
+  ni logique dupliqués. Prépare le câblage engagement → rappel.
+- Testé : 22 cas sandbox PASS (dont 4 sur `resiliationLinkParams`) + 14 cas
+  navigateur PASS (dont le lien lettre).
 
 ### Onglet Rappels — `/rappels` (prévenir avant la fenêtre)
 - `src/lib/reminders/logic.ts` — logique testée : construction d'un rappel
@@ -813,6 +821,7 @@ extension annuaire résiliation.
 | 2026-07-14 | Fusion — **les 3 onglets verrouillés** (`FoyerTabs` : Accueil `/dashboard` · ＋ `/ajouter` · Mon foyer `/foyer`) remplacent la nav à 6 liens sur toute l'app ; les sections deviennent des cartes dans `/foyer` (`foyerSections()` pur) | Sandbox 614 PASS 0 FAIL (`foyer.test.ts` 10/10), **build prod vert** (27 pages, `/foyer` générée), nav swap sur 8 pages sans erreur |
 | 2026-07-14 | Fix terrain (retour Juju) — ① `parseTicketText` gère le **copier-coller aplati** (tout sur une ligne : réinsertion de sauts après « prix+TVA » et autour des rayons `>>`) ; ② label de promo nettoyé ; ③ « ＋ Ajouter » ajouté à la **barre PanierMalin** (le « + » n'était que dans le menu Serein) | Sandbox 604 PASS 0 FAIL (ton copier-coller réel = **47 produits**, avant : 1), non-régression tickets classiques verte, `node --check` OK, cache SW v28 |
 | 2026-08-26 | **Moteur résiliation server-side + DATE BUTOIR** (objectif Juju : « une route API et une page qui prennent type de contrat + dates, appellent le moteur regimes/deadline/letter, et affichent date butoir + courrier ») : `computeResiliation` pur (`src/lib/resiliation/logic.ts`, `today` injecté) compose régime + date butoir (échéance − préavis) + courrier ; schéma Zod (`today` jamais reçu du client) ; route **stateless** `POST /api/resiliation` ; page `/resiliation` enrichie (champs Échéance + Préavis, appel API, carte « Date butoir » colorée par urgence). Limite ORIAS intacte | Sandbox `resiliation.test.ts` 16/16, suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (route `/api/resiliation`) |
+| 2026-08-26 | **Engagement → date butoir pré-remplie** (câblage : « rend `/resiliation` utile depuis le reste de l'app ») : `resiliationLinkParams(c)` pur (`commitments/logic.ts`) → params d'URL `service`/`category`/`echeance`/`notice` reproduisant l'échéance de `/engagements` ; le bouton « Générer la lettre → » les transmet, `/resiliation` les lit → **date butoir calculée sans ressaisie**. Aucun nouvel écran, aucune logique dupliquée | Sandbox `commitments.test.ts` 22/22 (dont 4 `resiliationLinkParams`), suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
