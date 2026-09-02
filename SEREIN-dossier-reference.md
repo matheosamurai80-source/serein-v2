@@ -196,6 +196,28 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Testé : 11 cas sandbox + 7 cas navigateur (validation, refus, connexion,
   inscription avec confirmation).
 
+### Double authentification (2FA / TOTP) — livré 2026-08-26
+- **Le besoin** (Juju : « connexion sécurisée à double identification ») :
+  sécuriser le compte par un second facteur — une appli d'authentification
+  (Google Authenticator, Authy…) génère un code à 6 chiffres. **Supabase gère la
+  crypto TOTP nativement** : aucune table applicative, aucun fournisseur externe.
+- `src/lib/auth/mfa.ts` — logique PURE testable : `validateTotpCode` (6 chiffres,
+  espaces nettoyés), `mfaStepFromAAL` (challenge requis ssi aal1→aal2 ; fail-safe
+  = ne bloque jamais la connexion), `verifiedTotpId` / `unverifiedTotpIds` /
+  `isMfaEnabled` (état des facteurs), `friendlyMfaError` (messages FR).
+- **Activation** — `src/components/security-mfa.tsx`, carte « Sécurité » sur
+  `/compte` (connecté uniquement) : bouton Activer → `mfa.enroll({totp})` →
+  QR affiché (`totp.qr_code`) + clé manuelle → code à 6 chiffres →
+  `mfa.challengeAndVerify` → « Activée ✓ ». Nettoie les facteurs non confirmés
+  avant chaque essai. Bouton Désactiver (`mfa.unenroll`).
+- **Connexion** — `/connexion` : après le mot de passe, `getAuthenticatorAssuranceLevel`
+  → si challenge requis, étape « code à 6 chiffres » (`mfa.challengeAndVerify`)
+  puis entrée dans l'espace. Les comptes SANS 2FA se connectent comme avant
+  (nextLevel = aal1 → aucune étape). Migration invité inchangée.
+- Note : le TOTP est actif par défaut côté Supabase ; si `enroll` renvoie une
+  erreur « MFA disabled », un réglage Authentication le réactive (message FR dédié).
+- Testé : `sandbox/mfa.test.ts` (21 cas) — ajouté au chaînage `test:sandbox`.
+
 ### Tableau de bord — `/dashboard` (accueil connecté)
 - `src/lib/dashboard/logic.ts` — `buildDashboardSummary(commitments, reminders)` :
   total mensuel/annuel, nb d'engagements actifs/résiliés, rappels dûs,
@@ -822,6 +844,7 @@ extension annuaire résiliation.
 | 2026-07-14 | Fix terrain (retour Juju) — ① `parseTicketText` gère le **copier-coller aplati** (tout sur une ligne : réinsertion de sauts après « prix+TVA » et autour des rayons `>>`) ; ② label de promo nettoyé ; ③ « ＋ Ajouter » ajouté à la **barre PanierMalin** (le « + » n'était que dans le menu Serein) | Sandbox 604 PASS 0 FAIL (ton copier-coller réel = **47 produits**, avant : 1), non-régression tickets classiques verte, `node --check` OK, cache SW v28 |
 | 2026-08-26 | **Moteur résiliation server-side + DATE BUTOIR** (objectif Juju : « une route API et une page qui prennent type de contrat + dates, appellent le moteur regimes/deadline/letter, et affichent date butoir + courrier ») : `computeResiliation` pur (`src/lib/resiliation/logic.ts`, `today` injecté) compose régime + date butoir (échéance − préavis) + courrier ; schéma Zod (`today` jamais reçu du client) ; route **stateless** `POST /api/resiliation` ; page `/resiliation` enrichie (champs Échéance + Préavis, appel API, carte « Date butoir » colorée par urgence). Limite ORIAS intacte | Sandbox `resiliation.test.ts` 16/16, suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (route `/api/resiliation`) |
 | 2026-08-26 | **Engagement → date butoir pré-remplie** (câblage : « rend `/resiliation` utile depuis le reste de l'app ») : `resiliationLinkParams(c)` pur (`commitments/logic.ts`) → params d'URL `service`/`category`/`echeance`/`notice` reproduisant l'échéance de `/engagements` ; le bouton « Générer la lettre → » les transmet, `/resiliation` les lit → **date butoir calculée sans ressaisie**. Aucun nouvel écran, aucune logique dupliquée | Sandbox `commitments.test.ts` 22/22 (dont 4 `resiliationLinkParams`), suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** |
+| 2026-08-26 | **Double authentification (2FA / TOTP)** (Juju : « connexion sécurisée à double identification ») : logique pure `src/lib/auth/mfa.ts` (format du code, challenge aal1→aal2 fail-safe, état des facteurs, erreurs FR) ; activation sur `/compte` (`security-mfa.tsx` : enroll → QR + clé → code 6 chiffres → challengeAndVerify, + désactivation) ; étape code à la connexion (`getAuthenticatorAssuranceLevel` → challenge). Supabase gère la crypto, zéro table applicative, comptes sans 2FA inchangés | Sandbox `mfa.test.ts` 21/21, suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (`/compte`, `/connexion`) |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
