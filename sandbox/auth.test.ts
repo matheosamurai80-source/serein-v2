@@ -2,7 +2,10 @@
  * Test sandbox — auth (validation + messages d'erreur), sans réseau.
  * Lancer : npm run test:sandbox
  */
-import { validateCredentials, friendlyAuthError } from '@/lib/auth/logic'
+import {
+  validateCredentials, friendlyAuthError,
+  validateEmail, validateNewPassword, friendlyResetError,
+} from '@/lib/auth/logic'
 
 let failures = 0
 function check(name: string, cond: boolean, detail = '') {
@@ -32,6 +35,33 @@ check('Inscriptions désactivées → message actionnable',
   friendlyAuthError('Signups not allowed for this instance').includes('inscriptions'))
 check('Erreur inconnue → message générique non vide',
   friendlyAuthError('boom').length > 0 && friendlyAuthError(undefined).length > 0)
+
+// ─── MOT DE PASSE OUBLIÉ — DEMANDE (e-mail seul) ────────────────────────────
+check('Demande : e-mail vide → refusé', !validateEmail('').ok)
+check('Demande : e-mail invalide → refusé', !validateEmail('pasunemail').ok)
+check('Demande : e-mail valide (espaces tolérés) → accepté', validateEmail('  juju@exemple.fr  ').ok)
+
+// ─── MOT DE PASSE OUBLIÉ — NOUVEAU MOT DE PASSE ─────────────────────────────
+check('Nouveau MDP vide → refusé', !validateNewPassword('', '').ok)
+check('Nouveau MDP < 8 → refusé avec message', (() => {
+  const r = validateNewPassword('court', 'court')
+  return !r.ok && r.error!.includes('8 caractères')
+})())
+check('Confirmation différente → refusé', (() => {
+  const r = validateNewPassword('motdepasse1', 'motdepasse2')
+  return !r.ok && r.error!.includes('correspondent')
+})())
+check('Nouveau MDP valide + confirmé → accepté', validateNewPassword('motdepasse1', 'motdepasse1').ok)
+
+// ─── MOT DE PASSE OUBLIÉ — ERREURS FR ───────────────────────────────────────
+check('Lien expiré → invite à redemander',
+  friendlyResetError('Token has expired or is invalid').includes('expiré'))
+check('« same password » → invite à en choisir un autre',
+  friendlyResetError('New password should be different from the old password').includes('différent'))
+check('Trop de demandes → invite à patienter',
+  friendlyResetError('For security purposes rate limit exceeded').includes('Réessayez'))
+check('Erreur reset inconnue → message non vide',
+  friendlyResetError('boom').length > 0 && friendlyResetError(undefined).length > 0)
 
 console.log(failures === 0 ? '\n✅ TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { SereinNav } from '@/components/ui/nav'
 import { useToast, Toast } from '@/components/ui/toast'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { validateCredentials, friendlyAuthError } from '@/lib/auth/logic'
+import { validateCredentials, friendlyAuthError, validateEmail, friendlyResetError } from '@/lib/auth/logic'
 import {
   validateTotpCode, normalizeTotpCode, mfaStepFromAAL, verifiedTotpId,
   friendlyMfaError, type FactorLike,
@@ -30,6 +30,9 @@ export default function ConnexionPage() {
   const [awaitingCode, setAwaitingCode] = useState(false)
   const [mfaFactorId, setMfaFactorId] = useState('')
   const [mfaCode, setMfaCode] = useState('')
+  // Mot de passe oublié : panneau de demande d'e-mail de réinitialisation.
+  const [forgot, setForgot] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
   // Les données saisies sans compte suivent l'utilisateur dans son espace.
   const syncThenGo = async () => {
@@ -88,6 +91,26 @@ export default function ConnexionPage() {
     }
   }
 
+  // Mot de passe oublié : envoie l'e-mail de réinitialisation vers /reinitialiser.
+  const sendReset = async () => {
+    if (busy) return
+    const v = validateEmail(email)
+    if (!v.ok) { toast.show(v.error!); return }
+    setBusy(true)
+    try {
+      const supabase = createSupabaseBrowserClient()
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reinitialiser`,
+      })
+      if (error) throw new Error(error.message)
+      setResetSent(true)                           // même message si l'e-mail existe ou non
+    } catch (e) {
+      toast.show(friendlyResetError(e instanceof Error ? e.message : undefined))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   // Étape 2 : vérifier le code à 6 chiffres, puis entrer dans l'espace.
   const verifyMfa = async () => {
     if (busy) return
@@ -116,13 +139,46 @@ export default function ConnexionPage() {
           <span className="w-6 h-px bg-moss" />Votre espace<span className="w-6 h-px bg-moss" />
         </p>
         <h1 className="font-serif text-[clamp(26px,5.5vw,40px)] tracking-[-0.025em] leading-[1.15] text-ink mb-3 text-center">
-          {awaitingCode ? 'Vérification en deux étapes.' : mode === 'signin' ? 'Bon retour.' : 'Créez votre espace Serein.'}
+          {awaitingCode ? 'Vérification en deux étapes.'
+            : forgot ? 'Mot de passe oublié ?'
+            : mode === 'signin' ? 'Bon retour.' : 'Créez votre espace Serein.'}
         </h1>
         <p className="text-sm text-ink/70 leading-[1.6] mb-7 text-center">
           {awaitingCode
             ? 'Dernière étape : entrez le code à 6 chiffres de votre application d’authentification.'
+            : forgot
+            ? 'Entrez votre e-mail : nous vous envoyons un lien pour choisir un nouveau mot de passe.'
             : 'Vos engagements, rappels et lettres, retrouvés sur tous vos appareils.'}
         </p>
+
+        {/* Mot de passe oublié : demande d'e-mail de réinitialisation */}
+        {forgot && (
+          <div className="w-full bg-surface border border-ink/10 rounded-2xl p-6 flex flex-col gap-4" data-testid="forgot-step">
+            {resetSent ? (
+              <p data-testid="reset-sent" className="text-[13px] text-moss leading-[1.55] text-center bg-sage/8 border border-sage/20 rounded-xl p-3">
+                ✉️ Si un compte existe pour cet e-mail, un lien de réinitialisation vient d’être envoyé.
+                Vérifiez votre boîte mail (et les spams), puis suivez le lien.
+              </p>
+            ) : (
+              <>
+                <div>
+                  <label className={labelCls} htmlFor="reset-email">Votre e-mail</label>
+                  <input id="reset-email" data-testid="reset-email" type="email" autoComplete="email" inputMode="email"
+                    className={inputCls} placeholder="vous@exemple.fr" value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') void sendReset() }} />
+                </div>
+                <Button onClick={sendReset} loading={busy} data-testid="reset-send">
+                  Envoyer le lien de réinitialisation
+                </Button>
+              </>
+            )}
+            <button onClick={() => { setForgot(false); setResetSent(false) }}
+              className="text-[13px] text-ink/50 hover:text-ink transition-colors">
+              ← Revenir à la connexion
+            </button>
+          </div>
+        )}
 
         {/* Étape 2FA : code à 6 chiffres après le mot de passe */}
         {awaitingCode && (
@@ -146,7 +202,7 @@ export default function ConnexionPage() {
         )}
 
         {/* Bascule connexion / inscription */}
-        {!awaitingCode && (
+        {!awaitingCode && !forgot && (
         <>
         <div className="w-full bg-surface-2 border border-ink/10 rounded-full p-1 flex mb-6" data-testid="mode-switch">
           {(['signin', 'signup'] as Mode[]).map(m => (
@@ -176,6 +232,13 @@ export default function ConnexionPage() {
             {mode === 'signin' ? 'Se connecter' : 'Créer mon compte'}
           </Button>
 
+          {mode === 'signin' && (
+            <button onClick={() => { setForgot(true); setResetSent(false) }} data-testid="forgot-link"
+              className="text-[13px] text-moss hover:text-ink transition-colors text-center">
+              Mot de passe oublié ?
+            </button>
+          )}
+
           {needConfirm && (
             <p data-testid="confirm-msg" className="text-[13px] text-moss leading-[1.55] text-center bg-sage/8 border border-sage/20 rounded-xl p-3">
               ✉️ Compte créé ! Vérifiez votre boîte mail pour confirmer votre adresse,
@@ -186,7 +249,7 @@ export default function ConnexionPage() {
         </>
         )}
 
-        {!awaitingCode && (
+        {!awaitingCode && !forgot && (
         <p className="font-mono text-[11px] text-ink/45 tracking-wider text-center mt-5 leading-[1.7]">
           Vous pouvez aussi utiliser Serein sans compte —{' '}
           <a href="/engagements" className="text-moss underline">continuer sans connexion</a>.

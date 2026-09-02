@@ -18,6 +18,36 @@ export function validateCredentials(email: string, password: string): CredCheck 
   return { ok: true }
 }
 
+/** Valide l'e-mail seul — pour la demande de réinitialisation (« mot de passe oublié »). */
+export function validateEmail(email: string): CredCheck {
+  const e = email.trim()
+  if (!e) return { ok: false, error: 'Entrez votre adresse e-mail.' }
+  if (!EMAIL_RE.test(e)) return { ok: false, error: 'Adresse e-mail invalide.' }
+  return { ok: true }
+}
+
+/** Valide le nouveau mot de passe + sa confirmation (page de réinitialisation). */
+export function validateNewPassword(password: string, confirm: string): CredCheck {
+  if (!password) return { ok: false, error: 'Entrez un nouveau mot de passe.' }
+  if (password.length < 8) return { ok: false, error: 'Le mot de passe doit faire au moins 8 caractères.' }
+  if (password !== confirm) return { ok: false, error: 'Les deux mots de passe ne correspondent pas.' }
+  return { ok: true }
+}
+
+/** Traduit les erreurs de réinitialisation de mot de passe en français. */
+export function friendlyResetError(message: string | undefined): string {
+  const m = (message ?? '').toLowerCase()
+  if (m.includes('rate limit') || m.includes('too many'))
+    return 'Trop de demandes. Réessayez dans quelques minutes.'
+  if (m.includes('expired') || (m.includes('invalid') && m.includes('token')))
+    return 'Ce lien a expiré ou a déjà été utilisé. Redemandez un e-mail de réinitialisation.'
+  if (m.includes('same password') || m.includes('should be different'))
+    return 'Choisissez un mot de passe différent de l\'ancien.'
+  if (m.includes('password should be at least'))
+    return 'Le mot de passe est trop court (8 caractères minimum).'
+  return message ? `Erreur : ${message}` : 'Réinitialisation impossible. Réessayez.'
+}
+
 /** Traduit les messages d'erreur Supabase Auth en français clair et actionnable. */
 export function friendlyAuthError(message: string | undefined): string {
   const m = (message ?? '').toLowerCase()
