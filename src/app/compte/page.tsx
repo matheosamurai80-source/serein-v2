@@ -7,6 +7,7 @@ import { LegalFooter } from '@/components/legal'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { activeServiceKeys, deleteConfirmed, SERVICE_LABELS, type ServiceKey } from '@/lib/services/logic'
 import { clearGuestData, hasGuestData } from '@/lib/data/local'
+import { SecurityMfa } from '@/components/security-mfa'
 
 // Mon compte : où sont mes données, quels services sont actifs, et comment
 // TOUT effacer (RGPD) — que l'on ait un compte ou non.
@@ -115,6 +116,9 @@ export default function ComptePage() {
                 </p>
               )}
             </div>
+
+            {/* Double authentification (2FA) — compte connecté uniquement */}
+            {email && <SecurityMfa notify={toast.show} />}
 
             {/* Export RGPD (portabilité) — compte connecté uniquement */}
             {email && (

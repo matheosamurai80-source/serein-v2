@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
-import { generateCancellationLetter, type GeneratedLetter } from '@/lib/letters/generator'
+import type { GeneratedLetter } from '@/lib/letters/generator'
+import type { DeadlineStatus } from '@/lib/resiliation/logic'
 import { PROVIDERS, providerById, findProvider, extractContractInfo } from '@/lib/letters/providers'
 import { extractPdfText } from '@/lib/pdf/browser'
 import { listLetters, addLetter, isGuest, type LetterListItem } from '@/lib/data/store'
@@ -35,11 +36,45 @@ const inputCls =
 
 const labelCls = 'font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-1.5 block text-left'
 
+// Présentation de la date butoir selon le statut renvoyé par le moteur.
+// `border`/`text` sont des classes Tailwind (couleurs du thème Serein).
+function butoirView(
+  status: DeadlineStatus,
+  deadline: string | null,
+  days: number | null,
+): { icon: string; title: string; detail: string; border: string; text: string } {
+  const dateFr = deadline
+    ? new Date(deadline).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    : ''
+  switch (status) {
+    case 'a_tout_moment':
+      return { icon: '✅', title: 'Résiliable à tout moment', border: 'border-sage/30', text: 'text-moss',
+        detail: 'Aucune fenêtre à rater : la loi vous permet de résilier quand vous voulez. Le courrier ci-dessous précise la date d’effet.' }
+    case 'depassee':
+      return { icon: '⛔', title: `Date butoir dépassée — ${dateFr}`, border: 'border-crimson/35', text: 'text-crimson',
+        detail: `Elle était le ${dateFr} (il y a ${Math.abs(days ?? 0)} j). Envoyez tout de même la lettre : elle vaudra pour la prochaine échéance.` }
+    case 'critique':
+      return { icon: '🔴', title: `À envoyer avant le ${dateFr}`, border: 'border-crimson/35', text: 'text-crimson',
+        detail: `Plus que ${days} jour${(days ?? 0) > 1 ? 's' : ''} pour envoyer votre recommandé avant reconduction. À faire aujourd’hui.` }
+    case 'bientot':
+      return { icon: '🟠', title: `À envoyer avant le ${dateFr}`, border: 'border-amber/40', text: 'text-amber',
+        detail: `Il vous reste ${days} jours. Envoyez le recommandé dès maintenant pour être tranquille.` }
+    case 'ok':
+      return { icon: '🗓️', title: `Date butoir : ${dateFr}`, border: 'border-sage/25', text: 'text-moss',
+        detail: `Vous avez encore ${days} jours. Vous pouvez préparer la lettre dès maintenant et l’envoyer un peu avant.` }
+    default:
+      return { icon: '📅', title: 'Date butoir non calculée', border: 'border-ink/12', text: 'text-ink/60',
+        detail: 'Renseignez l’échéance (et, si votre contrat en impose un, le préavis) pour connaître le dernier jour où agir.' }
+  }
+}
+
 export default function ResiliationPage() {
   const toast = useToast()
   const [serviceName, setServiceName] = useState('')
   const [category, setCategory] = useState<TransactionCategory>('streaming')
   const [subscribedAt, setSubscribedAt] = useState('')
+  const [echeanceDate, setEcheanceDate] = useState('')
+  const [noticeDays, setNoticeDays] = useState('')
   const [noticeReceived, setNoticeReceived] = useState(false)
   const [senderName, setSenderName] = useState('')
   const [senderAddress, setSenderAddress] = useState('')
@@ -47,6 +82,8 @@ export default function ResiliationPage() {
   const [providerAddress, setProviderAddress] = useState('')
   const [contractRef, setContractRef] = useState('')
   const [letter, setLetter] = useState<GeneratedLetter | null>(null)
+  const [butoir, setButoir] = useState<{ deadline: string | null; daysUntilDeadline: number | null; status: DeadlineStatus } | null>(null)
+  const [generating, setGenerating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState<LetterListItem[]>([])
   const [commitmentId, setCommitmentId] = useState<string | undefined>(undefined)
@@ -68,6 +105,11 @@ export default function ResiliationPage() {
     if (c && CATEGORIES.some(x => x.value === c)) setCategory(c as TransactionCategory)
     const cid = q.get('commitment')
     if (cid) setCommitmentId(cid)
+    // Échéance + préavis transmis depuis un engagement → date butoir calculée d'emblée
+    const ech = q.get('echeance')
+    if (ech) setEcheanceDate(ech)
+    const notice = q.get('notice')
+    if (notice) setNoticeDays(notice)
     // Nom et adresse mémorisés sur l'appareil : plus besoin de les retaper
     try {
       const raw = localStorage.getItem(SENDER_KEY)
@@ -144,22 +186,48 @@ export default function ResiliationPage() {
   const onlineCancelUrl = detectedProvider?.cancelUrl ?? null
   const onlineName = detectedProvider?.name ?? serviceName
 
-  const generate = () => {
-    if (!ready) return
+  const generate = async () => {
+    if (!ready || generating) return
     try {
       localStorage.setItem(SENDER_KEY, JSON.stringify({ name: senderName, address: senderAddress }))
     } catch { /* stockage indisponible */ }
-    setLetter(generateCancellationLetter({
-      category,
-      serviceName,
-      senderName,
-      senderAddress,
-      providerName,
-      providerAddress,
-      contractRef: contractRef || undefined,
-      subscribedAt: subscribedAt || undefined,
-      renewalNoticeReceived: noticeReceived,
-    }))
+    setGenerating(true)
+    try {
+      // Le moteur (régime + date butoir + courrier) tourne côté serveur : c'est
+      // lui qui fixe la date de référence, pour une date butoir fiable.
+      const res = await fetch('/api/resiliation', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          category,
+          serviceName,
+          senderName,
+          senderAddress,
+          providerName,
+          providerAddress,
+          contractRef: contractRef || undefined,
+          subscribedAt: subscribedAt || undefined,
+          renewalNoticeReceived: noticeReceived,
+          echeanceDate: echeanceDate || undefined,
+          contractNoticeDays: noticeDays ? Number(noticeDays) : undefined,
+        }),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok || !body?.ok) {
+        toast.show(body?.error?.message ?? 'Génération impossible — réessayez.')
+        return
+      }
+      setLetter(body.data.letter as GeneratedLetter)
+      setButoir({
+        deadline: body.data.deadline,
+        daysUntilDeadline: body.data.daysUntilDeadline,
+        status: body.data.status,
+      })
+    } catch {
+      toast.show('Génération impossible — vérifiez votre connexion.')
+    } finally {
+      setGenerating(false)
+    }
   }
 
   const copy = async () => {
@@ -191,8 +259,9 @@ export default function ResiliationPage() {
         Résiliez avec <em className="text-moss">la loi de votre côté.</em>
       </h1>
       <p className="text-sm text-ink/70 leading-[1.6] mb-8 text-center max-w-[440px]">
-        Serein détecte le régime légal applicable (loi Hamon, loi Chatel, télécom, énergie)
-        et génère la lettre. C&apos;est vous qui l&apos;envoyez — vous gardez la main du début à la fin.
+        Serein détecte le régime légal applicable (loi Hamon, loi Chatel, télécom, énergie),
+        calcule votre <strong className="text-moss">date butoir</strong> et génère la lettre.
+        C&apos;est vous qui l&apos;envoyez — vous gardez la main du début à la fin.
       </p>
 
       <div className="w-full bg-surface border border-ink/10 rounded-2xl p-7 flex flex-col gap-4 mb-6">
@@ -244,6 +313,23 @@ export default function ResiliationPage() {
               value={subscribedAt} onChange={e => setSubscribedAt(e.target.value)} />
           </div>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls} htmlFor="echeance">Échéance / renouvellement le</label>
+            <input id="echeance" data-testid="echeance" type="date" className={inputCls}
+              value={echeanceDate} onChange={e => setEcheanceDate(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="notice">Préavis contractuel (jours)</label>
+            <input id="notice" data-testid="notice" type="number" min={0} inputMode="numeric" className={inputCls}
+              placeholder="Ex. 30 — si votre contrat en impose un"
+              value={noticeDays} onChange={e => setNoticeDays(e.target.value)} />
+          </div>
+        </div>
+        <p className="font-mono text-[10.5px] text-ink/45 tracking-wider -mt-1">
+          Échéance + préavis servent à calculer votre <strong className="text-ink/60">date butoir</strong> : le dernier jour pour envoyer la lettre avant reconduction.
+        </p>
 
         <label className="flex items-start gap-3 text-[13.5px] text-ink/70 leading-[1.55] cursor-pointer">
           <input type="checkbox" className="mt-1 accent-[#82A884]"
@@ -297,13 +383,29 @@ export default function ResiliationPage() {
             </span>
           </a>
         )}
-        <Button onClick={generate} disabled={!ready} className={!ready ? 'opacity-40 cursor-not-allowed' : ''}>
-          Générer ma lettre →
+        <Button onClick={() => void generate()} loading={generating} disabled={!ready}
+          className={!ready ? 'opacity-40 cursor-not-allowed' : ''}>
+          Générer ma date butoir et ma lettre →
         </Button>
       </div>
 
       {letter && (
         <div className="w-full animate-pop-in">
+          {butoir && (() => {
+            const v = butoirView(butoir.status, butoir.deadline, butoir.daysUntilDeadline)
+            return (
+              <div className={`w-full bg-surface border ${v.border} rounded-2xl p-5 mb-4`} data-testid="date-butoir">
+                <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-1.5">
+                  Date butoir
+                </p>
+                <p className={`font-serif text-[22px] leading-[1.2] ${v.text} mb-1.5`}>
+                  {v.icon} {v.title}
+                </p>
+                <p className="text-[13.5px] text-ink/70 leading-[1.6]">{v.detail}</p>
+              </div>
+            )
+          })()}
+
           <div className="w-full bg-sage/7 border border-sage/16 rounded-2xl p-5 mb-4">
             <p className="font-mono text-[11px] tracking-[.13em] uppercase text-moss mb-1.5">
               Régime détecté — {letter.regime.label}

@@ -120,6 +120,34 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
 - Testé : `sandbox/letters.test.ts` (25 cas) + `sandbox/providers.test.ts`
   (15 cas) + parcours navigateur réel sans Supabase (18 cas).
 
+### Moteur résiliation server-side + DATE BUTOIR (livré 2026-08-26)
+- **Le manque comblé** : les 3 briques du moteur (régime `legal.ts`, date butoir
+  `commitments/logic.ts:effectiveDeadline`, courrier `generator.ts`) existaient
+  en pièces détachées, mais (1) aucune **route API serveur** ne les composait
+  et (2) la **date butoir n'était jamais affichée**. Objectif Juju en une phrase :
+  « une route API et une page qui prennent type de contrat + dates, appellent le
+  moteur existant regimes/deadline/letter, et affichent date butoir + courrier ».
+- `src/lib/resiliation/logic.ts` — `computeResiliation(input)` : fonction PURE
+  qui branche ensemble régime + date butoir + courrier. `today` **injectable**
+  → déterministe et testable. Statuts renvoyés : `a_tout_moment` (télécom /
+  énergie / Hamon / Chatel non avisé : pas de fenêtre à rater) · `ok` (> 30 j) ·
+  `bientot` (≤ 30 j) · `critique` (≤ 7 j) · `depassee` · `inconnue` (échéance
+  ou préavis manquant). Date butoir = échéance − préavis (préavis du contrat si
+  fourni, sinon préavis légal du régime).
+- `src/lib/validation/resiliation.ts` — schéma Zod (socle). La date de calcul
+  (`today`) n'est **jamais** acceptée du client : c'est le serveur qui la fixe.
+- `src/app/api/resiliation/route.ts` — route POST **stateless** (rien stocké) :
+  Zod → moteur → réponse standard `{ ok, data:{ regime, deadline,
+  daysUntilDeadline, status, letter } }`.
+- Page `/resiliation` enrichie : champs **Échéance / renouvellement** + **Préavis
+  contractuel (jours)** ; « Générer » appelle désormais la route API (le moteur
+  tourne côté serveur) ; **carte « Date butoir »** au-dessus du courrier, colorée
+  selon l'urgence (moss/amber/crimson). Le reste (annuaire, lecture PDF, copie /
+  téléchargement / sauvegarde) inchangé. Limite ORIAS intacte : c'est le client
+  qui envoie.
+- Testé : `sandbox/resiliation.test.ts` (16 cas, `today` injecté) — ajouté au
+  chaînage `test:sandbox`.
+
 ### Page Engagements — `/engagements` (le cœur du schéma v5)
 - `src/lib/commitments/logic.ts` — logique testée : coût mensualisé (hebdo/
   mensuel/trimestriel/annuel/ponctuel), échéance effective (date explicite ou
@@ -132,7 +160,15 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   Fonctionne connecté (Supabase) comme sans compte (stockage local).
 - **« Générer la lettre → » transmet `commitment_id`** ; une fois la lettre
   sauvegardée, l'engagement affiche « Revoir la lettre » (boucle fermée).
-- Testé : 18 cas sandbox PASS + 14 cas navigateur PASS (dont le lien lettre).
+- **Échéance pré-remplie vers la date butoir (2026-08-26)** :
+  `resiliationLinkParams(c)` (pur, `commitments/logic.ts`) construit les
+  paramètres d'URL — `service`, `category`, `echeance`, `notice` — reproduisant
+  exactement l'échéance affichée sur `/engagements` (anniversaire + préavis, ou
+  date butoir explicite avec `notice=0`). `/resiliation` lit `echeance`/`notice`
+  → la **date butoir s'affiche calculée d'emblée**, sans ressaisie. Aucun écran
+  ni logique dupliqués. Prépare le câblage engagement → rappel.
+- Testé : 22 cas sandbox PASS (dont 4 sur `resiliationLinkParams`) + 14 cas
+  navigateur PASS (dont le lien lettre).
 
 ### Onglet Rappels — `/rappels` (prévenir avant la fenêtre)
 - `src/lib/reminders/logic.ts` — logique testée : construction d'un rappel
@@ -159,6 +195,46 @@ Tunnel d'acquisition + analyse de relevés PDF. Vérifié fonctionnel le
   sinon un lien « Connexion » (via `onAuthStateChange`).
 - Testé : 11 cas sandbox + 7 cas navigateur (validation, refus, connexion,
   inscription avec confirmation).
+
+### Double authentification (2FA / TOTP) — livré 2026-08-26
+- **Le besoin** (Juju : « connexion sécurisée à double identification ») :
+  sécuriser le compte par un second facteur — une appli d'authentification
+  (Google Authenticator, Authy…) génère un code à 6 chiffres. **Supabase gère la
+  crypto TOTP nativement** : aucune table applicative, aucun fournisseur externe.
+- `src/lib/auth/mfa.ts` — logique PURE testable : `validateTotpCode` (6 chiffres,
+  espaces nettoyés), `mfaStepFromAAL` (challenge requis ssi aal1→aal2 ; fail-safe
+  = ne bloque jamais la connexion), `verifiedTotpId` / `unverifiedTotpIds` /
+  `isMfaEnabled` (état des facteurs), `friendlyMfaError` (messages FR).
+- **Activation** — `src/components/security-mfa.tsx`, carte « Sécurité » sur
+  `/compte` (connecté uniquement) : bouton Activer → `mfa.enroll({totp})` →
+  QR affiché (`totp.qr_code`) + clé manuelle → code à 6 chiffres →
+  `mfa.challengeAndVerify` → « Activée ✓ ». Nettoie les facteurs non confirmés
+  avant chaque essai. Bouton Désactiver (`mfa.unenroll`).
+- **Connexion** — `/connexion` : après le mot de passe, `getAuthenticatorAssuranceLevel`
+  → si challenge requis, étape « code à 6 chiffres » (`mfa.challengeAndVerify`)
+  puis entrée dans l'espace. Les comptes SANS 2FA se connectent comme avant
+  (nextLevel = aal1 → aucune étape). Migration invité inchangée.
+- Note : le TOTP est actif par défaut côté Supabase ; si `enroll` renvoie une
+  erreur « MFA disabled », un réglage Authentication le réactive (message FR dédié).
+- Testé : `sandbox/mfa.test.ts` (21 cas) — ajouté au chaînage `test:sandbox`.
+
+### Mot de passe oublié — livré 2026-08-26
+- **Le manque comblé** : aucun moyen de récupérer un compte au mot de passe
+  perdu. Flux Supabase natif (e-mail de récupération), aucune table applicative.
+- Logique pure (`src/lib/auth/logic.ts`) : `validateEmail` (demande),
+  `validateNewPassword` (≥ 8 + confirmation identique), `friendlyResetError`
+  (lien expiré, même mot de passe, quota, repli) — messages FR.
+- **Demande** — `/connexion` (mode connexion) : lien « Mot de passe oublié ? »
+  → panneau e-mail → `resetPasswordForEmail(email, { redirectTo: origin + '/reinitialiser' })`.
+  Message neutre « si un compte existe… » (ne révèle pas l'existence du compte).
+- **Réinitialisation** — page `/reinitialiser` : à l'arrivée, le client
+  `@supabase/ssr` ouvre la session de récupération (jeton du lien) ; nouveau mot
+  de passe + confirmation → `updateUser({ password })` → redirection `/accueil`.
+  Lien expiré/déjà utilisé → invite à en redemander un.
+- Note : le domaine de redirection (`…/reinitialiser`) doit figurer dans les
+  Redirect URLs de Supabase (Authentication → URL Configuration) pour la prod.
+- Testé : `sandbox/auth.test.ts` étendu (22 cas au total, dont 11 sur le
+  parcours mot de passe oublié).
 
 ### Tableau de bord — `/dashboard` (accueil connecté)
 - `src/lib/dashboard/logic.ts` — `buildDashboardSummary(commitments, reminders)` :
@@ -784,6 +860,10 @@ extension annuaire résiliation.
 | 2026-07-14 | Brique 1 socle API — **revérifié** contre le schéma Supabase live (subscriptions/reminders/uploads/cancellation_letters + CHECK) : response.ts (10 codes), 4 schémas Zod alignés, services CRUD (auth+propriété), routes route→Zod→auth→service→réponse. Déjà en place, aucune reconstruction. Ajout du livrable nommé `sandbox/test-validation.mjs` (25/25) | lint 0 erreur, typecheck `src` propre, **build prod vert**, sandbox 640 PASS 0 FAIL |
 | 2026-07-14 | Fusion — **les 3 onglets verrouillés** (`FoyerTabs` : Accueil `/dashboard` · ＋ `/ajouter` · Mon foyer `/foyer`) remplacent la nav à 6 liens sur toute l'app ; les sections deviennent des cartes dans `/foyer` (`foyerSections()` pur) | Sandbox 614 PASS 0 FAIL (`foyer.test.ts` 10/10), **build prod vert** (27 pages, `/foyer` générée), nav swap sur 8 pages sans erreur |
 | 2026-07-14 | Fix terrain (retour Juju) — ① `parseTicketText` gère le **copier-coller aplati** (tout sur une ligne : réinsertion de sauts après « prix+TVA » et autour des rayons `>>`) ; ② label de promo nettoyé ; ③ « ＋ Ajouter » ajouté à la **barre PanierMalin** (le « + » n'était que dans le menu Serein) | Sandbox 604 PASS 0 FAIL (ton copier-coller réel = **47 produits**, avant : 1), non-régression tickets classiques verte, `node --check` OK, cache SW v28 |
+| 2026-08-26 | **Moteur résiliation server-side + DATE BUTOIR** (objectif Juju : « une route API et une page qui prennent type de contrat + dates, appellent le moteur regimes/deadline/letter, et affichent date butoir + courrier ») : `computeResiliation` pur (`src/lib/resiliation/logic.ts`, `today` injecté) compose régime + date butoir (échéance − préavis) + courrier ; schéma Zod (`today` jamais reçu du client) ; route **stateless** `POST /api/resiliation` ; page `/resiliation` enrichie (champs Échéance + Préavis, appel API, carte « Date butoir » colorée par urgence). Limite ORIAS intacte | Sandbox `resiliation.test.ts` 16/16, suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (route `/api/resiliation`) |
+| 2026-08-26 | **Engagement → date butoir pré-remplie** (câblage : « rend `/resiliation` utile depuis le reste de l'app ») : `resiliationLinkParams(c)` pur (`commitments/logic.ts`) → params d'URL `service`/`category`/`echeance`/`notice` reproduisant l'échéance de `/engagements` ; le bouton « Générer la lettre → » les transmet, `/resiliation` les lit → **date butoir calculée sans ressaisie**. Aucun nouvel écran, aucune logique dupliquée | Sandbox `commitments.test.ts` 22/22 (dont 4 `resiliationLinkParams`), suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** |
+| 2026-08-26 | **Double authentification (2FA / TOTP)** (Juju : « connexion sécurisée à double identification ») : logique pure `src/lib/auth/mfa.ts` (format du code, challenge aal1→aal2 fail-safe, état des facteurs, erreurs FR) ; activation sur `/compte` (`security-mfa.tsx` : enroll → QR + clé → code 6 chiffres → challengeAndVerify, + désactivation) ; étape code à la connexion (`getAuthenticatorAssuranceLevel` → challenge). Supabase gère la crypto, zéro table applicative, comptes sans 2FA inchangés | Sandbox `mfa.test.ts` 21/21, suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (`/compte`, `/connexion`) |
+| 2026-08-26 | **Mot de passe oublié** (Juju) : comble un vrai manque (compte au mot de passe perdu = irrécupérable). Logique pure (`auth/logic.ts` : `validateEmail`, `validateNewPassword`, `friendlyResetError`) ; demande sur `/connexion` (lien « Mot de passe oublié ? » → `resetPasswordForEmail`, message neutre) ; page `/reinitialiser` (session de récupération `@supabase/ssr` → `updateUser({password})` → `/accueil`, lien expiré géré). Flux Supabase natif, zéro table | Sandbox `auth.test.ts` 22/22 (dont 11 mot de passe oublié), suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (`/reinitialiser`) |
 
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,

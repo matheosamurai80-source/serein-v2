@@ -5,7 +5,7 @@
  */
 import {
   monthlyEquivalent, effectiveDeadline, urgencyOf,
-  sortCommitments, totalMonthly, serviceTypeToCategory,
+  sortCommitments, totalMonthly, serviceTypeToCategory, resiliationLinkParams,
 } from '@/lib/commitments/logic'
 
 let failures = 0
@@ -62,6 +62,41 @@ check('Correspondance service → catégorie légale (assurance/énergie/téléc
   && serviceTypeToCategory('telecom') === 'telecom'
   && serviceTypeToCategory('gym') === 'fitness'
   && serviceTypeToCategory('loan') === 'other')
+
+// ─── PRÉ-REMPLISSAGE /resiliation DEPUIS UN ENGAGEMENT ──────────────────────
+{
+  const p = resiliationLinkParams({
+    name: 'Assurance auto AXA', service_type: 'insurance', amount: 39, frequency: 'yearly',
+    anniversary_date: '2026-12-01', cancellation_notice_days: 60,
+  })
+  check('Lien : service + catégorie légale transmis',
+    p.service === 'Assurance auto AXA' && p.category === 'insurance')
+  check('Lien : échéance annuelle → echeance, préavis → notice',
+    p.echeance === '2026-12-01' && p.notice === '60', JSON.stringify(p))
+}
+{
+  const p = resiliationLinkParams({
+    name: 'Box Orange', service_type: 'telecom', amount: 30, frequency: 'monthly',
+    anniversary_date: '2026-10-15', cancellation_notice_days: null,
+  })
+  check('Lien : échéance sans préavis → echeance seule (pas de notice parasite)',
+    p.echeance === '2026-10-15' && !('notice' in p), JSON.stringify(p))
+}
+{
+  const p = resiliationLinkParams({
+    name: 'Salle de sport', service_type: 'gym', amount: 25, frequency: 'monthly',
+    cancellation_deadline: '2026-09-30',
+  })
+  check('Lien : date butoir explicite (sans anniversaire) → echeance = butoir, notice = 0',
+    p.echeance === '2026-09-30' && p.notice === '0', JSON.stringify(p))
+}
+{
+  const p = resiliationLinkParams({
+    name: 'Sans échéance', service_type: 'other', amount: 10, frequency: 'monthly',
+  })
+  check('Lien : sans échéance ni date butoir → ni echeance ni notice (rien d\'inventé)',
+    !('echeance' in p) && !('notice' in p) && p.service === 'Sans échéance')
+}
 
 console.log(failures === 0 ? '\n✅ TOUS LES TESTS PASSENT' : `\n❌ ${failures} ÉCHEC(S)`)
 process.exit(failures === 0 ? 0 : 1)

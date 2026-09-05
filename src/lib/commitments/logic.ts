@@ -91,3 +91,28 @@ export function serviceTypeToCategory(t: ServiceType): TransactionCategory {
     default:          return 'other'
   }
 }
+
+/**
+ * Paramètres d'URL pour ouvrir /resiliation PRÉ-REMPLI depuis un engagement :
+ * service, catégorie légale, et la date d'échéance (+ préavis) pour que la page
+ * calcule directement la date butoir. On reproduit exactement la même échéance
+ * que celle affichée sur /engagements :
+ *   - échéance annuelle connue → echeance = anniversaire, notice = préavis ;
+ *   - sinon date butoir explicite → echeance = cette date, notice = 0 (aucune
+ *     soustraction, la date est déjà la date butoir).
+ * (L'id de l'engagement reste ajouté côté page — il relie la lettre à l'engagement.)
+ */
+export function resiliationLinkParams(c: CommitmentLike): Record<string, string> {
+  const p: Record<string, string> = {
+    service: c.name,
+    category: serviceTypeToCategory(c.service_type),
+  }
+  if (c.anniversary_date) {
+    p.echeance = c.anniversary_date
+    if (c.cancellation_notice_days != null) p.notice = String(c.cancellation_notice_days)
+  } else if (c.cancellation_deadline) {
+    p.echeance = c.cancellation_deadline
+    p.notice = '0'
+  }
+  return p
+}
