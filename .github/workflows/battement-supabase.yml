@@ -1,0 +1,56 @@
+> Sans ce battement, l'app meurt toute seule au bout de 7 jours.
+>
+> Supabase met en pause les projets du plan gratuit après 7 jours sans activité
+> RÉELLE en base. Ouvrir l'URL ne suffit pas : il faut une requête qui écrit.
+> Un projet en pause = écran blanc côté utilisateur, sans message d'erreur.
+>
+> Ce workflow appelle `purge_old_activity_logs()` deux fois par semaine. Cette
+> fonction fait un DELETE — donc une vraie écriture — et rend au passage un
+> service utile : elle purge le journal d'usage au-delà de 90 jours.
+> Un seul mécanisme, deux effets.
+
+name: Battement Supabase
+
+on:
+  schedule:
+    # Mardi et vendredi à 6h UTC. Deux fois par semaine : marge confortable
+    # sous la limite de 7 jours, même si une exécution échoue.
+    - cron: '0 6 * * 2,5'
+  workflow_dispatch:
+
+jobs:
+  battement:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Réveiller la base
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+          CLE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${URL:-}" ] || [ -z "${CLE:-}" ]; then
+            echo "Secrets SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY absents."
+            exit 1
+          fi
+
+          # 5 tentatives : un projet en pause met ~2 min à redémarrer.
+          for i in 1 2 3 4 5; do
+            code=$(curl -s -o /tmp/rep.txt -w '%{http_code}' \
+              -X POST "${URL}/rest/v1/rpc/purge_old_activity_logs" \
+              -H "apikey: ${CLE}" \
+              -H "Authorization: Bearer ${CLE}" \
+              -H "Content-Type: application/json" \
+              -d '{}' || echo "000")
+
+            if [ "$code" = "200" ] || [ "$code" = "204" ]; then
+              echo "Battement OK (HTTP $code)."
+              exit 0
+            fi
+
+            echo "Tentative $i : HTTP $code"
+            cat /tmp/rep.txt || true
+            sleep $((i * 30))
+          done
+
+          echo "Le battement a échoué 5 fois. La base est peut-être en pause."
+          exit 1
