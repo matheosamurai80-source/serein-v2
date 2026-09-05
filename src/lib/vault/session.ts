@@ -14,6 +14,8 @@ import {
   type VaultEnvelope, type SealedRecord,
 } from './crypto'
 import { tierOf } from './tiers'
+import { normalizeRecoveryKey } from './recovery'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 
 const DEVICE_KEY = 'serein.vault.device'
 const ENVELOPE_KEY = 'serein.vault.envelope'
@@ -64,6 +66,7 @@ export async function getDek(): Promise<CryptoKey | null> {
     store.setItem(ENVELOPE_KEY, JSON.stringify(envelope))
     store.setItem(RECOVERY_SEEN, JSON.stringify({ key: recoveryKey, shown: false }))
     raw = JSON.stringify(envelope)
+    void backupEnvelope() // best effort : rend la restauration possible ailleurs
   }
 
   try {
@@ -157,4 +160,73 @@ export async function openRow<T>(row: Record<string, unknown>): Promise<T> {
 /** Combien de lignes restent en clair — alimente l'écran de transparence. */
 export function countLegacy(rows: Record<string, unknown>[]): number {
   return rows.filter(r => !isSealed(r)).length
+}
+
+// ─── RESTAURATION MULTI-APPAREILS ────────────────────────────────────────────
+// L'enveloppe (sel + DEK emballée) n'est PAS secrète seule : on la sauvegarde
+// côté serveur pour pouvoir restaurer le coffre sur un autre appareil avec la
+// clé de secours. Sans la clé, l'enveloppe stockée ne donne rien.
+
+const ENVELOPE_TABLE = 'vault_envelopes'
+
+/**
+ * Sauvegarde l'enveloppe locale côté serveur (upsert). Sans effet en mode
+ * invité ou si le stockage local est absent. Best effort : n'échoue jamais fort.
+ */
+export async function backupEnvelope(): Promise<void> {
+  const store = kv()
+  if (!store) return
+  const raw = store.getItem(ENVELOPE_KEY)
+  if (!raw) return
+  try {
+    const supabase = createSupabaseBrowserClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return
+    await supabase.from(ENVELOPE_TABLE).upsert({
+      user_id: session.user.id,
+      envelope: JSON.parse(raw),
+      updated_at: new Date().toISOString(),
+    })
+  } catch { /* best effort : réessaiera au prochain passage */ }
+}
+
+export type RestoreResult = 'ok' | 'invalid' | 'aucune_sauvegarde' | 'hors_ligne' | 'sans_stockage'
+
+/**
+ * Restaure le coffre sur CET appareil à partir de la clé de secours :
+ * récupère l'enveloppe serveur, la déverrouille, puis l'adopte localement.
+ * La clé de secours devient le secret de cet appareil (elle vit déjà sur lui).
+ */
+export async function restoreFromRecoveryKey(recoveryKey: string): Promise<RestoreResult> {
+  const store = kv()
+  if (!store) return 'sans_stockage'
+  const key = normalizeRecoveryKey(recoveryKey)
+
+  let envelope: VaultEnvelope
+  try {
+    const supabase = createSupabaseBrowserClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) return 'hors_ligne'
+    const { data, error } = await supabase
+      .from(ENVELOPE_TABLE)
+      .select('envelope')
+      .eq('user_id', session.user.id)
+      .maybeSingle()
+    if (error) return 'hors_ligne'
+    if (!data?.envelope) return 'aucune_sauvegarde'
+    envelope = data.envelope as VaultEnvelope
+  } catch {
+    return 'hors_ligne'
+  }
+
+  try {
+    const dek = await unlock(envelope, key) // lève si la clé ne correspond pas
+    store.setItem(ENVELOPE_KEY, JSON.stringify(envelope))
+    store.setItem(DEVICE_KEY, key)
+    store.setItem(RECOVERY_SEEN, JSON.stringify({ key, shown: true }))
+    cachedDek = dek
+    return 'ok'
+  } catch {
+    return 'invalid'
+  }
 }

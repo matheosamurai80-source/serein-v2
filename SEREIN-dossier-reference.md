@@ -865,6 +865,8 @@ extension annuaire résiliation.
 | 2026-08-26 | **Double authentification (2FA / TOTP)** (Juju : « connexion sécurisée à double identification ») : logique pure `src/lib/auth/mfa.ts` (format du code, challenge aal1→aal2 fail-safe, état des facteurs, erreurs FR) ; activation sur `/compte` (`security-mfa.tsx` : enroll → QR + clé → code 6 chiffres → challengeAndVerify, + désactivation) ; étape code à la connexion (`getAuthenticatorAssuranceLevel` → challenge). Supabase gère la crypto, zéro table applicative, comptes sans 2FA inchangés | Sandbox `mfa.test.ts` 21/21, suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (`/compte`, `/connexion`) |
 | 2026-08-26 | **Mot de passe oublié** (Juju) : comble un vrai manque (compte au mot de passe perdu = irrécupérable). Logique pure (`auth/logic.ts` : `validateEmail`, `validateNewPassword`, `friendlyResetError`) ; demande sur `/connexion` (lien « Mot de passe oublié ? » → `resetPasswordForEmail`, message neutre) ; page `/reinitialiser` (session de récupération `@supabase/ssr` → `updateUser({password})` → `/accueil`, lien expiré géré). Flux Supabase natif, zéro table | Sandbox `auth.test.ts` 22/22 (dont 11 mot de passe oublié), suite complète PASS 0 FAIL, lint 0 erreur, **build prod vert** (`/reinitialiser`) |
 
+| 2026-09-05 | **Brique 8c — Restauration du coffre multi-appareils** : table `vault_envelopes` (RLS propriétaire) ; `recovery.ts` pur (format clé + `openDekWithRecovery`) ; `session.ts` `backupEnvelope`/`restoreFromRecoveryKey` (enveloppe serveur + clé de secours → coffre adopté localement) ; `VaultRestore` sur `/compte`. Comble le trou 8b : `name`/`amount` chiffrés redeviennent lisibles sur un nouvel appareil | Sandbox `vault-recovery.test.ts` 9/9 (A scelle → B rouvre via enveloppe+clé, mauvaise clé refusée), suite **885 PASS 0 FAIL**, lint 0 erreur, **build vert** ; migration `vault_envelopes` appliquée + RLS vérifiée |
+
 ## Hébergement invité — PanierMalin
 `public/paniermalin/` héberge l'app statique PanierMalin (projet séparé,
 identité séparée) sur https://serein-v2.vercel.app/paniermalin/ — solution
@@ -1176,3 +1178,26 @@ métadonnées autorisées, 32 caractères max. Un nom hors liste n'écrit rien.
 Angle mort assumé : le mode invité n'a pas de compte, donc aucune télémétrie.
 
 Vérification : 876 PASS / 0 FAIL, build ✅, lint 0 erreur.
+
+### Brique 8c — Restauration du coffre sur un nouvel appareil (2026-09-05)
+Comble le trou de la 8b : une fois `name`/`amount` chiffrés, ils n'étaient
+lisibles QUE sur l'appareil d'origine (clé liée à l'appareil). Sur un 2e
+téléphone, ces champs apparaissaient vides.
+- **Table `vault_envelopes`** (migration appliquée) : une enveloppe par
+  utilisateur (`user_id` PK, `envelope` jsonb), RLS « propriétaire » (4 policies).
+  L'enveloppe = sel + DEK emballée : **non secrète seule**, inutile sans la clé.
+- `src/lib/vault/recovery.ts` (pur) : `validateRecoveryKey` (format SEREIN-…),
+  `normalizeRecoveryKey`, `openDekWithRecovery(envelope, clé)`.
+- `src/lib/vault/session.ts` : `backupEnvelope()` (upsert de l'enveloppe locale
+  côté serveur, best effort, appelé à la création et au montage de `/compte`) ;
+  `restoreFromRecoveryKey(clé)` → récupère l'enveloppe serveur, la déverrouille,
+  l'adopte localement (la clé de secours devient le secret de l'appareil).
+- `src/components/vault/VaultRestore.tsx` sur `/compte` (connecté) : « Nouvel
+  appareil ? » → saisie de la clé → restauration → rechargement.
+- **Preuve sandbox** (`vault-recovery.test.ts`, 9 cas) : des données scellées par
+  « l'appareil A » sont rouvertes par « l'appareil B » via enveloppe + clé ; une
+  mauvaise clé refuse ; l'enveloppe seule ne donne rien.
+- La promesse « retrouvés sur tous vos appareils » est désormais vraie AUSSI
+  pour les champs chiffrés (à condition d'avoir noté sa clé de secours).
+
+Vérification : 885 PASS / 0 FAIL, build ✅, lint 0 erreur.

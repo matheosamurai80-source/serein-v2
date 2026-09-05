@@ -5,6 +5,7 @@ import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
 import { LegalFooter } from '@/components/legal'
 import { CleDeSecours } from '@/components/vault/CleDeSecours'
+import { VaultRestore } from '@/components/vault/VaultRestore'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { activeServiceKeys, deleteConfirmed, SERVICE_LABELS, type ServiceKey } from '@/lib/services/logic'
 import { clearGuestData, hasGuestData } from '@/lib/data/local'
@@ -121,6 +122,9 @@ export default function ComptePage() {
 
             {/* Double authentification (2FA) — compte connecté uniquement */}
             {email && <SecurityMfa notify={toast.show} />}
+
+            {/* Restauration du coffre sur un nouvel appareil — connecté uniquement */}
+            {email && <VaultRestore notify={toast.show} />}
 
             {/* Export RGPD (portabilité) — compte connecté uniquement */}
             {email && (
