@@ -1111,3 +1111,68 @@ provisoire pour disposer du HTTPS (caméra) sans second projet Vercel.
 | 2026-07-07 | PanierMalin retours : bug import ticket corrigé (capture forçait l'appareil photo → 2 entrées photo/galerie), propositions d'achat promo (vs prix habituels perso), accès dédié « 🔁 Récurrents » | 309/309 PASS sandbox, 12/12 PASS navigateur, sw v9 |
 | 2026-07-07 | Lecture de documents robuste : secours OCR local pour PDF scannés (Serein) + prétraitement image N/B Otsu avant OCR (PanierMalin), module partagé public/shared/pretraitement.mjs | 319/319 PASS sandbox, 7/7 PASS navigateur, build vert, sw v10 |
 | 2026-07-07 | Pages légales : /positionnement (arme vs mandat, face Papernest/Ideel) + /confidentialite réécrite (documents → Mistral UE, TODO À COMPLÉTER) + Mentions Mistral + landing repositionnée ; retrait des affirmations « 100 % local » contradictoires. Aucune logique métier | 319/319 sandbox intacts, 24/24 navigateur, build + lint verts |
+
+### Brique 8a — Coffre chiffré branché sur les engagements, mode invité (2026-09-03)
+
+Option retenue (Juju) : **C — la clé vit sur l'appareil**, aucune phrase à
+retaper au quotidien, doublée d'une clé de secours imprimable pour changer
+d'appareil.
+
+- `src/lib/vault/session.ts` (nouveau) : `getDek()` ouvre le coffre en silence
+  et le crée au premier passage ; `sealRow()` / `openRow()` ; `pendingRecoveryKey()`
+  et `markRecoveryKeySeen()` pour la remise unique de la clé ; `countLegacy()`.
+- `src/lib/vault/tiers.ts` : champs réels de `CommitmentRow` déclarés.
+  **Piège évité** : `anniversary_date`, `cancellation_deadline`, `frequency` et
+  `status` sont SERVEUR — sans cette déclaration, le fail-safe les envoyait au
+  coffre et les alertes ne partaient plus.
+- `src/lib/data/store.ts` : `listCommitments`, `addCommitments`, `updateCommitment`
+  passent par le coffre en mode local.
+- `src/components/vault/CleDeSecours.tsx` : remise unique, avec l'avertissement
+  franc (appareil + clé perdus = données définitivement illisibles). Affichée
+  en tête de `/compte`.
+
+**MIGRATION DOUCE — aucune donnée effacée.** Des proches testent déjà l'app.
+`openRow()` accepte les deux formes : ligne scellée → déchiffrée ; ligne en clair
+→ rendue telle quelle. Le chiffrement s'applique à la prochaine écriture, ligne
+par ligne. Si `localStorage` est interdit, l'app continue SANS chiffrer plutôt
+que de planter.
+
+Vérification : sandbox `vault-device.test.ts` 17/17 ; suite complète 740 PASS /
+0 FAIL ; build ✅ ; lint 0 erreur (3 warnings préexistants).
+
+**Reste à faire — Brique 8b (mode connecté)** : les deux projets Supabase
+(`serein-app`, `serein-ap` / xfcrryjhxqjdkzsymlro) sont en pause (INACTIVE), les
+colonnes `iv` / `ciphertext` ne peuvent pas être ajoutées tant qu'ils dorment.
+`/transparence` reste une démo tant que 8b n'est pas livrée.
+
+### Brique 8b + B1 + tableau de bord (2026-09-03/05)
+
+**8b — coffre chiffré, mode connecté.** Migration `vault_commitments_sealed_fields` :
+colonnes `iv`/`ciphertext`, `name` rendu nullable. Zod accepte le blob avec
+garde-fou (un nom OU un contenu chiffré, jamais rien). `store.ts` scelle à
+l'écriture et ouvre à la lecture côté API comme côté local.
+**Piège corrigé** : `COLS` dans `services/commitments.ts` ne renvoyait pas
+`iv, ciphertext` — le blob serait parti en base sans jamais revenir.
+**Piège corrigé** : une modification partielle rescellait un blob amputé ; on
+repart désormais de la ligne complète.
+
+**B1 / Brique 9 — `coutDeSortie()`** (`src/lib/exit/cost.ts`) : combien coûte
+une sortie, en euros. Énergie (L.224-15), télécom avec plafond Chatel au-delà
+du 12e mois (L.224-39), assurance Hamon/Chatel (L.113-15-2 / L.113-15-1),
+tacite reconduction et résiliation en 3 clics (L.215-1-1). Renvoie `inconnu` et
+`montant_du: null` plutôt que d'inventer un chiffre.
+`src/lib/exit/bilan.ts` compose B1 avec `computeResiliation` : le calendrier et
+le courrier restent dans `resiliation/logic`, l'argent dans `exit/cost`. Jamais
+deux vérités juridiques.
+
+**Tableau de bord.** Migration `dashboard_connexions_et_usage` : politique
+d'insertion sur `activity_logs`, index date, purge à 90 jours,
+`admin_stats()` étendue (connexions 24 h/7 j/30 j, jamais connectés, usage par
+fonction, utilisateurs distincts par fonction, part chiffrée vs en clair).
+`src/lib/admin/telemetry.ts` : liste blanche fermée de 16 actions, 3 clés de
+métadonnées autorisées, 32 caractères max. Un nom hors liste n'écrit rien.
+**Le journal ne peut pas servir à contourner le coffre** — testé explicitement.
+
+Angle mort assumé : le mode invité n'a pas de compte, donc aucune télémétrie.
+
+Vérification : 876 PASS / 0 FAIL, build ✅, lint 0 erreur.

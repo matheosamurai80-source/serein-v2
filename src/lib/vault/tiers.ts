@@ -22,6 +22,7 @@ export interface FieldSpec {
 
 export const FIELD_TIERS: Record<string, FieldSpec> = {
   // ── Coffre : tout ce qui vous identifie ou vous décrit ──
+  'commitment.name':          { tier: 'coffre', why: 'Le nom que vous donnez à votre contrat ne regarde que vous.' },
   'commitment.provider':      { tier: 'coffre', why: 'Le nom de votre fournisseur ne regarde que vous.' },
   'commitment.amount':        { tier: 'coffre', why: 'Vos montants ne quittent jamais votre appareil en clair.' },
   'commitment.contract_ref':  { tier: 'coffre', why: 'Votre numéro de contrat est une donnée identifiante.' },
@@ -36,6 +37,11 @@ export const FIELD_TIERS: Record<string, FieldSpec> = {
   'commitment.id':            { tier: 'serveur', why: 'Identifiant technique, aucun sens hors de votre compte.' },
   'commitment.due_date':      { tier: 'serveur', why: 'Nécessaire pour vous alerter avant l\'échéance, même appareil éteint.' },
   'commitment.service_type':  { tier: 'serveur', why: 'Catégorie générique — permet d\'appliquer le bon régime juridique.' },
+  'commitment.frequency':     { tier: 'serveur', why: 'Mensuel, annuel… — rythme générique, sans montant.' },
+  'commitment.anniversary_date':          { tier: 'serveur', why: 'Date d\'échéance — nécessaire pour vous alerter à temps.' },
+  'commitment.cancellation_deadline':     { tier: 'serveur', why: 'La fenêtre de résiliation à surveiller pour vous.' },
+  'commitment.cancellation_notice_days':  { tier: 'serveur', why: 'Durée de préavis — un nombre de jours, rien de personnel.' },
+  'commitment.status':        { tier: 'serveur', why: 'Actif ou archivé — nécessaire pour trier vos alertes.' },
   'account.email':            { tier: 'serveur', why: 'Nécessaire pour vous envoyer vos alertes.' },
 
   // ── Transitoire : présent quelques secondes, puis détruit ──

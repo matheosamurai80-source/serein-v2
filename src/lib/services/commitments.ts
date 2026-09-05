@@ -10,7 +10,7 @@ import type {
 // logique métier dans les routes.
 
 const COLS =
-  'id, name, provider, service_type, amount, frequency, status, importance, category_id, start_date, anniversary_date, commitment_end_date, next_due_date, cancellation_deadline, cancellation_notice_days, detected_automatically, notes, created_at, updated_at'
+  'id, name, provider, service_type, amount, frequency, status, importance, category_id, start_date, anniversary_date, commitment_end_date, next_due_date, cancellation_deadline, cancellation_notice_days, detected_automatically, notes, iv, ciphertext, created_at, updated_at'
 
 export async function listCommitments() {
   const { supabase } = await requireUser()

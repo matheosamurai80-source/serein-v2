@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { FoyerTabs } from '@/components/ui/foyer-tabs'
 import { useToast, Toast } from '@/components/ui/toast'
 import { LegalFooter } from '@/components/legal'
+import { CleDeSecours } from '@/components/vault/CleDeSecours'
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { activeServiceKeys, deleteConfirmed, SERVICE_LABELS, type ServiceKey } from '@/lib/services/logic'
 import { clearGuestData, hasGuestData } from '@/lib/data/local'
@@ -80,6 +81,7 @@ export default function ComptePage() {
 
         {loaded && (
           <div className="w-full flex flex-col gap-4 mt-4">
+            <CleDeSecours />
             {/* Statut */}
             <div className="w-full bg-surface border border-ink/10 rounded-2xl p-5">
               <p className="font-mono text-[11px] tracking-[.13em] uppercase text-ink/50 mb-2">Statut</p>

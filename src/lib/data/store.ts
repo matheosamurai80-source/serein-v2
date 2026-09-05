@@ -8,6 +8,7 @@ import {
   LOCAL_KEYS, readRows, insertRows, updateRow, deleteRow,
   hasGuestData, clearGuestData, rowsToMigrate, type KV,
 } from './local'
+import { sealRow, openRow } from '@/lib/vault/session'
 
 // ─── FAÇADE DE DONNÉES UNIQUE ───────────────────────────────────────────────
 // Compte connecté → Supabase (retrouvé sur tous les appareils).
@@ -120,8 +121,15 @@ function fail(message: string): never { throw new Error(message) }
 
 export async function listCommitments(): Promise<CommitmentRow[]> {
   const b = await backend()
-  if (b.kind === 'local') return readRows<CommitmentRow>(b.kv, LOCAL_KEYS.commitments)
-  return apiGet<CommitmentRow[]>('/api/commitments')
+  if (b.kind === 'local') {
+    const rows = readRows<{ id: string } & Record<string, unknown>>(b.kv, LOCAL_KEYS.commitments)
+    // Les lignes déjà écrites en clair restent lisibles : `openRow` accepte
+    // les deux formes. Rien n'est perdu, rien n'est effacé.
+    return Promise.all(rows.map(r => openRow<CommitmentRow>(r)))
+  }
+  const rows = await apiGet<Record<string, unknown>[]>('/api/commitments')
+  // Même migration douce qu'en local : une ligne en clair reste lisible.
+  return Promise.all(rows.map(r => openRow<CommitmentRow>(r)))
 }
 
 export async function addCommitments(inputs: NewCommitment[]): Promise<CommitmentRow[]> {
@@ -138,29 +146,54 @@ export async function addCommitments(inputs: NewCommitment[]): Promise<Commitmen
     status: 'active',
     ...(i.detected_automatically ? { detected_automatically: true } : {}),
   }))
-  if (b.kind === 'local') return insertRows(b.kv, LOCAL_KEYS.commitments, rows) as CommitmentRow[]
+  if (b.kind === 'local') {
+    const sealed = await Promise.all(rows.map(r => sealRow('commitment', r as Record<string, unknown>)))
+    const written = insertRows(b.kv, LOCAL_KEYS.commitments, sealed)
+    return Promise.all(written.map(w => openRow<CommitmentRow>(w as Record<string, unknown>)))
+  }
   // Un POST par engagement (le lot détecté reste petit) : validation Zod + RLS
-  // s'appliquent à chacun côté serveur.
-  return Promise.all(inputs.map(i => apiPost<CommitmentRow>('/api/commitments', {
-    name: i.name,
-    service_type: i.service_type,
-    amount: i.amount,
-    frequency: i.frequency,
-    anniversary_date: i.anniversary_date ?? null,
-    cancellation_notice_days: i.cancellation_notice_days ?? null,
-    ...(i.detected_automatically ? { detected_automatically: true } : {}),
-  })))
+  // s'appliquent à chacun côté serveur. Les champs sensibles sont scellés AVANT
+  // de quitter l'appareil : le serveur reçoit un blob qu'il ne peut pas lire.
+  return Promise.all(inputs.map(async i => {
+    const body = await sealRow('commitment', {
+      name: i.name,
+      service_type: i.service_type,
+      amount: i.amount,
+      frequency: i.frequency,
+      anniversary_date: i.anniversary_date ?? null,
+      cancellation_notice_days: i.cancellation_notice_days ?? null,
+      ...(i.detected_automatically ? { detected_automatically: true } : {}),
+    })
+    const created = await apiPost<Record<string, unknown>>('/api/commitments', body)
+    return openRow<CommitmentRow>(created)
+  }))
 }
 
 export async function updateCommitment(id: string, patch: Partial<CommitmentRow>): Promise<void> {
   const b = await backend()
   if (b.kind === 'local') {
-    if (!updateRow(b.kv, LOCAL_KEYS.commitments, id, patch)) fail('Engagement introuvable.')
+    const rows = readRows<{ id: string } & Record<string, unknown>>(b.kv, LOCAL_KEYS.commitments)
+    const raw = rows.find(r => r.id === id)
+    if (!raw) fail('Engagement introuvable.')
+    // On rouvre, on applique le correctif, on rescelle : la ligne repart
+    // toujours complète, qu'elle ait été chiffrée ou non auparavant.
+    const current = await openRow<CommitmentRow>(raw)
+    const sealed = await sealRow('commitment', { ...current, ...patch } as unknown as Record<string, unknown>)
+    if (!updateRow(b.kv, LOCAL_KEYS.commitments, id, sealed)) fail('Engagement introuvable.')
     return
   }
   // `id` n'est pas un champ modifiable : on ne l'envoie pas au serveur.
-  const { id: _omit, ...body } = patch
+  // On repart de la ligne complète pour resceller un blob cohérent : un patch
+  // partiel écraserait les champs sensibles absents du correctif.
+  const { id: _omit, ...changes } = patch
   void _omit
+  const courant = (await listCommitments()).find(c => c.id === id)
+  let body: Record<string, unknown> = changes
+  if (courant) {
+    const { id: _drop, ...complet } = { ...courant, ...changes }
+    void _drop
+    body = await sealRow('commitment', complet as unknown as Record<string, unknown>)
+  }
   await apiPatch(`/api/commitments/${id}`, body)
 }
 
