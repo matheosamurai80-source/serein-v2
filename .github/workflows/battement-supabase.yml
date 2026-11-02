@@ -1,13 +1,13 @@
-> Sans ce battement, l'app meurt toute seule au bout de 7 jours.
->
-> Supabase met en pause les projets du plan gratuit après 7 jours sans activité
-> RÉELLE en base. Ouvrir l'URL ne suffit pas : il faut une requête qui écrit.
-> Un projet en pause = écran blanc côté utilisateur, sans message d'erreur.
->
-> Ce workflow appelle `purge_old_activity_logs()` deux fois par semaine. Cette
-> fonction fait un DELETE — donc une vraie écriture — et rend au passage un
-> service utile : elle purge le journal d'usage au-delà de 90 jours.
-> Un seul mécanisme, deux effets.
+# Sans ce battement, l'app meurt toute seule au bout de 7 jours.
+#
+# Supabase met en pause les projets du plan gratuit après 7 jours sans activité
+# RÉELLE en base. Ouvrir l'URL ne suffit pas : il faut une requête qui écrit.
+# Un projet en pause = écran blanc côté utilisateur, sans message d'erreur.
+#
+# Ce workflow appelle `purge_old_activity_logs()` deux fois par semaine. Cette
+# fonction fait un DELETE — donc une vraie écriture — et rend au passage un
+# service utile : elle purge le journal d'usage au-delà de 90 jours.
+# Un seul mécanisme, deux effets.
 
 name: Battement Supabase
 

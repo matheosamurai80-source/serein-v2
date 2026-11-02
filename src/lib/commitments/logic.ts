@@ -41,8 +41,11 @@ export function monthlyEquivalent(amount: number | null, frequency: CommitmentFr
 export function effectiveDeadline(c: CommitmentLike): string | null {
   if (c.cancellation_deadline) return c.cancellation_deadline
   if (c.anniversary_date && c.cancellation_notice_days != null) {
-    const d = new Date(c.anniversary_date)
-    d.setDate(d.getDate() - c.cancellation_notice_days)
+    // Calcul en UTC : une date 'AAAA-MM-JJ' est lue à minuit UTC. Un calcul en
+    // heure locale décalait le résultat d'un jour quand la période traversait
+    // le changement d'heure (heure de Paris, fin octobre / fin mars).
+    const d = new Date(c.anniversary_date.slice(0, 10) + 'T00:00:00Z')
+    d.setUTCDate(d.getUTCDate() - c.cancellation_notice_days)
     return d.toISOString().slice(0, 10)
   }
   return null
